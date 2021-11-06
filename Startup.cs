@@ -1,21 +1,23 @@
+using System.Text;
+using System;
+
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+
 using WebApi.Helpers;
 using WebApi.Services;
 using WebApi.Entities;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using System;
 
 namespace BackArt
 {
-
     public class Startup
     {
 
@@ -33,19 +35,23 @@ namespace BackArt
             services.AddHealthChecks();
             services.AddCors();
             services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.IgnoreNullValues = true);
-            // in memory database used for simplicity, change to a real db for production applications
-            services.AddDbContext<DataContext>(x => x.UseInMemoryDatabase("TestDb"));
-
-            services.AddCors();
-            services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.IgnoreNullValues = true);
+            services.AddDbContext<DataContext>(x => x.UseInMemoryDatabase("Users"));
 
             // configure strongly typed settings objects
             var appSettingsSection = Configuration.GetSection("AppSettings");
             services.Configure<AppSettings>(appSettingsSection);
+            services.AddSingleton<AppSettings>(appSettingsSection.Get<AppSettings>());
 
-            // configure jwt authentication
-            var appSettings = appSettingsSection.Get<AppSettings>();
-            var key = Encoding.ASCII.GetBytes(appSettings.Secret);
+            services.AddScoped<IUserService, UserService>();
+            services.AddSingleton<EmailSender>();
+            services.AddSingleton<Password>();
+
+            this.setupEmailConfirmation(services);
+            this.setupJwtBearear(services, appSettingsSection.Get<AppSettings>());
+        }
+
+        private void setupJwtBearear(IServiceCollection services, AppSettings appSettings)
+        {
             services.AddAuthentication(x =>
             {
                 x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -58,12 +64,24 @@ namespace BackArt
                 x.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(appSettings.Secret)),
                     ValidateIssuer = false,
                     ValidateAudience = false,
-                    // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
                     ClockSkew = TimeSpan.Zero
                 };
+            });
+        }
+
+        private void setupEmailConfirmation(IServiceCollection services)
+        {
+            services.AddDbContext<IdentityDbContext>(options => options.UseInMemoryDatabase("Users"));
+            services.AddIdentity<IdentityUser, IdentityRole>().AddEntityFrameworkStores<IdentityDbContext>();
+
+            services.Configure<IdentityOptions>(opts =>
+            {
+                opts.User.RequireUniqueEmail = true;
+                opts.Password.RequiredLength = 8;
+                opts.SignIn.RequireConfirmedEmail = true;
             });
         }
 
@@ -72,7 +90,7 @@ namespace BackArt
         {
             if (env.IsDevelopment())
             {
-                context.Users.Add(new User { FirstName = "Test", LastName = "User", Username = "test", Password = "test" });
+                context.Users.Add(new User { Name = "Test", Email = "test", Password = "test" });
                 context.SaveChanges();
                 app.UseDeveloperExceptionPage();
             }
@@ -82,6 +100,7 @@ namespace BackArt
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials());
+
             app.UseRouting();
 
             app.UseAuthentication();
