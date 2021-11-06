@@ -16,7 +16,7 @@ namespace WebApi.Helpers
             fromEmail = settings.SendGridFromEmail;
             fromName = settings.SendGridName;
         }
-        public async void SendEmail(string userEmail, string confirmationLink)
+        public void SendEmail(string userEmail, string confirmationLink)
         {
             var client = new SendGridClient(key);
             var msg = new SendGridMessage()
@@ -28,7 +28,7 @@ namespace WebApi.Helpers
 
             msg.AddTo(new EmailAddress(userEmail));
             msg.SetClickTracking(false, false);
-            client.SendEmailAsync(msg);
+            client.SendEmailAsync(msg).Forget();
         }
     }
 }
