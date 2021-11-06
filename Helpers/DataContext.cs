@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore;
-using WebApi.Entities;
-
 namespace WebApi.Helpers
 {
+    using Microsoft.EntityFrameworkCore;
+    using WebApi.Entities;
+
     public class DataContext : DbContext
     {
         public DbSet<User> Users { get; set; }

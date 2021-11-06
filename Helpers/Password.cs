@@ -14,8 +14,10 @@ namespace WebApi.Helpers
         public string GenerateSaltedHashString(string password)
         {
             return System.Text.Encoding.UTF8.GetString(
-                this.GenerateSaltedHash(Encoding.ASCII.GetBytes(password),
-                Encoding.ASCII.GetBytes(salt)));
+                this.GenerateSaltedHash(
+                    Encoding.ASCII.GetBytes(password),
+                    Encoding.ASCII.GetBytes(salt))
+                );
         }
 
         public byte[] GenerateSaltedHash(byte[] plainText, byte[] salt)

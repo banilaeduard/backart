@@ -2,12 +2,14 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 
 using WebApi.Entities;
 using WebApi.Helpers;
 
 namespace WebApi.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("[controller]")]
     public class CreateAccountController : ControllerBase
@@ -18,10 +20,10 @@ namespace WebApi.Controllers
         Password passHelper;
 
         public CreateAccountController(
-        UserManager<IdentityUser> userManager,
-        EmailSender emailSender,
-        AppSettings appSettings,
-        Password passHelper)
+            UserManager<IdentityUser> userManager,
+            EmailSender emailSender,
+            AppSettings appSettings,
+            Password passHelper)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
@@ -29,6 +31,7 @@ namespace WebApi.Controllers
             this.passHelper = passHelper;
         }
 
+        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> Create(User user)
         {
@@ -49,11 +52,13 @@ namespace WebApi.Controllers
             }
             else
             {
-                // log errors
+                return BadRequest(result.Errors);
             }
 
             return Ok();
         }
+
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {

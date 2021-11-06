@@ -75,7 +75,9 @@ namespace BackArt
         private void setupEmailConfirmation(IServiceCollection services)
         {
             services.AddDbContext<IdentityDbContext>(options => options.UseInMemoryDatabase("Users"));
-            services.AddIdentity<IdentityUser, IdentityRole>().AddEntityFrameworkStores<IdentityDbContext>();
+            services.AddIdentity<IdentityUser, IdentityRole>()
+                    .AddEntityFrameworkStores<IdentityDbContext>()
+                    .AddDefaultTokenProviders();
 
             services.Configure<IdentityOptions>(opts =>
             {
@@ -96,10 +98,14 @@ namespace BackArt
             }
 
             app.UseCors(x => x
-                .SetIsOriginAllowed(origin => true)
+                .AllowAnyOrigin()
                 .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials());
+                .AllowAnyHeader());
+
+            // .SetIsOriginAllowed(origin => true)
+            // .AllowAnyMethod()
+            // .AllowAnyHeader()
+            // .AllowCredentials());
 
             app.UseRouting();
 
