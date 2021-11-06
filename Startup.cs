@@ -44,9 +44,8 @@ namespace BackArt
 
             services.AddScoped<IUserService, UserService>();
             services.AddSingleton<EmailSender>();
-            services.AddSingleton<Password>();
 
-            this.setupEmailConfirmation(services);
+            this.setupUserCreation(services);
             this.setupJwtBearear(services, appSettingsSection.Get<AppSettings>());
         }
 
@@ -72,7 +71,7 @@ namespace BackArt
             });
         }
 
-        private void setupEmailConfirmation(IServiceCollection services)
+        private void setupUserCreation(IServiceCollection services)
         {
             services.AddDbContext<IdentityDbContext>(options => options.UseInMemoryDatabase("Users"));
             services.AddIdentity<IdentityUser, IdentityRole>()

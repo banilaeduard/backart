@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Identity;
 using WebApi.Models;
 using WebApi.Entities;
 using WebApi.Helpers;
@@ -15,7 +16,7 @@ namespace WebApi.Services
 {
     public interface IUserService
     {
-        AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress);
+        AuthenticateResponse Authenticate(AuthenticateRequest model, IdentityUser user, string ipAddress);
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         bool RevokeToken(string token, string ipAddress);
         IEnumerable<User> GetAll();
@@ -26,18 +27,24 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
+        private IPasswordHasher<IdentityUser> _passwordHasher;
 
         public UserService(
             DataContext context,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            UserManager<IdentityUser> userManager)
         {
             _context = context;
             _appSettings = appSettings.Value;
+            _passwordHasher = userManager.PasswordHasher;
         }
 
-        public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
+        public AuthenticateResponse Authenticate(AuthenticateRequest model, IdentityUser identityUser, string ipAddress)
         {
-            var user = _context.Users.SingleOrDefault(x => x.Email == model.Username && x.Password == model.Password);
+            var user = _context.Users.SingleOrDefault(x =>
+                x.Email == model.Username
+                && (_passwordHasher.VerifyHashedPassword(identityUser, x.Password, model.Password) != PasswordVerificationResult.Failed)
+            );
 
             // return null if user not found
             if (user == null) return null;

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 
 using WebApi.Entities;
 using WebApi.Helpers;
+using WebApi.Services;
 
 namespace WebApi.Controllers
 {
@@ -17,18 +18,21 @@ namespace WebApi.Controllers
         UserManager<IdentityUser> userManager;
         EmailSender emailSender;
         AppSettings appSettings;
-        Password passHelper;
+        IUserService userService;
+        DataContext userCtx;
 
         public CreateAccountController(
             UserManager<IdentityUser> userManager,
             EmailSender emailSender,
             AppSettings appSettings,
-            Password passHelper)
+            IUserService userService,
+            DataContext userCtx)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
             this.appSettings = appSettings;
-            this.passHelper = passHelper;
+            this.userService = userService;
+            this.userCtx = userCtx;
         }
 
         [AllowAnonymous]
@@ -37,15 +41,18 @@ namespace WebApi.Controllers
         {
             IdentityUser appUser = new IdentityUser
             {
-                UserName = user.Name,
+                UserName = user.Email,
                 Email = user.Email,
-                PhoneNumber = user.Phone,
-                PasswordHash = this.passHelper.GenerateSaltedHashString(user.Password)
+                PhoneNumber = user.Phone
             };
 
             IdentityResult result = await userManager.CreateAsync(appUser, user.Password);
             if (result.Succeeded)
             {
+                user.Password = appUser.PasswordHash;
+                this.userCtx.Users.Add(user);
+                this.userCtx.SaveChanges();
+
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(appUser);
                 var confirmationLink = Url.Action("ConfirmEmail", "CreateAccount", new { token, email = user.Email }, Request.Scheme);
                 this.emailSender.SendEmail(user.Email, confirmationLink);

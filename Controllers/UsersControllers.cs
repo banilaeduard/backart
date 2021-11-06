@@ -1,9 +1,13 @@
+using System;
+using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
+
 using WebApi.Services;
 using WebApi.Models;
-using Microsoft.AspNetCore.Http;
-using System;
 
 namespace WebApi.Controllers
 {
@@ -12,21 +16,45 @@ namespace WebApi.Controllers
     [Route("[controller]")]
     public class UsersController : ControllerBase
     {
-        private IUserService _userService;
+        IUserService _userService;
+        UserManager<IdentityUser> _userManager;
 
-        public UsersController(IUserService userService)
+        public UsersController(
+            IUserService userService,
+            UserManager<IdentityUser> userManager)
         {
             _userService = userService;
+            _userManager = userManager;
         }
 
         [AllowAnonymous]
         [HttpPost("authenticate")]
-        public IActionResult Authenticate([FromBody] AuthenticateRequest model)
+        public async Task<IActionResult> Authenticate([FromBody] AuthenticateRequest model)
         {
-            var response = _userService.Authenticate(model, ipAddress());
+            IdentityUser user = await _userManager.FindByNameAsync(model.Username);
+            if (user == null)
+            {
+                return NotFound(new { message = "Userul nu exista" });
+            }
+
+            bool confirmedEmail = await _userManager.IsEmailConfirmedAsync(user);
+
+            if (!confirmedEmail)
+            {
+                return BadRequest(new { message = "Confirmati userul accesand link-ul trimis pe email" });
+            }
+
+            bool isLockedOut = await _userManager.IsLockedOutAsync(user);
+
+            if (isLockedOut)
+            {
+                return BadRequest(new { message = "Contul este blocat, prea multe incercari de a introduce o parola gresita probabil" });
+            }
+
+            var response = _userService.Authenticate(model, user, ipAddress());
 
             if (response == null)
-                return BadRequest(new { message = "Username or password is incorrect" });
+                return BadRequest(new { message = "Username sau parola incorecte" });
 
             setTokenCookie(response.RefreshToken);
 
