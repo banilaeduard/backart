@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StartupServicesManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <Parameters>
+    <Parameter Name="YahooTFeeder_InstanceCount" DefaultValue="-1" />
+    <Parameter Name="MailExtrasExtractor_InstanceCount" DefaultValue="-1" />
+    <Parameter Name="WebApi_InstanceCount" DefaultValue="-1" />
+    <Parameter Name="PollerRecurringJobActorService_PartitionCount" DefaultValue="1" />
+    <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" DefaultValue="1" />
+  </Parameters>
+  <Services>
+    <!-- The section below creates instances of service types, when an instance of this 
+         application type is created. You can also create one or more instances of service type using the 
+         ServiceFabric PowerShell module.
+
+         The attribute ServiceTypeName below must match the name defined in the imported ServiceManifest.xml file. -->
+    <Service Name="YahooTFeederType" ServicePackageActivationMode="ExclusiveProcess">
+      <StatelessService ServiceTypeName="YahooTFeederType" InstanceCount="[YahooTFeeder_InstanceCount]">
+        <SingletonPartition />
+      </StatelessService>
+    </Service>
+    <Service Name="MailExtrasExtractorType" ServicePackageActivationMode="ExclusiveProcess">
+      <StatelessService ServiceTypeName="MailExtrasExtractorType" InstanceCount="[MailExtrasExtractor_InstanceCount]">
+        <SingletonPartition />
+      </StatelessService>
+    </Service>
+    <Service Name="WebApiType" ServicePackageActivationMode="ExclusiveProcess">
+      <StatelessService ServiceTypeName="WebApiType" InstanceCount="[WebApi_InstanceCount]">
+        <SingletonPartition />
+      </StatelessService>
+    </Service>
+    <Service Name="PollerRecurringJobActorService" GeneratedIdRef="d573a202-8575-49fc-a502-b4a39fab97a1|Persisted">
+      <StatefulService ServiceTypeName="PollerRecurringJobActorServiceType" TargetReplicaSetSize="[PollerRecurringJobActorService_TargetReplicaSetSize]" MinReplicaSetSize="[PollerRecurringJobActorService_MinReplicaSetSize]">
+        <UniformInt64Partition PartitionCount="[PollerRecurringJobActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+      </StatefulService>
+    </Service>
+  </Services>
+</StartupServicesManifest>
