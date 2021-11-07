@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Http;
+
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 using WebApi.Helpers;
 using WebApi.Services;
@@ -35,6 +37,13 @@ namespace BackArt
             services.AddHealthChecks();
             services.AddCors();
             services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.IgnoreNullValues = true);
+            services.Configure<CookiePolicyOptions>(options =>
+            {
+                // This lambda determines whether user consent for non-essential cookies is needed for a given request.
+                options.CheckConsentNeeded = context => true;
+                options.MinimumSameSitePolicy = SameSiteMode.None;
+            });
+
             services.AddDbContext<DataContext>(x => x.UseInMemoryDatabase("Users"));
 
             // configure strongly typed settings objects
@@ -46,29 +55,6 @@ namespace BackArt
             services.AddSingleton<EmailSender>();
 
             this.setupUserCreation(services);
-            this.setupJwtBearear(services, appSettingsSection.Get<AppSettings>());
-        }
-
-        private void setupJwtBearear(IServiceCollection services, AppSettings appSettings)
-        {
-            services.AddAuthentication(x =>
-            {
-                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(x =>
-            {
-                x.RequireHttpsMetadata = false;
-                x.SaveToken = true;
-                x.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(appSettings.Secret)),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ClockSkew = TimeSpan.Zero
-                };
-            });
         }
 
         private void setupUserCreation(IServiceCollection services)
@@ -91,26 +77,19 @@ namespace BackArt
         {
             if (env.IsDevelopment())
             {
-                context.Users.Add(new User { Name = "Test", Email = "test", Password = "test" });
+                context.Users.Add(new User { Name = "Test", Email = "test", Password = "test", Id = "test" });
                 context.SaveChanges();
                 app.UseDeveloperExceptionPage();
             }
 
             app.UseCors(x => x
-                .AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader());
-
-            // .SetIsOriginAllowed(origin => true)
-            // .AllowAnyMethod()
-            // .AllowAnyHeader()
-            // .AllowCredentials());
+            .SetIsOriginAllowed(origin => true)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
 
             app.UseRouting();
-
-            app.UseAuthentication();
-            app.UseAuthorization();
-
+            app.UseMiddleware<JwtMiddleware>();
             app.UseEndpoints(endpoints =>
             {
                 app.UseEndpoints(x => x.MapControllers());

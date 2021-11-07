@@ -1,16 +1,27 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
-[ApiController]
-[Route("/")]
-public class HomeController : ControllerBase
+namespace WebApi.Controllers
 {
-    public HomeController()
+    [Route("/")]
+    public class HomeController : WebApiController2
     {
-    }
+        public HomeController()
+        {
+        }
 
-    [HttpGet]
-    public string test()
-    {
-        return "web api core up and running";
+        [HttpGet]
+        [AllowAnonymous]
+        public string test()
+        {
+            return "web api core up and running";
+        }
+
+        [HttpGet]
+        [Route("ping")]
+        public string ping()
+        {
+            return "pong";
+        }
     }
 }

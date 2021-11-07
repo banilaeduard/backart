@@ -1,20 +1,15 @@
-using System;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Http;
 
 using WebApi.Services;
 using WebApi.Models;
 
 namespace WebApi.Controllers
 {
-    [Authorize]
-    [ApiController]
-    [Route("[controller]")]
-    public class UsersController : ControllerBase
+    public class UsersController : WebApiController2
     {
         IUserService _userService;
         UserManager<IdentityUser> _userManager;
@@ -51,12 +46,12 @@ namespace WebApi.Controllers
                 return BadRequest(new { message = "Contul este blocat, prea multe incercari de a introduce o parola gresita probabil" });
             }
 
-            var response = _userService.Authenticate(model, user, ipAddress());
+            var response = _userService.Authenticate(model, user, this.ipAddress());
 
             if (response == null)
                 return BadRequest(new { message = "Username sau parola incorecte" });
 
-            setTokenCookie(response.RefreshToken);
+            this.setTokenCookie(response.RefreshToken);
 
             return Ok(response);
         }
@@ -66,30 +61,33 @@ namespace WebApi.Controllers
         public IActionResult RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
-            var response = _userService.RefreshToken(refreshToken, ipAddress());
+            var response = _userService.RefreshToken(refreshToken, this.ipAddress());
 
             if (response == null)
-                return Unauthorized(new { message = "Invalid token" });
+                return Forbid();
 
-            setTokenCookie(response.RefreshToken);
+            this.setTokenCookie(response.RefreshToken);
 
             return Ok(response);
         }
 
+        [AllowAnonymous]
         [HttpPost("revoke-token")]
-        public IActionResult RevokeToken([FromBody] RevokeTokenRequest model)
+        public IActionResult RevokeToken()
         {
+            var user = User;
             // accept token from request body or cookie
-            var token = model.Token ?? Request.Cookies["refreshToken"];
+            var token = Request.Cookies["refreshToken"];
 
             if (string.IsNullOrEmpty(token))
                 return BadRequest(new { message = "Token is required" });
 
-            var response = _userService.RevokeToken(token, ipAddress());
+            var response = _userService.RevokeToken(token, base.ipAddress());
 
             if (!response)
                 return NotFound(new { message = "Token not found" });
 
+            Response.Cookies.Delete("refreshToken");
             return Ok(new { message = "Token revoked" });
         }
 
@@ -101,7 +99,7 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetById(int id)
+        public IActionResult GetById(string id)
         {
             var user = _userService.GetById(id);
             if (user == null) return NotFound();
@@ -110,32 +108,12 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("{id}/refresh-tokens")]
-        public IActionResult GetRefreshTokens(int id)
+        public IActionResult GetRefreshTokens(string id)
         {
             var user = _userService.GetById(id);
             if (user == null) return NotFound();
 
             return Ok(user.RefreshTokens);
-        }
-
-        // helper methods
-
-        private void setTokenCookie(string token)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
-            Response.Cookies.Append("refreshToken", token, cookieOptions);
-        }
-
-        private string ipAddress()
-        {
-            if (Request.Headers.ContainsKey("X-Forwarded-For"))
-                return Request.Headers["X-Forwarded-For"];
-            else
-                return HttpContext.Connection.RemoteIpAddress.MapToIPv4().ToString();
         }
     }
 }

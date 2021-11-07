@@ -13,6 +13,7 @@ namespace WebApi.Models
 
         public AuthenticateResponse(User user, string jwtToken, string refreshToken)
         {
+            Username = user.Email;
             JwtToken = jwtToken;
             RefreshToken = refreshToken;
         }

@@ -1,43 +1,39 @@
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.WebUtilities;
 
 using WebApi.Entities;
 using WebApi.Helpers;
-using WebApi.Services;
 
 namespace WebApi.Controllers
 {
-    [Authorize]
-    [ApiController]
-    [Route("[controller]")]
-    public class CreateAccountController : ControllerBase
+    public class CreateAccountController : WebApiController2
     {
         UserManager<IdentityUser> userManager;
         EmailSender emailSender;
         AppSettings appSettings;
-        IUserService userService;
         DataContext userCtx;
 
         public CreateAccountController(
             UserManager<IdentityUser> userManager,
             EmailSender emailSender,
             AppSettings appSettings,
-            IUserService userService,
             DataContext userCtx)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
             this.appSettings = appSettings;
-            this.userService = userService;
             this.userCtx = userCtx;
         }
 
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> Create(User user)
+        public async Task<IActionResult> Create(User user, [FromQuery] string confirmationUrl)
         {
             IdentityUser appUser = new IdentityUser
             {
@@ -49,12 +45,16 @@ namespace WebApi.Controllers
             IdentityResult result = await userManager.CreateAsync(appUser, user.Password);
             if (result.Succeeded)
             {
+                user.Id = appUser.Id;
                 user.Password = appUser.PasswordHash;
                 this.userCtx.Users.Add(user);
                 this.userCtx.SaveChanges();
-
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(appUser);
-                var confirmationLink = Url.Action("ConfirmEmail", "CreateAccount", new { token, email = user.Email }, Request.Scheme);
+                var param = new Dictionary<string, string>() {
+                        { "token", token },
+                        { "email", user.Email }
+                    };
+                var confirmationLink = QueryHelpers.AddQueryString(confirmationUrl, param);
                 this.emailSender.SendEmail(user.Email, confirmationLink);
             }
             else
@@ -66,15 +66,33 @@ namespace WebApi.Controllers
         }
 
         [AllowAnonymous]
-        [HttpGet]
+        [Route("confirmation-email")]
+        [HttpPost()]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {
-            var user = await userManager.FindByEmailAsync(email);
-            if (user == null)
+            var identityUser = await userManager.FindByEmailAsync(email);
+            if (identityUser == null)
                 return NotFound();
 
-            var result = await userManager.ConfirmEmailAsync(user, token);
-            return result.Succeeded ? Ok() : BadRequest();
+            var result = await userManager.ConfirmEmailAsync(identityUser, token);
+            if (result.Succeeded)
+            {
+                var user = this.userCtx.Users.Find(identityUser.Id);
+                var refreshToken = new RefreshToken()
+                {
+                    Created = DateTime.Now,
+                    Expires = DateTime.Now.AddMinutes(15),
+                    Token = Guid.NewGuid().ToString()
+                };
+                user.RefreshTokens.Add(refreshToken);
+                this.userCtx.SaveChanges();
+                this.setTokenCookie(refreshToken.Token);
+                return Ok();
+            }
+            else
+            {
+                return BadRequest();
+            }
         }
     }
 }

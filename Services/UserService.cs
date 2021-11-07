@@ -20,7 +20,7 @@ namespace WebApi.Services
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         bool RevokeToken(string token, string ipAddress);
         IEnumerable<User> GetAll();
-        User GetById(int id);
+        User GetById(string id);
     }
 
     public class UserService : IUserService
@@ -114,7 +114,7 @@ namespace WebApi.Services
             return _context.Users;
         }
 
-        public User GetById(int id)
+        public User GetById(string id)
         {
             return _context.Users.Find(id);
         }
@@ -129,7 +129,11 @@ namespace WebApi.Services
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, user.Id.ToString())
+                    new Claim(ClaimTypes.Name, user.Id?.ToString() ?? ""),
+                    new Claim(ClaimTypes.Email, user.Email?.ToString()?? ""),
+                    new Claim(ClaimTypes.StreetAddress, user.Address?.ToString() ?? ""),
+                    new Claim(ClaimTypes.GivenName, user.Name?.ToString()??""),
+                    new Claim(ClaimTypes.MobilePhone, user.Phone?.ToString()??"")
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
