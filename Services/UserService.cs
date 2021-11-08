@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
@@ -16,7 +17,7 @@ namespace WebApi.Services
 {
     public interface IUserService
     {
-        AuthenticateResponse Authenticate(AuthenticateRequest model, IdentityUser user, string ipAddress);
+        Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, IdentityUser user, string ipAddress);
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         bool RevokeToken(string token, string ipAddress);
         IEnumerable<User> GetAll();
@@ -27,7 +28,7 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
-        private IPasswordHasher<IdentityUser> _passwordHasher;
+        private UserManager<IdentityUser> _userManager;
 
         public UserService(
             DataContext context,
@@ -36,19 +37,21 @@ namespace WebApi.Services
         {
             _context = context;
             _appSettings = appSettings.Value;
-            _passwordHasher = userManager.PasswordHasher;
+            _userManager = userManager;
         }
 
-        public AuthenticateResponse Authenticate(AuthenticateRequest model, IdentityUser identityUser, string ipAddress)
+        public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, IdentityUser identityUser, string ipAddress)
         {
-            var user = _context.Users.SingleOrDefault(x =>
-                x.Email == model.Username
-                && (_passwordHasher.VerifyHashedPassword(identityUser, x.Password, model.Password) != PasswordVerificationResult.Failed)
-            );
-
+            var user = _context.Users.SingleOrDefault(x => x.Email == model.Username);
             // return null if user not found
             if (user == null) return null;
 
+            var passwordCheck = _userManager.PasswordHasher.VerifyHashedPassword(identityUser, identityUser.PasswordHash, model.Password);
+            if (passwordCheck == PasswordVerificationResult.Failed)
+            {
+                await _userManager.AccessFailedAsync(identityUser);
+                return null;
+            }
             // authentication successful so generate jwt and refresh tokens
             var jwtToken = generateJwtToken(user);
             var refreshToken = generateRefreshToken(ipAddress);

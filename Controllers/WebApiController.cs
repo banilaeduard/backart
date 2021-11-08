@@ -1,7 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Authorization;
+using WebApi.Entities;
 
 namespace WebApi.Controllers
 {
@@ -10,7 +10,7 @@ namespace WebApi.Controllers
     [Route("[controller]")]
     public class WebApiController2 : ControllerBase
     {
-        public string ipAddress()
+        protected string ipAddress()
         {
             if (Request.Headers.ContainsKey("X-Forwarded-For"))
                 return Request.Headers["X-Forwarded-For"];
@@ -18,7 +18,7 @@ namespace WebApi.Controllers
                 return HttpContext.Connection.RemoteIpAddress.MapToIPv4().ToString();
         }
 
-        public void setTokenCookie(string token)
+        protected void setTokenCookie(string token)
         {
             var cookieOptions = new CookieOptions
             {
@@ -27,6 +27,11 @@ namespace WebApi.Controllers
                 IsEssential = true
             };
             Response.Cookies.Append("refreshToken", token, cookieOptions);
+        }
+
+        protected User getContextUser()
+        {
+            return HttpContext.Items["User"] as User;
         }
     }
 }

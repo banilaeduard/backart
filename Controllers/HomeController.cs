@@ -19,9 +19,9 @@ namespace WebApi.Controllers
 
         [HttpGet]
         [Route("ping")]
-        public string ping()
+        public IActionResult ping()
         {
-            return "pong";
+            return Ok("pong");
         }
     }
 }

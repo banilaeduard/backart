@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 
 using WebApi.Entities;
 using WebApi.Helpers;
+using WebApi.Models;
 
 namespace WebApi.Controllers
 {
@@ -33,7 +34,7 @@ namespace WebApi.Controllers
 
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> Create(User user, [FromQuery] string confirmationUrl)
+        public async Task<IActionResult> Create(UserModel user, [FromQuery] string confirmationUrl)
         {
             IdentityUser appUser = new IdentityUser
             {
@@ -46,7 +47,7 @@ namespace WebApi.Controllers
             if (result.Succeeded)
             {
                 user.Id = appUser.Id;
-                user.Password = appUser.PasswordHash;
+                user.PasswordHash = appUser.PasswordHash;
                 this.userCtx.Users.Add(user);
                 this.userCtx.SaveChanges();
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(appUser);

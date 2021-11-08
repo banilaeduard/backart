@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 
 using WebApi.Services;
 using WebApi.Models;
+using WebApi.Helpers;
 
 namespace WebApi.Controllers
 {
@@ -13,13 +14,16 @@ namespace WebApi.Controllers
     {
         IUserService _userService;
         UserManager<IdentityUser> _userManager;
+        DataContext _userDB;
 
         public UsersController(
             IUserService userService,
-            UserManager<IdentityUser> userManager)
+            UserManager<IdentityUser> userManager,
+            DataContext context)
         {
             _userService = userService;
             _userManager = userManager;
+            _userDB = context;
         }
 
         [AllowAnonymous]
@@ -40,13 +44,12 @@ namespace WebApi.Controllers
             }
 
             bool isLockedOut = await _userManager.IsLockedOutAsync(user);
-
             if (isLockedOut)
             {
                 return BadRequest(new { message = "Contul este blocat, prea multe incercari de a introduce o parola gresita probabil" });
             }
 
-            var response = _userService.Authenticate(model, user, this.ipAddress());
+            var response = await _userService.Authenticate(model, user, this.ipAddress());
 
             if (response == null)
                 return BadRequest(new { message = "Username sau parola incorecte" });
@@ -91,22 +94,6 @@ namespace WebApi.Controllers
             return Ok(new { message = "Token revoked" });
         }
 
-        [HttpGet]
-        public IActionResult GetAll()
-        {
-            var users = _userService.GetAll();
-            return Ok(users);
-        }
-
-        [HttpGet("{id}")]
-        public IActionResult GetById(string id)
-        {
-            var user = _userService.GetById(id);
-            if (user == null) return NotFound();
-
-            return Ok(user);
-        }
-
         [HttpGet("{id}/refresh-tokens")]
         public IActionResult GetRefreshTokens(string id)
         {
@@ -114,6 +101,39 @@ namespace WebApi.Controllers
             if (user == null) return NotFound();
 
             return Ok(user.RefreshTokens);
+        }
+
+        [HttpGet("{username}")]
+        public async Task<IActionResult> GetById(string username)
+        {
+            var user = _userService.GetById((await _userManager.FindByEmailAsync(username)).Id);
+            if (user == null) return NotFound();
+
+            return Ok(user);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> updateUser(UserModel userModel)
+        {
+            if (userModel.Email != this.getContextUser().Email) return Forbid();
+
+            var identityUser = await this._userManager.FindByEmailAsync(userModel.Email);
+            if (identityUser == null) return NotFound();
+
+            var user = _userService.GetById(identityUser.Id);
+            if (user == null) return NotFound();
+
+            var result = await this._userManager.UpdateAsync(identityUser.mapFromUser(userModel));
+            if (result.Succeeded)
+            {
+                _userDB.Update(user.From(userModel));
+                _userDB.SaveChanges();
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+            return Ok(user);
         }
     }
 }

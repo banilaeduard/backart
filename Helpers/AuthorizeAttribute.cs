@@ -16,11 +16,39 @@ public class AuthorizeAttribute : Attribute, IAuthorizationFilter
 
         if (hasAllowAnonymous) return;
 
-        var user = (User)context.HttpContext.Items["User"];
+        User user = null;
+        if (context.HttpContext.Items.ContainsKey("User"))
+        {
+            user = (User)context.HttpContext.Items["User"];
+        }
+
         if (user == null)
         {
             // not logged in
-            context.Result = new JsonResult(new { message = "Unauthorized" }) { StatusCode = StatusCodes.Status401Unauthorized };
+            context.Result = new JsonResult(new { message = "Unauthorized" })
+            { StatusCode = StatusCodes.Status401Unauthorized };
+            return;
+        }
+        if (context.HttpContext.Items.ContainsKey("confirmedEmail"))
+        {
+            var confirmedEmail = (Boolean)context.HttpContext.Items["confirmedEmail"];
+
+            if (!confirmedEmail)
+            {
+                context.Result = new JsonResult(new { message = "Confirmati userul accesand link-ul trimis pe email" })
+                { StatusCode = StatusCodes.Status403Forbidden };
+                return;
+            }
+        }
+        if (context.HttpContext.Items.ContainsKey("isLockedOut"))
+        {
+            var isLockedOut = (Boolean)context.HttpContext.Items["isLockedOut"];
+            if (isLockedOut)
+            {
+                context.Result = new JsonResult(new { message = "Contul este blocat, prea multe incercari de a introduce o parola gresita probabil" })
+                { StatusCode = StatusCodes.Status403Forbidden };
+                return;
+            }
         }
     }
 }

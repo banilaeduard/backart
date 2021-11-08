@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -16,7 +15,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 using WebApi.Helpers;
 using WebApi.Services;
-using WebApi.Entities;
 
 namespace BackArt
 {
@@ -36,7 +34,11 @@ namespace BackArt
         {
             services.AddHealthChecks();
             services.AddCors();
-            services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.IgnoreNullValues = true);
+            services.AddControllers().AddJsonOptions(x =>
+            {
+                x.JsonSerializerOptions.IgnoreNullValues = true;
+                x.JsonSerializerOptions.IgnoreReadOnlyProperties = true;
+            });
             services.Configure<CookiePolicyOptions>(options =>
             {
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
@@ -77,8 +79,6 @@ namespace BackArt
         {
             if (env.IsDevelopment())
             {
-                context.Users.Add(new User { Name = "Test", Email = "test", Password = "test", Id = "test" });
-                context.SaveChanges();
                 app.UseDeveloperExceptionPage();
             }
 
