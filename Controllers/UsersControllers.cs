@@ -7,18 +7,19 @@ using Microsoft.AspNetCore.Identity;
 using WebApi.Services;
 using WebApi.Models;
 using WebApi.Helpers;
+using WebApi.Entities;
 
 namespace WebApi.Controllers
 {
     public class UsersController : WebApiController2
     {
         IUserService _userService;
-        UserManager<IdentityUser> _userManager;
+        UserManager<AppIdentityUser> _userManager;
         DataContext _userDB;
 
         public UsersController(
             IUserService userService,
-            UserManager<IdentityUser> userManager,
+            UserManager<AppIdentityUser> userManager,
             DataContext context)
         {
             _userService = userService;
@@ -30,7 +31,7 @@ namespace WebApi.Controllers
         [HttpPost("authenticate")]
         public async Task<IActionResult> Authenticate([FromBody] AuthenticateRequest model)
         {
-            IdentityUser user = await _userManager.FindByNameAsync(model.Username);
+            var user = await _userManager.FindByNameAsync(model.Username);
             if (user == null)
             {
                 return NotFound(new { message = "Userul nu exista" });

@@ -1,8 +1,3 @@
-using System.Text;
-using System;
-
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using WebApi.Helpers;
 using WebApi.Services;
+using WebApi.Entities;
 
 namespace BackArt
 {
@@ -46,7 +42,7 @@ namespace BackArt
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddDbContext<DataContext>(x => x.UseInMemoryDatabase("Users"));
+            services.AddDbContext<DataContext>(x => x.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
 
             // configure strongly typed settings objects
             var appSettingsSection = Configuration.GetSection("AppSettings");
@@ -61,9 +57,9 @@ namespace BackArt
 
         private void setupUserCreation(IServiceCollection services)
         {
-            services.AddDbContext<IdentityDbContext>(options => options.UseInMemoryDatabase("Users"));
-            services.AddIdentity<IdentityUser, IdentityRole>()
-                    .AddEntityFrameworkStores<IdentityDbContext>()
+            services.AddDbContext<AppIdentityDbContex>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
+            services.AddIdentity<AppIdentityUser, AppIdentityRole>()
+                    .AddEntityFrameworkStores<AppIdentityDbContex>()
                     .AddDefaultTokenProviders();
 
             services.Configure<IdentityOptions>(opts =>
@@ -95,6 +91,16 @@ namespace BackArt
                 app.UseEndpoints(x => x.MapControllers());
                 endpoints.MapHealthChecks("/health");
             });
+            Initialize(app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope().ServiceProvider);
+        }
+
+        public static void Initialize(System.IServiceProvider serviceProvider)
+        {
+            var context = serviceProvider.GetRequiredService<AppIdentityDbContex>();
+            context.Database.Migrate();
+
+            var context2 = serviceProvider.GetRequiredService<DataContext>();
+            context2.Database.Migrate();
         }
     }
 }

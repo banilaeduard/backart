@@ -17,7 +17,7 @@ namespace WebApi.Services
 {
     public interface IUserService
     {
-        Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, IdentityUser user, string ipAddress);
+        Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, AppIdentityUser user, string ipAddress);
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         bool RevokeToken(string token, string ipAddress);
         IEnumerable<User> GetAll();
@@ -28,19 +28,19 @@ namespace WebApi.Services
     {
         private DataContext _context;
         private readonly AppSettings _appSettings;
-        private UserManager<IdentityUser> _userManager;
+        private UserManager<AppIdentityUser> _userManager;
 
         public UserService(
             DataContext context,
             IOptions<AppSettings> appSettings,
-            UserManager<IdentityUser> userManager)
+            UserManager<AppIdentityUser> userManager)
         {
             _context = context;
             _appSettings = appSettings.Value;
             _userManager = userManager;
         }
 
-        public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, IdentityUser identityUser, string ipAddress)
+        public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, AppIdentityUser identityUser, string ipAddress)
         {
             var user = _context.Users.SingleOrDefault(x => x.Email == model.Username);
             // return null if user not found

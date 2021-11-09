@@ -15,13 +15,13 @@ namespace WebApi.Controllers
 {
     public class CreateAccountController : WebApiController2
     {
-        UserManager<IdentityUser> userManager;
+        UserManager<AppIdentityUser> userManager;
         EmailSender emailSender;
         AppSettings appSettings;
         DataContext userCtx;
 
         public CreateAccountController(
-            UserManager<IdentityUser> userManager,
+            UserManager<AppIdentityUser> userManager,
             EmailSender emailSender,
             AppSettings appSettings,
             DataContext userCtx)
@@ -36,7 +36,7 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(UserModel user, [FromQuery] string confirmationUrl)
         {
-            IdentityUser appUser = new IdentityUser
+            AppIdentityUser appUser = new AppIdentityUser
             {
                 UserName = user.Email,
                 Email = user.Email,
@@ -68,7 +68,7 @@ namespace WebApi.Controllers
 
         [AllowAnonymous]
         [Route("confirmation-email")]
-        [HttpPost()]
+        [HttpPost]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {
             var identityUser = await userManager.FindByEmailAsync(email);

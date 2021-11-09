@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 using WebApi.Services;
 
+using WebApi.Entities;
+
 namespace WebApi.Helpers
 {
     public class JwtMiddleware
@@ -22,7 +24,7 @@ namespace WebApi.Helpers
             _appSettings = appSettings.Value;
         }
 
-        public async Task Invoke(HttpContext context, IUserService userService, UserManager<IdentityUser> userManager)
+        public async Task Invoke(HttpContext context, IUserService userService, UserManager<AppIdentityUser> userManager)
         {
             var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
@@ -35,7 +37,7 @@ namespace WebApi.Helpers
         private async Task attachUserToContext(
             HttpContext context,
             IUserService userService,
-            UserManager<IdentityUser> userManager,
+            UserManager<AppIdentityUser> userManager,
             string token)
         {
             try
