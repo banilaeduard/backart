@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace WebApi.Controllers
 {
     [Route("/")]
     public class HomeController : WebApiController2
     {
-        public HomeController()
+        public HomeController(
+            ILogger<HomeController> logger) : base(logger)
         {
         }
 
@@ -14,6 +16,7 @@ namespace WebApi.Controllers
         [AllowAnonymous]
         public string test()
         {
+            this.logger.LogInformation("web api core up and running");
             return "web api core up and running";
         }
 

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
 
+using Microsoft.Extensions.Logging;
+
 using WebApi.Entities;
 using WebApi.Helpers;
 using WebApi.Models;
@@ -24,7 +26,8 @@ namespace WebApi.Controllers
             UserManager<AppIdentityUser> userManager,
             EmailSender emailSender,
             AppSettings appSettings,
-            DataContext userCtx)
+            DataContext userCtx,
+            ILogger<CreateAccountController> logger) : base(logger)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
@@ -46,6 +49,7 @@ namespace WebApi.Controllers
             IdentityResult result = await userManager.CreateAsync(appUser, user.Password);
             if (result.Succeeded)
             {
+                this.logger.LogInformation("Account creat cu succes {0}", user.Email);
                 user.Id = appUser.Id;
                 user.PasswordHash = appUser.PasswordHash;
                 this.userCtx.Users.Add(user);
@@ -60,6 +64,7 @@ namespace WebApi.Controllers
             }
             else
             {
+                this.logger.LogError("Account failed {0}. {1}", user.Email, result.ToString());
                 return BadRequest(result.Errors);
             }
 

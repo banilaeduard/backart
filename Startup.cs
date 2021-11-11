@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Diagnostics;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,30 +35,23 @@ namespace BackArt
             services.AddControllers().AddJsonOptions(x =>
             {
                 x.JsonSerializerOptions.IgnoreNullValues = true;
-                x.JsonSerializerOptions.IgnoreReadOnlyProperties = true;
             });
             services.Configure<CookiePolicyOptions>(options =>
             {
-                // This lambda determines whether user consent for non-essential cookies is needed for a given request.
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
-
-            services.AddDbContext<DataContext>(x => x.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
 
             // configure strongly typed settings objects
             var appSettingsSection = Configuration.GetSection("AppSettings");
             services.Configure<AppSettings>(appSettingsSection);
             services.AddSingleton<AppSettings>(appSettingsSection.Get<AppSettings>());
 
-            services.AddScoped<IUserService, UserService>();
             services.AddSingleton<EmailSender>();
+            services.AddScoped<IUserService, UserService>();
 
-            this.setupUserCreation(services);
-        }
+            services.AddDbContext<DataContext>(x => x.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
 
-        private void setupUserCreation(IServiceCollection services)
-        {
             services.AddDbContext<AppIdentityDbContex>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContex>()
@@ -71,11 +66,35 @@ namespace BackArt
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, DataContext context)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, DataContext context, ILoggerFactory factory)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                ILogger genericLogger = factory.CreateLogger("Production unhandled logger");
+                app.UseExceptionHandler(
+                    new ExceptionHandlerOptions()
+                    {
+                        ExceptionHandler = async (context) =>
+                        {
+                            var feature = context.Features.Get<IExceptionHandlerFeature>();
+                            genericLogger.LogError(
+                                new EventId(context.TraceIdentifier.GetHashCode(), context.TraceIdentifier),
+                                feature?.Error,
+                                "Generic Error"
+                                );
+
+                            context.Response.ContentType = "application/json";
+                            await context.Response.WriteAsJsonAsync(new
+                            {
+                                status = 500,
+                                message = "Internal server error"
+                            });
+                        }
+                    });
             }
 
             app.UseCors(x => x

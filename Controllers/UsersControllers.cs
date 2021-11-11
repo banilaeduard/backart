@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
+using Microsoft.Extensions.Logging;
+
 using WebApi.Services;
 using WebApi.Models;
 using WebApi.Helpers;
@@ -20,7 +22,8 @@ namespace WebApi.Controllers
         public UsersController(
             IUserService userService,
             UserManager<AppIdentityUser> userManager,
-            DataContext context)
+            DataContext context,
+            ILogger<UsersController> logger) : base(logger)
         {
             _userService = userService;
             _userManager = userManager;
@@ -34,6 +37,7 @@ namespace WebApi.Controllers
             var user = await _userManager.FindByNameAsync(model.Username);
             if (user == null)
             {
+                this.logger.LogWarning("Userul nu exista {0}", model.Username);
                 return NotFound(new { message = "Userul nu exista" });
             }
 
@@ -41,19 +45,24 @@ namespace WebApi.Controllers
 
             if (!confirmedEmail)
             {
+                this.logger.LogWarning("Trebuie sa confirmati emailul pentru {0}", model.Username);
                 return BadRequest(new { message = "Confirmati userul accesand link-ul trimis pe email" });
             }
 
             bool isLockedOut = await _userManager.IsLockedOutAsync(user);
             if (isLockedOut)
             {
+                this.logger.LogWarning("Contul este blocat, prea multe incercari de a introduce o parola gresita probabil pentru {0}", model.Username);
                 return BadRequest(new { message = "Contul este blocat, prea multe incercari de a introduce o parola gresita probabil" });
             }
 
             var response = await _userService.Authenticate(model, user, this.ipAddress());
 
             if (response == null)
+            {
+                this.logger.LogWarning("Userul {0} nu s-a putut autentifica", model.Username);
                 return BadRequest(new { message = "Username sau parola incorecte" });
+            }
 
             this.setTokenCookie(response.RefreshToken);
 
@@ -65,6 +74,8 @@ namespace WebApi.Controllers
         public IActionResult RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
+            this.logger.LogInformation("Refresh Token: {0}", refreshToken);
+
             var response = _userService.RefreshToken(refreshToken, this.ipAddress());
 
             if (response == null)
@@ -82,6 +93,7 @@ namespace WebApi.Controllers
             var user = User;
             // accept token from request body or cookie
             var token = Request.Cookies["refreshToken"];
+            this.logger.LogInformation("Revoke token: {0}", token);
 
             if (string.IsNullOrEmpty(token))
                 return BadRequest(new { message = "Token is required" });
@@ -116,7 +128,7 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> updateUser(UserModel userModel)
         {
-            if (userModel.Email != this.getContextUser().Email) return Forbid();
+            if (userModel.Email != this.User.Email) return Forbid();
 
             var identityUser = await this._userManager.FindByEmailAsync(userModel.Email);
             if (identityUser == null) return NotFound();

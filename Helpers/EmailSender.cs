@@ -1,18 +1,21 @@
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using Microsoft.Extensions.Logging;
 
 namespace WebApi.Helpers
 {
     public class EmailSender
     {
+        ILogger<EmailSender> logger;
         string key;
         string fromEmail;
         string fromName;
-        public EmailSender(AppSettings settings)
+        public EmailSender(AppSettings settings, ILogger<EmailSender> logger)
         {
             key = settings.SendGridKey;
             fromEmail = settings.SendGridFromEmail;
             fromName = settings.SendGridName;
+            this.logger = logger;
         }
         public void SendEmail(string userEmail, string confirmationLink)
         {
@@ -26,7 +29,7 @@ namespace WebApi.Helpers
 
             msg.AddTo(new EmailAddress(userEmail));
             msg.SetClickTracking(false, false);
-            client.SendEmailAsync(msg).Forget();
+            client.SendEmailAsync(msg).Forget(this.logger);
         }
     }
 }

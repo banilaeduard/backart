@@ -2,6 +2,7 @@ using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using WebApi.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace WebApi.Controllers
 {
@@ -10,6 +11,17 @@ namespace WebApi.Controllers
     [Route("[controller]")]
     public class WebApiController2 : ControllerBase
     {
+        protected ILogger logger;
+
+        protected new User User
+        {
+            get { return (User)HttpContext.Items["User"]; }
+        }
+
+        public WebApiController2(ILogger logger)
+        {
+            this.logger = logger;
+        }
         protected string ipAddress()
         {
             if (Request.Headers.ContainsKey("X-Forwarded-For"))
@@ -27,11 +39,6 @@ namespace WebApi.Controllers
                 IsEssential = true
             };
             Response.Cookies.Append("refreshToken", token, cookieOptions);
-        }
-
-        protected User getContextUser()
-        {
-            return HttpContext.Items["User"] as User;
         }
     }
 }

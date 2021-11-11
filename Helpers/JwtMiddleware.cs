@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
@@ -17,11 +18,13 @@ namespace WebApi.Helpers
     {
         private readonly RequestDelegate _next;
         private readonly AppSettings _appSettings;
+        private readonly ILogger<JwtMiddleware> _logger;
 
-        public JwtMiddleware(RequestDelegate next, IOptions<AppSettings> appSettings)
+        public JwtMiddleware(RequestDelegate next, IOptions<AppSettings> appSettings, ILogger<JwtMiddleware> logger)
         {
             _next = next;
             _appSettings = appSettings.Value;
+            _logger = logger;
         }
 
         public async Task Invoke(HttpContext context, IUserService userService, UserManager<AppIdentityUser> userManager)
@@ -66,10 +69,11 @@ namespace WebApi.Helpers
                 context.Items["confirmedEmail"] = confirmedEmail;
                 context.Items["isLockedOut"] = isLockedOut;
             }
-            catch
+            catch (Exception ex)
             {
                 // do nothing if jwt validation fails
                 // user is not attached to context so request won't have access to secure routes
+                this._logger.LogError(context.TraceIdentifier.GetHashCode(), ex, "");
             }
         }
     }
