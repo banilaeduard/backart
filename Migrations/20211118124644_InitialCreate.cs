@@ -1,9 +1,9 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace BackArt.Migrations.AppIdentityDbContexMigrations
+namespace BackArt.Migrations
 {
-    public partial class initial_migration : Migration
+    public partial class InitialCreate : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -26,6 +26,9 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Address = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Birth = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -152,6 +155,32 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "RefreshToken",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Token = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Expires = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Created = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedByIp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Revoked = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RevokedByIp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ReplacedByToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    AppIdentityUserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RefreshToken", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RefreshToken_AspNetUsers_AppIdentityUserId",
+                        column: x => x.AppIdentityUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -190,6 +219,11 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
                 column: "NormalizedUserName",
                 unique: true,
                 filter: "[NormalizedUserName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshToken_AppIdentityUserId",
+                table: "RefreshToken",
+                column: "AppIdentityUserId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -208,6 +242,9 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "RefreshToken");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

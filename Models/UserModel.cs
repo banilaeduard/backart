@@ -1,11 +1,31 @@
-using WebApi.Entities;
-using System.Runtime.Serialization;
 namespace WebApi.Models
 {
+    using System;
+    using System.Runtime.Serialization;
+
+    using WebApi.Entities;
+
     [DataContract]
-    public class UserModel : User
+    public class UserModel
     {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string UserName { get; set; }
+        public string Email { get; set; }
+        public string Phone { get; set; }
+        public string Address { get; set; }
+        public DateTime Birth { get; set; }
         public string Password { get; set; }
         public string PrevPassword { get; set; }
+
+        public UserModel From(AppIdentityUser model)
+        {
+            this.UserName = model.UserName;
+            this.Name = model.Name;
+            this.Phone = model.PhoneNumber;
+            this.Address = model.Address;
+            this.Birth = model.Birth;
+            return this;
+        }
     }
 }

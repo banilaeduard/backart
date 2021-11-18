@@ -1,11 +1,14 @@
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-static class TaskExtensions
+namespace WebApi
 {
-    public static void Forget(this Task task, ILogger logger)
+    using System.Threading.Tasks;
+    using Microsoft.Extensions.Logging;
+    static class TaskExtensions
     {
-        task.ContinueWith(
-            err => { logger.LogError(err.Id, err.Exception, ""); },
-            TaskContinuationOptions.OnlyOnFaulted);
+        public static void Forget(this Task task, ILogger logger)
+        {
+            task.ContinueWith(
+                err => { logger.LogError(err.Id, err.Exception, ""); },
+                TaskContinuationOptions.OnlyOnFaulted);
+        }
     }
 }

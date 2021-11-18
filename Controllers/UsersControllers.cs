@@ -1,33 +1,28 @@
-using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-
-using Microsoft.Extensions.Logging;
-
-using WebApi.Services;
-using WebApi.Models;
-using WebApi.Helpers;
-using WebApi.Entities;
-
 namespace WebApi.Controllers
 {
+    using System.Threading.Tasks;
+    using System.Security.Claims;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.AspNetCore.Identity;
+    using Microsoft.Extensions.Logging;
+
+    using WebApi.Services;
+    using WebApi.Models;
+    using WebApi.Entities;
+
     public class UsersController : WebApiController2
     {
         IUserService _userService;
         UserManager<AppIdentityUser> _userManager;
-        DataContext _userDB;
 
         public UsersController(
             IUserService userService,
             UserManager<AppIdentityUser> userManager,
-            DataContext context,
             ILogger<UsersController> logger) : base(logger)
         {
             _userService = userService;
             _userManager = userManager;
-            _userDB = context;
         }
 
         [AllowAnonymous]
@@ -56,7 +51,7 @@ namespace WebApi.Controllers
                 return BadRequest(new { message = "Contul este blocat, prea multe incercari de a introduce o parola gresita probabil" });
             }
 
-            var response = await _userService.Authenticate(model, user, this.ipAddress());
+            var response = await _userService.Authenticate(model, this.ipAddress());
 
             if (response == null)
             {
@@ -71,12 +66,12 @@ namespace WebApi.Controllers
 
         [AllowAnonymous]
         [HttpPost("refresh-token")]
-        public IActionResult RefreshToken()
+        public async Task<IActionResult> RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
             this.logger.LogInformation("Refresh Token: {0}", refreshToken);
 
-            var response = _userService.RefreshToken(refreshToken, this.ipAddress());
+            var response = await _userService.RefreshToken(refreshToken, this.ipAddress());
 
             if (response == null)
                 return Forbid();
@@ -88,17 +83,15 @@ namespace WebApi.Controllers
 
         [AllowAnonymous]
         [HttpPost("revoke-token")]
-        public IActionResult RevokeToken()
+        public async Task<IActionResult> RevokeToken()
         {
-            var user = User;
             // accept token from request body or cookie
             var token = Request.Cookies["refreshToken"];
-            this.logger.LogInformation("Revoke token: {0}", token);
 
             if (string.IsNullOrEmpty(token))
                 return BadRequest(new { message = "Token is required" });
 
-            var response = _userService.RevokeToken(token, base.ipAddress());
+            var response = await _userService.RevokeToken(token, base.ipAddress());
 
             if (!response)
                 return NotFound(new { message = "Token not found" });
@@ -108,18 +101,21 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("{id}/refresh-tokens")]
-        public IActionResult GetRefreshTokens(string id)
+        public async Task<IActionResult> GetRefreshTokens(string id)
         {
-            var user = _userService.GetById(id);
+            var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
 
-            return Ok(user.RefreshTokens);
+            return Ok(user);
         }
 
         [HttpGet("{username}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetById(string username)
         {
-            var user = _userService.GetById((await _userManager.FindByEmailAsync(username)).Id);
+            if (this.CurrentUserName != username)
+                return Forbid();
+            var user = await _userService.GetById((await _userManager.FindByNameAsync(username)).Id);
             if (user == null) return NotFound();
 
             return Ok(user);
@@ -128,25 +124,30 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> updateUser(UserModel userModel)
         {
-            if (userModel.Email != this.User.Email) return Forbid();
+            if (userModel.Email != this.CurrentEmail) return Forbid();
 
             var identityUser = await this._userManager.FindByEmailAsync(userModel.Email);
             if (identityUser == null) return NotFound();
 
-            var user = _userService.GetById(identityUser.Id);
-            if (user == null) return NotFound();
-
-            var result = await this._userManager.UpdateAsync(identityUser.mapFromUser(userModel));
+            var result = await this._userManager.UpdateAsync(userIdentityFromUserModel(identityUser, userModel));
             if (result.Succeeded)
             {
-                _userDB.Update(user.From(userModel));
-                _userDB.SaveChanges();
+                return Ok(userModel);
             }
             else
             {
                 return BadRequest(result.Errors);
             }
-            return Ok(user);
+        }
+
+        private AppIdentityUser userIdentityFromUserModel(AppIdentityUser user, UserModel userModel)
+        {
+            user.UserName = userModel.UserName;
+            user.Name = userModel.Name;
+            user.PhoneNumber = userModel.Phone;
+            user.Address = userModel.Address;
+            user.Birth = userModel.Birth;
+            return user;
         }
     }
 }

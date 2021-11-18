@@ -1,11 +1,12 @@
-using System;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using WebApi.Entities;
-using Microsoft.Extensions.Logging;
-
 namespace WebApi.Controllers
 {
+    using System;
+    using System.Security.Claims;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.Extensions.Logging;
+
     [Authorize]
     [ApiController]
     [Route("[controller]")]
@@ -13,9 +14,19 @@ namespace WebApi.Controllers
     {
         protected ILogger logger;
 
-        protected new User User
+        protected string CurrentUserName
         {
-            get { return (User)HttpContext.Items["User"]; }
+            get { return (User.FindFirst(ClaimTypes.GivenName)?.Value!); }
+        }
+
+        protected string CurrentEmail
+        {
+            get { return (User.FindFirst(ClaimTypes.Email)?.Value!); }
+        }
+
+        protected string CurrentUserId
+        {
+            get { return (User.FindFirst(ClaimTypes.Name)?.Value!); }
         }
 
         public WebApiController2(ILogger logger)

@@ -17,34 +17,31 @@ namespace WebApi.Services
 {
     public interface IUserService
     {
-        Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, AppIdentityUser user, string ipAddress);
-        AuthenticateResponse RefreshToken(string token, string ipAddress);
-        bool RevokeToken(string token, string ipAddress);
-        IEnumerable<User> GetAll();
-        User GetById(string id);
+        Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
+        Task<AuthenticateResponse> RefreshToken(string token, string ipAddress);
+        Task<bool> RevokeToken(string token, string ipAddress);
+        IEnumerable<UserModel> GetAll();
+        Task<UserModel> GetById(string id);
     }
 
     public class UserService : IUserService
     {
-        private DataContext _context;
+        // private DataContext _context;
         private readonly AppSettings _appSettings;
         private UserManager<AppIdentityUser> _userManager;
-
         public UserService(
-            DataContext context,
             IOptions<AppSettings> appSettings,
             UserManager<AppIdentityUser> userManager)
         {
-            _context = context;
+            // _context = context;
             _appSettings = appSettings.Value;
             _userManager = userManager;
         }
 
-        public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, AppIdentityUser identityUser, string ipAddress)
+        public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress)
         {
-            var user = _context.Users.SingleOrDefault(x => x.Email == model.Username);
-            // return null if user not found
-            if (user == null) return null;
+            var identityUser = await _userManager.FindByNameAsync(model.Username);
+            if (identityUser == null) return null;
 
             var passwordCheck = _userManager.PasswordHasher.VerifyHashedPassword(identityUser, identityUser.PasswordHash, model.Password);
             if (passwordCheck == PasswordVerificationResult.Failed)
@@ -53,20 +50,19 @@ namespace WebApi.Services
                 return null;
             }
             // authentication successful so generate jwt and refresh tokens
-            var jwtToken = generateJwtToken(user);
+            var jwtToken = await generateJwtToken(identityUser);
             var refreshToken = generateRefreshToken(ipAddress);
 
             // save refresh token
-            user.RefreshTokens.Add(refreshToken);
-            _context.Update(user);
-            _context.SaveChanges();
+            identityUser.RefreshTokens.Add(refreshToken);
+            await _userManager.UpdateAsync(identityUser);
 
-            return new AuthenticateResponse(user, jwtToken, refreshToken.Token);
+            return new AuthenticateResponse(identityUser, jwtToken, refreshToken.Token);
         }
 
-        public AuthenticateResponse RefreshToken(string token, string ipAddress)
+        public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
-            var user = _context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
+            var user = _userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
 
             // return null if no user found with token
             if (user == null) return null;
@@ -82,18 +78,16 @@ namespace WebApi.Services
             refreshToken.RevokedByIp = ipAddress;
             refreshToken.ReplacedByToken = newRefreshToken.Token;
             user.RefreshTokens.Add(newRefreshToken);
-            _context.Update(user);
-            _context.SaveChanges();
-
+            await _userManager.UpdateAsync(user);
             // generate new jwt
-            var jwtToken = generateJwtToken(user);
+            var jwtToken = await generateJwtToken(user);
 
             return new AuthenticateResponse(user, jwtToken, newRefreshToken.Token);
         }
 
-        public bool RevokeToken(string token, string ipAddress)
+        public async Task<bool> RevokeToken(string token, string ipAddress)
         {
-            var user = _context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
+            var user = _userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
 
             // return false if no user found with token
             if (user == null) return false;
@@ -106,25 +100,50 @@ namespace WebApi.Services
             // revoke token and save
             refreshToken.Revoked = DateTime.UtcNow;
             refreshToken.RevokedByIp = ipAddress;
-            _context.Update(user);
-            _context.SaveChanges();
+            await _userManager.UpdateAsync(user);
 
             return true;
         }
 
-        public IEnumerable<User> GetAll()
+        public IEnumerable<UserModel> GetAll()
         {
-            return _context.Users;
+            var users = new List<UserModel>();
+            foreach (var user in _userManager.Users)
+            {
+                users.Add(new UserModel()
+                {
+                    UserName = user.UserName,
+                    Name = user.Name,
+                    Id = user.Id,
+                    Address = user.Address,
+                    Birth = user.Birth,
+                    Email = user.Email,
+                    Password = "",
+                    Phone = user.PhoneNumber
+                });
+            }
+            return users;
         }
 
-        public User GetById(string id)
+        public async Task<UserModel> GetById(string id)
         {
-            return _context.Users.Find(id);
+            var user = await _userManager.FindByIdAsync(id);
+            return new UserModel()
+            {
+                UserName = user.UserName,
+                Name = user.Name,
+                Id = user.Id,
+                Address = user.Address,
+                Birth = user.Birth,
+                Email = user.Email,
+                Password = "",
+                Phone = user.PhoneNumber
+            };
         }
 
         // helper methods
 
-        private string generateJwtToken(User user)
+        private async Task<string> generateJwtToken(AppIdentityUser appUser)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
@@ -132,11 +151,12 @@ namespace WebApi.Services
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, user.Id?.ToString() ?? ""),
-                    new Claim(ClaimTypes.Email, user.Email?.ToString()?? ""),
-                    new Claim(ClaimTypes.StreetAddress, user.Address?.ToString() ?? ""),
-                    new Claim(ClaimTypes.GivenName, user.Name?.ToString()??""),
-                    new Claim(ClaimTypes.MobilePhone, user.Phone?.ToString()??"")
+                    new Claim(ClaimTypes.Name, appUser.Id?.ToString() ?? ""),
+                    new Claim(ClaimTypes.Email, appUser.Email?.ToString()?? ""),
+                    new Claim(ClaimTypes.StreetAddress, appUser.Address?.ToString() ?? ""),
+                    new Claim(ClaimTypes.GivenName, appUser.UserName?.ToString()??""),
+                    new Claim(ClaimTypes.MobilePhone, appUser.PhoneNumber?.ToString()??""),
+                    new Claim(ClaimTypes.Role, string.Join(",", await _userManager.GetRolesAsync(appUser))?? "")
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

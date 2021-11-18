@@ -1,10 +1,12 @@
-using System;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
-
 namespace WebApi.Entities
 {
+    using System;
+    using System.Text.Json.Serialization;
+    using System.ComponentModel.DataAnnotations;
+
+    using Microsoft.EntityFrameworkCore;
+
+
     [Owned]
     public class RefreshToken
     {

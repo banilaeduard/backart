@@ -1,9 +1,9 @@
-using SendGrid;
-using SendGrid.Helpers.Mail;
-using Microsoft.Extensions.Logging;
-
 namespace WebApi.Helpers
 {
+    using SendGrid;
+    using SendGrid.Helpers.Mail;
+    using Microsoft.Extensions.Logging;
+
     public class EmailSender
     {
         ILogger<EmailSender> logger;

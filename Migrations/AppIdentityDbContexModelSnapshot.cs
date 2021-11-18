@@ -3,17 +3,15 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebApi.Entities;
 
-namespace BackArt.Migrations.AppIdentityDbContexMigrations
+namespace BackArt.Migrations
 {
     [DbContext(typeof(AppIdentityDbContex))]
-    [Migration("20211109115853_initial_migration")]
-    partial class initial_migration
+    partial class AppIdentityDbContexModelSnapshot : ModelSnapshot
     {
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -160,6 +158,12 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Birth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -176,6 +180,9 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -266,6 +273,53 @@ namespace BackArt.Migrations.AppIdentityDbContexMigrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("WebApi.Entities.AppIdentityUser", b =>
+                {
+                    b.OwnsMany("WebApi.Entities.RefreshToken", "RefreshTokens", b1 =>
+                        {
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int")
+                                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                            b1.Property<string>("AppIdentityUserId")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(450)");
+
+                            b1.Property<DateTime>("Created")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<string>("CreatedByIp")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<DateTime>("Expires")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<string>("ReplacedByToken")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<DateTime?>("Revoked")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<string>("RevokedByIp")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Token")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("AppIdentityUserId");
+
+                            b1.ToTable("RefreshToken");
+
+                            b1.WithOwner()
+                                .HasForeignKey("AppIdentityUserId");
+                        });
+
+                    b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618
         }

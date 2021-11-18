@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Logging;
-
 namespace WebApi.Controllers
 {
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.Extensions.Logging;
+
     [Route("/")]
     public class HomeController : WebApiController2
     {
@@ -21,6 +21,7 @@ namespace WebApi.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "admin")]
         [Route("ping")]
         public IActionResult ping()
         {

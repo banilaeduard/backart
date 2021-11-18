@@ -3,12 +3,16 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Diagnostics;
-
 using Microsoft.EntityFrameworkCore;
+
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 using WebApi.Helpers;
 using WebApi.Services;
@@ -50,12 +54,32 @@ namespace BackArt
             services.AddSingleton<EmailSender>();
             services.AddScoped<IUserService, UserService>();
 
-            services.AddDbContext<DataContext>(x => x.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
-
             services.AddDbContext<AppIdentityDbContex>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContex>()
                     .AddDefaultTokenProviders();
+
+            var tokenKey = appSettingsSection.GetValue<string>("Secret");
+            var key = Encoding.ASCII.GetBytes(tokenKey);
+
+            services.AddAuthentication(x =>
+            {
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(x =>
+            {
+                x.RequireHttpsMetadata = false;
+                x.SaveToken = true;
+                x.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                };
+            });
 
             services.Configure<IdentityOptions>(opts =>
             {
@@ -66,7 +90,7 @@ namespace BackArt
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, DataContext context, ILoggerFactory factory)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory factory)
         {
             if (env.IsDevelopment())
             {
@@ -102,24 +126,17 @@ namespace BackArt
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
-
             app.UseRouting();
-            app.UseMiddleware<JwtMiddleware>();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
             app.UseEndpoints(endpoints =>
             {
                 app.UseEndpoints(x => x.MapControllers());
                 endpoints.MapHealthChecks("/health");
             });
-            Initialize(app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope().ServiceProvider);
         }
 
-        public static void Initialize(System.IServiceProvider serviceProvider)
-        {
-            var context = serviceProvider.GetRequiredService<AppIdentityDbContex>();
-            context.Database.Migrate();
-
-            var context2 = serviceProvider.GetRequiredService<DataContext>();
-            context2.Database.Migrate();
-        }
     }
 }
