@@ -1,11 +1,8 @@
 namespace WebApi.Models
 {
     using System;
-    using System.Runtime.Serialization;
-
     using WebApi.Entities;
 
-    [DataContract]
     public class UserModel
     {
         public string Id { get; set; }
@@ -20,6 +17,7 @@ namespace WebApi.Models
 
         public UserModel From(AppIdentityUser model)
         {
+            this.Id = model.Id;
             this.UserName = model.UserName;
             this.Name = model.Name;
             this.Phone = model.PhoneNumber;

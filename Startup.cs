@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Diagnostics;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Hosting;
@@ -10,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -36,10 +37,7 @@ namespace BackArt
         {
             services.AddHealthChecks();
             services.AddCors();
-            services.AddControllers().AddJsonOptions(x =>
-            {
-                x.JsonSerializerOptions.IgnoreNullValues = true;
-            });
+            services.AddControllers().AddNewtonsoftJson();
             services.Configure<CookiePolicyOptions>(options =>
             {
                 options.CheckConsentNeeded = context => true;

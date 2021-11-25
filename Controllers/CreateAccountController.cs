@@ -2,6 +2,7 @@ namespace WebApi.Controllers
 {
     using System.Threading.Tasks;
     using System.Collections.Generic;
+    using Newtonsoft.Json.Linq;
 
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Identity;
@@ -13,6 +14,7 @@ namespace WebApi.Controllers
     using WebApi.Helpers;
     using WebApi.Models;
 
+    [AllowAnonymous]
     public class CreateAccountController : WebApiController2
     {
         UserManager<AppIdentityUser> userManager;
@@ -30,16 +32,10 @@ namespace WebApi.Controllers
             this.appSettings = appSettings;
         }
 
-        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> Create(UserModel user, [FromQuery] string confirmationUrl)
         {
-            AppIdentityUser appUser = new AppIdentityUser
-            {
-                UserName = user.UserName ?? user.Email,
-                Email = user.Email,
-                PhoneNumber = user.Phone,
-            };
+            AppIdentityUser appUser = AppIdentityUser.From(user);
 
             IdentityResult result = await userManager.CreateAsync(appUser, user.Password);
             if (result.Succeeded)
@@ -52,7 +48,7 @@ namespace WebApi.Controllers
                         { "email", user.Email }
                     };
                 var confirmationLink = QueryHelpers.AddQueryString(confirmationUrl, param);
-                this.emailSender.SendEmail(user.Email, confirmationLink);
+                this.emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
             }
             else
             {
@@ -63,12 +59,11 @@ namespace WebApi.Controllers
             return Ok();
         }
 
-        [AllowAnonymous]
         [Route("confirmation-email")]
         [HttpPost]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {
-            var identityUser = await userManager.FindByEmailAsync(email);
+            var identityUser = await userManager.FindByNameAsync(email);
             if (identityUser == null)
                 return NotFound();
 
@@ -76,11 +71,36 @@ namespace WebApi.Controllers
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(identityUser, "basic");
-                return Ok();
+                this.logger.LogInformation("Account confirmat cu succes {0}", email);
+                return Ok(new { user = identityUser.UserName });
             }
             else
             {
-                return BadRequest();
+                this.logger.LogError("Account failed {0}. {1}", email, result.ToString());
+                return BadRequest(result.Errors);
+            }
+        }
+
+        [Route("reset-password")]
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword([FromBody] JObject password, [FromQuery] string token, [FromQuery] string email)
+        {
+            var identityUser = await userManager.FindByEmailAsync(email);
+            if (identityUser == null)
+                return NotFound();
+
+            var result = await userManager.ResetPasswordAsync(identityUser, token, password["password"].Value<string>());
+            if (result.Succeeded)
+            {
+                this.logger.LogInformation("Parola modificata cu succes {0}", email);
+                identityUser.RefreshTokens.Clear();
+                await userManager.UpdateAsync(identityUser);
+                return Ok(new { user = identityUser.UserName });
+            }
+            else
+            {
+                this.logger.LogError("Account failed {0}. {1}", email, result.ToString());
+                return BadRequest(result.Errors);
             }
         }
     }

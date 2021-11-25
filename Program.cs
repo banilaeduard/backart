@@ -8,9 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
-using WebApi.Helpers;
 using WebApi.Entities;
-
 
 namespace BackArt
 {
@@ -77,7 +75,7 @@ namespace BackArt
                     UserName = "admin",
                     Email = "banila.eduard@gmail.com",
                 };
-                var result = await userManager.CreateAsync(user, "123EWQasd!@#");
+                var result = await userManager.CreateAsync(user, System.Guid.NewGuid() + System.DateTime.Now.ToShortTimeString());
                 if (result.Succeeded)
                 {
                     await userManager.ConfirmEmailAsync(user, await userManager.GenerateEmailConfirmationTokenAsync(user));

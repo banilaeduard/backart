@@ -17,13 +17,13 @@ namespace WebApi.Helpers
             fromName = settings.SendGridName;
             this.logger = logger;
         }
-        public void SendEmail(string userEmail, string confirmationLink)
+        public void SendEmail(string userEmail, string confirmationLink, string subject)
         {
             var client = new SendGridClient(key);
             var msg = new SendGridMessage()
             {
                 From = new EmailAddress(fromEmail, fromName),
-                Subject = "Confirm your email",
+                Subject = subject,
                 HtmlContent = confirmationLink
             };
 

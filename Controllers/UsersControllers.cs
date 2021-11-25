@@ -1,8 +1,10 @@
 namespace WebApi.Controllers
 {
+    using System.Collections.Generic;
     using System.Threading.Tasks;
-    using System.Security.Claims;
+
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.WebUtilities;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Identity;
     using Microsoft.Extensions.Logging;
@@ -10,19 +12,23 @@ namespace WebApi.Controllers
     using WebApi.Services;
     using WebApi.Models;
     using WebApi.Entities;
+    using WebApi.Helpers;
 
     public class UsersController : WebApiController2
     {
         IUserService _userService;
         UserManager<AppIdentityUser> _userManager;
+        EmailSender _emailService;
 
         public UsersController(
             IUserService userService,
             UserManager<AppIdentityUser> userManager,
-            ILogger<UsersController> logger) : base(logger)
+            ILogger<UsersController> logger,
+            EmailSender emailService) : base(logger)
         {
             _userService = userService;
             _userManager = userManager;
+            _emailService = emailService;
         }
 
         [AllowAnonymous]
@@ -82,6 +88,41 @@ namespace WebApi.Controllers
         }
 
         [AllowAnonymous]
+        [HttpPost("reset-password/{username}")]
+        public async Task<IActionResult> ResetPassword(string username, [FromQuery] string passwordResetUrl)
+        {
+            var user = await _userManager.FindByNameAsync(username);
+
+            if (user == null)
+                return Forbid();
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var param = new Dictionary<string, string>() {
+                        { "token", token },
+                        { "email", user.Email }
+                    };
+            var passwordResetLink = QueryHelpers.AddQueryString(passwordResetUrl, param);
+            _emailService.SendEmail(user.Email, passwordResetLink, "Resetati parola");
+
+            return Ok();
+        }
+
+        [HttpPost("reset-password-form/{username}")]
+        public async Task<IActionResult> ResetPasswordForm(string username)
+        {
+            if (this.CurrentUserName != username)
+                return Forbid();
+
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+                return Forbid();
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            return Ok(new { token });
+        }
+
+        [AllowAnonymous]
         [HttpPost("revoke-token")]
         public async Task<IActionResult> RevokeToken()
         {
@@ -100,17 +141,7 @@ namespace WebApi.Controllers
             return Ok(new { message = "Token revoked" });
         }
 
-        [HttpGet("{id}/refresh-tokens")]
-        public async Task<IActionResult> GetRefreshTokens(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null) return NotFound();
-
-            return Ok(user);
-        }
-
         [HttpGet("{username}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetById(string username)
         {
             if (this.CurrentUserName != username)
@@ -129,7 +160,7 @@ namespace WebApi.Controllers
             var identityUser = await this._userManager.FindByEmailAsync(userModel.Email);
             if (identityUser == null) return NotFound();
 
-            var result = await this._userManager.UpdateAsync(userIdentityFromUserModel(identityUser, userModel));
+            var result = await this._userManager.UpdateAsync(identityUser.fromUserModel(userModel));
             if (result.Succeeded)
             {
                 return Ok(userModel);
@@ -140,14 +171,19 @@ namespace WebApi.Controllers
             }
         }
 
-        private AppIdentityUser userIdentityFromUserModel(AppIdentityUser user, UserModel userModel)
+        [HttpPost("isInRoles")]
+        public async Task<IActionResult> isInRoles(IList<string> roles)
         {
-            user.UserName = userModel.UserName;
-            user.Name = userModel.Name;
-            user.PhoneNumber = userModel.Phone;
-            user.Address = userModel.Address;
-            user.Birth = userModel.Birth;
-            return user;
+            var identityUser = await this._userManager.FindByNameAsync(this.CurrentUserName);
+            if (identityUser == null) return NotFound();
+
+            foreach (var role in roles)
+            {
+                var result = await _userManager.IsInRoleAsync(identityUser, role);
+                if (result) return Ok(true);
+            }
+
+            return Ok(false);
         }
     }
 }
