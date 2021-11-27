@@ -17,7 +17,7 @@ namespace WebApi.Entities
             this.Name = userModel.Name;
             this.PhoneNumber = userModel.Phone;
             this.Address = userModel.Address;
-            this.Birth = userModel.Birth;
+            this.Birth = userModel.Birth ?? DateTime.MinValue;
             return this;
         }
 

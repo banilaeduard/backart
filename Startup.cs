@@ -37,7 +37,11 @@ namespace BackArt
         {
             services.AddHealthChecks();
             services.AddCors();
-            services.AddControllers().AddNewtonsoftJson();
+            services.AddControllers().AddJsonOptions(opt =>
+            {
+                opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                opt.JsonSerializerOptions.IgnoreNullValues = true;
+            }).AddNewtonsoftJson();
             services.Configure<CookiePolicyOptions>(options =>
             {
                 options.CheckConsentNeeded = context => true;

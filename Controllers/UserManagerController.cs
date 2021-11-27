@@ -30,15 +30,18 @@ namespace WebApi.Controllers
             this.emailSender = emailSender;
         }
 
-        [HttpPost("create")]
+        [HttpPost]
         public async Task<IActionResult> createUser(UserModel userModel, [FromQuery] string resetUrl)
         {
             var identityUser = AppIdentityUser.From(userModel);
             var result = await this.userManager.CreateAsync(identityUser,
+                                                      "a1_.?" +
                                                       new Guid().ToString() + DateTime.Now.ToLongTimeString());
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(identityUser, "basic");
+                await userManager.ConfirmEmailAsync(identityUser, await this.userManager.GenerateEmailConfirmationTokenAsync(identityUser));
+
                 var token = await this.userManager.GeneratePasswordResetTokenAsync(identityUser);
                 var param = new Dictionary<string, string>() {
                         { "token", token },
@@ -46,12 +49,40 @@ namespace WebApi.Controllers
                     };
                 var resetLink = QueryHelpers.AddQueryString(resetUrl, param);
                 this.emailSender.SendEmail(identityUser.Email, resetLink, "Setati parola!");
-                return Ok();
+                return Ok(new UserModel().From(identityUser));
             }
             else
             {
                 return BadRequest(result.Errors);
             }
+        }
+
+        [HttpPatch]
+        public async Task<IActionResult> updateUser(UserModel userModel)
+        {
+            var identityUser = await this.userManager.FindByNameAsync(userModel.UserName);
+            var result = await this.userManager.UpdateAsync(identityUser.fromUserModel(userModel));
+            if (result.Succeeded)
+            {
+                return Ok(new UserModel().From(identityUser));
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+        }
+
+        [HttpDelete("{username}")]
+        public async Task<IActionResult> DeleteUserAsync(string username)
+        {
+            var result = await this.userManager.DeleteAsync(await this.userManager.FindByNameAsync(username));
+            return result.Succeeded ? Ok() : BadRequest(result.Errors);
+        }
+
+        [HttpGet("{username}")]
+        public async Task<IActionResult> GetUserAsync(string username)
+        {
+            return Ok(new UserModel().From(await this.userManager.FindByNameAsync(username)));
         }
 
         [HttpPost("add-to-role")]
@@ -87,19 +118,6 @@ namespace WebApi.Controllers
                             .ToList(),
                 count = this.userManager.Users.Count()
             });
-        }
-
-        [HttpGet("{username}")]
-        public async Task<IActionResult> GetUserAsync(string username)
-        {
-            return Ok(new UserModel().From(await this.userManager.FindByNameAsync(username)));
-        }
-
-        [HttpDelete("{username}")]
-        public async Task<IActionResult> DeleteUserAsync(string username)
-        {
-            var result = await this.userManager.DeleteAsync(await this.userManager.FindByNameAsync(username));
-            return result.Succeeded ? Ok() : BadRequest(result.Errors);
         }
     }
 }

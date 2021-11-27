@@ -11,7 +11,7 @@ namespace WebApi.Models
         public string Email { get; set; }
         public string Phone { get; set; }
         public string Address { get; set; }
-        public DateTime Birth { get; set; }
+        public DateTime? Birth { get; set; }
         public string Password { get; set; }
         public string PrevPassword { get; set; }
 
@@ -19,6 +19,7 @@ namespace WebApi.Models
         {
             this.Id = model.Id;
             this.UserName = model.UserName;
+            this.Email = model.Email;
             this.Name = model.Name;
             this.Phone = model.PhoneNumber;
             this.Address = model.Address;

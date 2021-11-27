@@ -75,7 +75,9 @@ namespace BackArt
                     UserName = "admin",
                     Email = "banila.eduard@gmail.com",
                 };
-                var result = await userManager.CreateAsync(user, System.Guid.NewGuid() + System.DateTime.Now.ToShortTimeString());
+                var result = await userManager.CreateAsync(user,
+                                    "az123_.,@@``" +
+                                    System.Guid.NewGuid() + System.DateTime.Now.ToShortTimeString());
                 if (result.Succeeded)
                 {
                     await userManager.ConfirmEmailAsync(user, await userManager.GenerateEmailConfirmationTokenAsync(user));
