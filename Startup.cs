@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 using WebApi.Helpers;
 using WebApi.Services;
@@ -41,6 +41,8 @@ namespace BackArt
             {
                 opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
                 opt.JsonSerializerOptions.IgnoreNullValues = true;
+                opt.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString;
+                opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             }).AddNewtonsoftJson();
             services.Configure<CookiePolicyOptions>(options =>
             {
@@ -56,6 +58,12 @@ namespace BackArt
             services.AddSingleton<EmailSender>();
             services.AddScoped<IUserService, UserService>();
 
+            services.AddDbContext<ComplaintSeriesDbContext>(options =>
+            {
+                options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
+                //options.AddInterceptors
+            }, ServiceLifetime.Transient);
+            services.AddDbContext<CodeDbContext>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
             services.AddDbContext<AppIdentityDbContex>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContex>()
@@ -81,6 +89,7 @@ namespace BackArt
                     ValidateAudience = false,
                     ValidateLifetime = true,
                 };
+                x.IncludeErrorDetails = true;
             });
 
             services.Configure<IdentityOptions>(opts =>
@@ -94,34 +103,34 @@ namespace BackArt
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory factory)
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-            else
-            {
-                ILogger genericLogger = factory.CreateLogger("Production unhandled logger");
-                app.UseExceptionHandler(
-                    new ExceptionHandlerOptions()
+            // if (env.IsDevelopment())
+            // {
+            //     app.UseDeveloperExceptionPage();
+            // }
+            // else
+            // {
+            ILogger genericLogger = factory.CreateLogger("Production unhandled logger");
+            app.UseExceptionHandler(
+                new ExceptionHandlerOptions()
+                {
+                    ExceptionHandler = async (context) =>
                     {
-                        ExceptionHandler = async (context) =>
-                        {
-                            var feature = context.Features.Get<IExceptionHandlerFeature>();
-                            genericLogger.LogError(
-                                new EventId(context.TraceIdentifier.GetHashCode(), context.TraceIdentifier),
-                                feature?.Error,
-                                "Generic Error"
-                                );
+                        var feature = context.Features.Get<IExceptionHandlerFeature>();
+                        genericLogger.LogError(
+                            new EventId(context.TraceIdentifier.GetHashCode(), context.TraceIdentifier),
+                            feature?.Error,
+                            "Generic Error"
+                            );
 
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsJsonAsync(new
-                            {
-                                status = 500,
-                                message = "Internal server error"
-                            });
-                        }
-                    });
-            }
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            status = 500,
+                            message = "Internal server error"
+                        });
+                    }
+                });
+            //}
 
             app.UseCors(x => x
             .SetIsOriginAllowed(origin => true)
@@ -139,6 +148,5 @@ namespace BackArt
                 endpoints.MapHealthChecks("/health");
             });
         }
-
     }
 }

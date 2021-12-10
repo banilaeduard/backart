@@ -30,6 +30,12 @@ namespace BackArt
             var appIdentityDbContex = serviceProvider.GetRequiredService<AppIdentityDbContex>();
             appIdentityDbContex.Database.Migrate();
 
+            var codeDbContex = serviceProvider.GetRequiredService<CodeDbContext>();
+            codeDbContex.Database.Migrate();
+
+            var complaintSeriesDbContext = serviceProvider.GetRequiredService<ComplaintSeriesDbContext>();
+            complaintSeriesDbContext.Database.Migrate();
+
             // we ensure roles are created
             var roleManager = serviceProvider.GetRequiredService<RoleManager<AppIdentityRole>>();
             AppIdentityRole role = null;
@@ -75,9 +81,7 @@ namespace BackArt
                     UserName = "admin",
                     Email = "banila.eduard@gmail.com",
                 };
-                var result = await userManager.CreateAsync(user,
-                                    "az123_.,@@``" +
-                                    System.Guid.NewGuid() + System.DateTime.Now.ToShortTimeString());
+                var result = await userManager.CreateAsync(user);
                 if (result.Succeeded)
                 {
                     await userManager.ConfirmEmailAsync(user, await userManager.GenerateEmailConfirmationTokenAsync(user));
@@ -85,7 +89,7 @@ namespace BackArt
                 }
                 else
                 {
-                    throw new System.Exception("admin nu a putut fi creat");
+                    throw new System.Exception("admin nu a putut fi creat " + result.Errors.ToString());
                 }
             }
         }

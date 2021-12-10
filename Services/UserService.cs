@@ -156,7 +156,8 @@ namespace WebApi.Services
                     new Claim(ClaimTypes.StreetAddress, appUser.Address?.ToString() ?? ""),
                     new Claim(ClaimTypes.GivenName, appUser.UserName?.ToString()??""),
                     new Claim(ClaimTypes.MobilePhone, appUser.PhoneNumber?.ToString()??""),
-                    new Claim(ClaimTypes.Role, string.Join(",", await _userManager.GetRolesAsync(appUser))?? "")
+                    new Claim(ClaimTypes.Role, string.Join(",", await _userManager.GetRolesAsync(appUser))?? ""),
+
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
