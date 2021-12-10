@@ -26,6 +26,8 @@ namespace WebApi.Controllers
             return Ok(this.complaintSeriesDbContext.Complaints
                         .Include(t => t.Tickets)
                         .ThenInclude(t => t.Images)
+                        .Include(t => t.Tickets)
+                        .ThenInclude(t => t.Code)
                         .OrderByDescending(t => t.Id)
                         );
         }
