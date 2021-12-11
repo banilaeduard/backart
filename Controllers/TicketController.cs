@@ -20,13 +20,19 @@ namespace WebApi.Controllers
             this.complaintSeriesDbContext = complaintSeriesDbContext;
         }
 
-        [HttpGet]
-        public IActionResult GetAll()
+        [HttpGet("{page}/{pageSize}")]
+        public IActionResult GetAll(int page, int pageSize)
         {
-            return Ok(this.complaintSeriesDbContext.Complaints
+            return Ok(new
+            {
+                count = this.complaintSeriesDbContext.Complaints.Count(),
+                complaints = this.complaintSeriesDbContext.Complaints
+                        .OrderByDescending(t => t.Id)
                         .Include(t => t.Tickets)
                         .ThenInclude(t => t.Code)
-                        .OrderByDescending(t => t.Id));
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+            });
         }
 
         [HttpPost]
