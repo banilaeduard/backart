@@ -10,5 +10,6 @@ namespace WebApi.Entities
         public string CodeValue { get; set; }
         public string Description { get; set; }
         public List<Image> Images { get; set; }
+        public bool HasImages { get; set; }
     }
 }

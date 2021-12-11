@@ -61,7 +61,6 @@ namespace BackArt
             services.AddDbContext<ComplaintSeriesDbContext>(options =>
             {
                 options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
-                //options.AddInterceptors
             }, ServiceLifetime.Transient);
             services.AddDbContext<CodeDbContext>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
             services.AddDbContext<AppIdentityDbContex>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));

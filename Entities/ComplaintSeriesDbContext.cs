@@ -31,30 +31,30 @@ namespace WebApi.Entities
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
         {
-            if (httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value != "admin")
-            {
-                foreach (var entityEntry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
-                {
-                    if (entityEntry.Entity is IDataKey dataKey)
-                        dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
-                }
-            }
+            this.addDataContext(ChangeTracker);
             return base.SaveChanges(acceptAllChangesOnSuccess);
         }
 
         public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
         {
-            if (httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value != "admin")
-            {
-                foreach (var entityEntry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
-                {
-                    if (entityEntry.Entity is IDataKey dataKey)
-                        dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
-                }
-            }
+            this.addDataContext(ChangeTracker);
             return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
 
+        private void addDataContext(Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker)
+        {
+            bool isAdmin = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value == "admin";
+
+            foreach (var entityEntry in ChangeTracker.Entries()
+                                        .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                if (entityEntry.State == EntityState.Added && entityEntry.Entity is IDataKey dataKey && !isAdmin)
+                    dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
+
+                if (entityEntry.Entity is Ticket ticket)
+                    ticket.HasImages = ticket.Images?.Count() > 0;
+            }
+        }
 
         private static void AddHierarchicalQueryFilter<T>(EntityTypeBuilder<T> builder, ComplaintSeriesDbContext _ctx)
          where T : class, IDataKey

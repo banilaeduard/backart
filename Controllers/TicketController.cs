@@ -25,11 +25,8 @@ namespace WebApi.Controllers
         {
             return Ok(this.complaintSeriesDbContext.Complaints
                         .Include(t => t.Tickets)
-                        .ThenInclude(t => t.Images)
-                        .Include(t => t.Tickets)
                         .ThenInclude(t => t.Code)
-                        .OrderByDescending(t => t.Id)
-                        );
+                        .OrderByDescending(t => t.Id));
         }
 
         [HttpPost]
@@ -42,6 +39,19 @@ namespace WebApi.Controllers
 
             await this.complaintSeriesDbContext.SaveChangesAsync();
             return Ok(complaint);
+        }
+
+        [HttpPost("images")]
+        public IActionResult fetchImages(ComplaintSeries complaint)
+        {
+            return Ok(this.complaintSeriesDbContext.Complaints
+                        .Include(t => t.Tickets)
+                        .ThenInclude(t => t.Code)
+                        .Include(t => t.Tickets)
+                        .ThenInclude(t => t.Images)
+                        .AsSplitQuery()
+                        .FirstOrDefault(t => t.Id == complaint.Id)
+                        );
         }
     }
 }
