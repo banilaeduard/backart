@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -31,6 +30,20 @@ namespace BackArt
 
         public IConfiguration Configuration { get; }
 
+        private void configureConnectionString(IConfiguration Configuration, DbContextOptionsBuilder options)
+        {
+            var sqlOpt = Configuration["ConnectionStrings:instanceType"];
+            switch (sqlOpt)
+            {
+                case "mysql": 
+                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]));
+                    return;
+                default:
+                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
+                    return;
+            }
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
@@ -43,7 +56,8 @@ namespace BackArt
                 opt.JsonSerializerOptions.IgnoreNullValues = true;
                 opt.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString;
                 opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            }).AddNewtonsoftJson();
+            }).AddNewtonsoftJson(x => x.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
+
             services.Configure<CookiePolicyOptions>(options =>
             {
                 options.CheckConsentNeeded = context => true;
@@ -60,12 +74,12 @@ namespace BackArt
 
             services.AddDbContext<ComplaintSeriesDbContext>(options =>
             {
-                options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
+                configureConnectionString(Configuration, options);
             }, ServiceLifetime.Transient);
-            services.AddDbContext<CodeDbContext>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
-            services.AddDbContext<AppIdentityDbContex>(options => options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]));
+            services.AddDbContext<CodeDbContext>(options => configureConnectionString(Configuration, options));
+            services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(Configuration, options));
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
-                    .AddEntityFrameworkStores<AppIdentityDbContex>()
+                    .AddEntityFrameworkStores<AppIdentityDbContext>()
                     .AddDefaultTokenProviders();
 
             var tokenKey = appSettingsSection.GetValue<string>("Secret");

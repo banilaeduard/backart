@@ -27,7 +27,7 @@ namespace BackArt
         public static async Task Initialize(System.IServiceProvider serviceProvider)
         {
             // we ensure databases are created and up to date
-            var appIdentityDbContex = serviceProvider.GetRequiredService<AppIdentityDbContex>();
+            var appIdentityDbContex = serviceProvider.GetRequiredService<AppIdentityDbContext>();
             appIdentityDbContex.Database.Migrate();
 
             var codeDbContex = serviceProvider.GetRequiredService<CodeDbContext>();
