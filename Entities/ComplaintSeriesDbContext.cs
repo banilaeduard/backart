@@ -8,6 +8,7 @@ namespace WebApi.Entities
     using System.Security.Claims;
     using System.Threading.Tasks;
     using System.Threading;
+
     public class ComplaintSeriesDbContext : DbContext
     {
         private IHttpContextAccessor httpContextAccessor;
@@ -20,13 +21,26 @@ namespace WebApi.Entities
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Image>()
+                .HasOne(p => p.Ticket)
+                .WithMany("Images")
+                .HasForeignKey(f => f.TicketId)
+                .OnDelete(DeleteBehavior.ClientCascade);
+
+            modelBuilder.Entity<CodeAttribute>()
+                .ToTable("CodeAttributeSnapshot")
+                .HasKey(t => new { t.Tag, t.InnerValue })
+                .HasName("Id");
+
+            modelBuilder.Entity<CodeLink>()
+                .ToTable("CodeLinkSnapshot");
+
             AddHierarchicalQueryFilter(modelBuilder.Entity<ComplaintSeries>(), this);
             base.OnModelCreating(modelBuilder);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -50,9 +64,14 @@ namespace WebApi.Entities
             {
                 if (entityEntry.State == EntityState.Added && entityEntry.Entity is IDataKey dataKey && !isAdmin)
                     dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
+                else if (entityEntry.Entity is IDataKey)
+                    entityEntry.Property("DataKey").IsModified = false;
 
-                if (entityEntry.Entity is Ticket ticket)
-                    ticket.HasImages = ticket.Images?.Count() > 0;
+                if (entityEntry.Entity is Ticket ticket 
+                    && entityEntry.Navigation("Images").IsModified)
+                {
+                    ticket.HasImages = ticket.Images.Count() > 0;
+                }
             }
         }
 

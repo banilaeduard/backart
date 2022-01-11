@@ -9,8 +9,8 @@ using WebApi.Entities;
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
     [DbContext(typeof(ComplaintSeriesDbContext))]
-    [Migration("20211214143918_Initial")]
-    partial class Initial
+    [Migration("20220111141131_Complaint")]
+    partial class Complaint
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -19,29 +19,60 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 .HasAnnotation("Relational:MaxIdentifierLength", 64)
                 .HasAnnotation("ProductVersion", "5.0.11");
 
-            modelBuilder.Entity("WebApi.Entities.Code", b =>
+            modelBuilder.Entity("WebApi.Entities.CodeAttribute", b =>
+                {
+                    b.Property<string>("Tag")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("InnerValue")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("DisplayValue")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Id")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Tag", "InnerValue")
+                        .HasName("Id");
+
+                    b.ToTable("CodeAttributeSnapshot");
+                });
+
+            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("Display")
+                    b.Property<string>("AttributeTags")
                         .HasColumnType("longtext");
 
-                    b.Property<bool>("HasChildren")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<string>("CodeDisplay")
+                        .HasColumnType("longtext");
 
-                    b.Property<int?>("ParentId")
+                    b.Property<int?>("CodeLinkId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Value")
+                    b.Property<string>("CodeValue")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("CodeValueFormat")
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("TicketId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("args")
                         .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParentId");
+                    b.HasIndex("CodeLinkId");
 
-                    b.ToTable("Code");
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("CodeLinkSnapshot");
                 });
 
             modelBuilder.Entity("WebApi.Entities.ComplaintSeries", b =>
@@ -67,7 +98,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("Data")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("TicketId")
+                    b.Property<int>("TicketId")
                         .HasColumnType("int");
 
                     b.Property<string>("Title")
@@ -86,9 +117,6 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<int?>("CodeId")
-                        .HasColumnType("int");
-
                     b.Property<string>("CodeValue")
                         .HasColumnType("longtext");
 
@@ -103,43 +131,41 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CodeId");
-
                     b.HasIndex("ComplaintSeriesId");
 
                     b.ToTable("Ticket");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Code", b =>
+            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
                 {
-                    b.HasOne("WebApi.Entities.Code", "Parent")
+                    b.HasOne("WebApi.Entities.CodeLink", null)
                         .WithMany("Children")
-                        .HasForeignKey("ParentId");
+                        .HasForeignKey("CodeLinkId");
 
-                    b.Navigation("Parent");
+                    b.HasOne("WebApi.Entities.Ticket", null)
+                        .WithMany("codeLinks")
+                        .HasForeignKey("TicketId");
                 });
 
             modelBuilder.Entity("WebApi.Entities.Image", b =>
                 {
-                    b.HasOne("WebApi.Entities.Ticket", null)
+                    b.HasOne("WebApi.Entities.Ticket", "Ticket")
                         .WithMany("Images")
-                        .HasForeignKey("TicketId");
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.Navigation("Ticket");
                 });
 
             modelBuilder.Entity("WebApi.Entities.Ticket", b =>
                 {
-                    b.HasOne("WebApi.Entities.Code", "Code")
-                        .WithMany()
-                        .HasForeignKey("CodeId");
-
                     b.HasOne("WebApi.Entities.ComplaintSeries", null)
                         .WithMany("Tickets")
                         .HasForeignKey("ComplaintSeriesId");
-
-                    b.Navigation("Code");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Code", b =>
+            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
                 {
                     b.Navigation("Children");
                 });
@@ -151,6 +177,8 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
             modelBuilder.Entity("WebApi.Entities.Ticket", b =>
                 {
+                    b.Navigation("codeLinks");
+
                     b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
