@@ -17,6 +17,7 @@ using System.Text.Json.Serialization;
 using WebApi.Helpers;
 using WebApi.Services;
 using WebApi.Entities;
+using Microsoft.Extensions.Hosting;
 
 namespace BackArt
 {
@@ -116,12 +117,12 @@ namespace BackArt
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory factory)
         {
-            // if (env.IsDevelopment())
-            // {
-            //     app.UseDeveloperExceptionPage();
-            // }
-            // else
-            // {
+            if (env.IsDevelopment())
+            {
+                 app.UseDeveloperExceptionPage();
+            }
+            else
+            {
             ILogger genericLogger = factory.CreateLogger("Production unhandled logger");
             app.UseExceptionHandler(
                 new ExceptionHandlerOptions()
@@ -143,7 +144,7 @@ namespace BackArt
                         });
                     }
                 });
-            //}
+            }
 
             app.UseCors(x => x
             .SetIsOriginAllowed(origin => true)

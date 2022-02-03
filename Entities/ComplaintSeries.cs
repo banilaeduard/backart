@@ -5,6 +5,11 @@ namespace WebApi.Entities
 
     public class ComplaintSeries : IDataKey
     {
+        public ComplaintSeries()
+        {
+            this.Tickets = new List<Ticket>();
+        }
+
         [Key]
         public int Id { get; set; }
         public List<Ticket> Tickets { get; set; }

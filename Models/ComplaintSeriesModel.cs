@@ -3,26 +3,36 @@
     using System.Collections.Generic;
     using WebApi.Entities;
     using System.Linq;
+    using System.Text.Json.Serialization;
+
     public class ComplaintSeriesModel
     {
         public int Id { get; set; }
         public string DataKey { get; set; }
         public List<TicketModel> Tickets { get; set; }
-        public List<TicketModel> ToAddTickets { get; set; }
-        public List<TicketModel> ToRemoveTickets { get; set; }
-        private ComplaintSeriesModel(ComplaintSeries complaint, bool hasImagesLoaded)
+
+        [JsonConstructor]
+        private ComplaintSeriesModel() { }
+        private ComplaintSeriesModel(ComplaintSeries complaint)
         {
             this.Id = complaint.Id;
             this.DataKey = complaint.DataKey;
-            this.Tickets = complaint.Tickets.Select(t => TicketModel.fromDbModel(t, hasImagesLoaded)).ToList();
-            this.ImagesLoaded = hasImagesLoaded;
+            this.Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
         }
 
-        public bool ImagesLoaded { get; set; }
-
-        public static ComplaintSeriesModel from(ComplaintSeries dbModel, bool hasImagesLoaded)
+        public ComplaintSeries toDbModel()
         {
-            return new ComplaintSeriesModel(dbModel, hasImagesLoaded);
+            return new ComplaintSeries()
+            {
+                Id = this.Id,
+                DataKey = this.DataKey,
+                Tickets = this.Tickets.Select(ticket => ticket.toDbModel()).ToList()
+            };
+        }
+
+        public static ComplaintSeriesModel from(ComplaintSeries dbModel)
+        {
+            return new ComplaintSeriesModel(dbModel);
         }
     }
 }

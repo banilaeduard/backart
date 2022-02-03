@@ -8,22 +8,18 @@
         public int Id { get; set; }
         public string CodeValue { get; set; }
         public string Description { get; set; }
-        public bool isLoaded {get;set;}
+        public bool hasImages { get;set;}
         public List<Image> Images { get; set; }
-        public List<Image> ToAddImages { get; set; }
-        public List<Image> ToRemoveImages { get; set; }
         public List<CodeLink> CodeLinks { get; set; }
-        public List<CodeLink> ToAddCodeLinks { get; set; }
-        public List<CodeLink> ToRemoveCodeLinks { get; set; }
 
-        public static TicketModel fromDbModel(Ticket dbTicket, bool hasImagesLoaded)
+        public static TicketModel from(Ticket dbTicket)
         {
             return new TicketModel()
             {
                 Id = dbTicket.Id,
                 CodeValue = dbTicket.CodeValue,
                 Description = dbTicket.Description,
-                isLoaded = hasImagesLoaded,
+                hasImages = dbTicket.HasImages,
                 CodeLinks = dbTicket.codeLinks,
                 Images = dbTicket.Images
             };

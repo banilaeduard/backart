@@ -18,6 +18,7 @@ namespace WebApi.Entities
             this.httpContextAccessor = httpContextAccessor;
         }
         public DbSet<ComplaintSeries> Complaints { get; set; }
+        public DbSet<Ticket> Ticket { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -59,17 +60,22 @@ namespace WebApi.Entities
         {
             bool isAdmin = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value == "admin";
 
-            foreach (var entityEntry in ChangeTracker.Entries()
-                                        .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            foreach (var entityEntry in ChangeTracker.Entries())
             {
-                if (entityEntry.State == EntityState.Added && entityEntry.Entity is IDataKey dataKey && !isAdmin)
-                    dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
-                else if (entityEntry.Entity is IDataKey)
-                    entityEntry.Property("DataKey").IsModified = false;
-
-                if (entityEntry.Entity is Ticket ticket 
-                    && entityEntry.Navigation("Images").IsModified)
+                if (entityEntry.State == EntityState.Added || entityEntry.State == EntityState.Modified)
                 {
+                    // we ensure the separation of data based on clients
+                    if (entityEntry.State == EntityState.Added && entityEntry.Entity is IDataKey dataKey && !isAdmin)
+                        dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
+                    else if (entityEntry.Entity is IDataKey)
+                        entityEntry.Property("DataKey").IsModified = false;
+                }
+                if (entityEntry.Entity is Ticket ticket)
+                {
+                    var newImages = ticket.Images?.ToList();
+                    entityEntry.Navigation("Images").Load();
+
+                    ticket.Images = newImages;
                     ticket.HasImages = ticket.Images.Count() > 0;
                 }
             }

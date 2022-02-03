@@ -28,7 +28,7 @@ namespace WebApi.Helpers
             };
 
             msg.AddTo(new EmailAddress(userEmail));
-            msg.SetClickTracking(false, false);
+            msg.SetClickTracking(true, false);
             client.SendEmailAsync(msg).Forget(this.logger);
         }
     }

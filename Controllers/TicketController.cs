@@ -33,59 +33,38 @@ namespace WebApi.Controllers
                         .ThenInclude(t => t.codeLinks)
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
-                        .Select(t => ComplaintSeriesModel.from(t, false))
+                        .Select(t => ComplaintSeriesModel.from(t))
             });
         }
 
         [HttpPost]
         public async Task<IActionResult> SaveComplaint(ComplaintSeriesModel complaint)
         {
-            var dbComp = this.complaintSeriesDbContext.Complaints.Where(t => t.Id == complaint.Id).SingleOrDefault()
-                ?? new ComplaintSeries();
-
-            if (complaint.ToAddTickets != null && complaint.ToAddTickets.Count() > 0)
-            {
-                dbComp.Tickets.AddRange(complaint.ToAddTickets.Select(t => t.toDbModel()));
-            }
-
-            if (complaint.ToRemoveTickets != null && complaint.ToRemoveTickets.Count() > 0)
-            {
-                complaint.ToRemoveTickets.ForEach(t =>
-                                complaintSeriesDbContext.Entry(t.toDbModel()).State = EntityState.Deleted);
-            }
-
-            if (complaint.Tickets != null && complaint.Tickets.Count() > 0)
-            {
-                complaint.Tickets.ForEach(t => complaintSeriesDbContext.Entry(t.toDbModel()));
-            }
-
-            if (complaint.Id > 0)
-                this.complaintSeriesDbContext.Update(complaint);
+            var dbModel = complaint.toDbModel();
+            if (complaint.Id < 1)
+                this.complaintSeriesDbContext.Complaints.Add(dbModel);
             else
-                this.complaintSeriesDbContext.Add(complaint);
+                this.complaintSeriesDbContext.Complaints.Update(dbModel);
 
             await this.complaintSeriesDbContext.SaveChangesAsync();
-            return Ok(ComplaintSeriesModel.from(this.complaintSeriesDbContext.Complaints
+            return Ok(ComplaintSeriesModel.from(
+                this.complaintSeriesDbContext.Complaints
                          .Include(t => t.Tickets)
                          .ThenInclude(t => t.codeLinks)
-                         .Include(t => t.Tickets)
-                         .ThenInclude(t => t.Images)
                          .AsSplitQuery()
-                         .FirstOrDefault(t => t.Id == complaint.Id), true)
-                );
+                         .SingleOrDefault(t => t.Id == dbModel.Id)
+                         ));
         }
 
         [HttpPost("images")]
-        public IActionResult fetchImages(ComplaintSeriesModel complaint)
+        public IActionResult fetchDetails(TicketModel ticketModel)
         {
-            var t = this.complaintSeriesDbContext.Complaints
-                        .Include(t => t.Tickets)
-                        .ThenInclude(t => t.codeLinks)
-                        .Include(t => t.Tickets)
-                        .ThenInclude(t => t.Images)
+            var ticketDb = this.complaintSeriesDbContext.Ticket
+                        .Include(t => t.codeLinks)
+                        .Include(t => t.Images)
                         .AsSplitQuery()
-                        .FirstOrDefault(t => t.Id == complaint.Id);
-            return Ok(ComplaintSeriesModel.from(t, true));
+                        .FirstOrDefault(t => t.Id == ticketModel.Id);
+            return Ok(TicketModel.from(ticketDb));
         }
     }
 }
