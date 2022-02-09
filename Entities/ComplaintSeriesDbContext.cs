@@ -77,6 +77,10 @@ namespace WebApi.Entities
 
                     ticket.Images = newImages;
                     ticket.HasImages = ticket.Images.Count() > 0;
+
+                    var codeLinks = ticket.codeLinks?.ToList();
+                    entityEntry.Navigation("codeLinks").Load();
+                    ticket.codeLinks = codeLinks;
                 }
             }
         }

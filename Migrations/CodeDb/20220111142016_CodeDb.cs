@@ -56,7 +56,7 @@ namespace BackArt.Migrations.CodeDb
                         column: x => x.CodeLinkId,
                         principalTable: "Codes",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 

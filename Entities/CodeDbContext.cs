@@ -10,7 +10,6 @@ namespace WebApi.Entities
         public DbSet<CodeAttribute> CodeAttribute { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.EnableSensitiveDataLogging();
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
