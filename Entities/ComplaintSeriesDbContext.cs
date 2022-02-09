@@ -60,7 +60,7 @@ namespace WebApi.Entities
         {
             bool isAdmin = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value == "admin";
 
-            foreach (var entityEntry in ChangeTracker.Entries())
+            foreach (var entityEntry in ChangeTracker.Entries().ToList())
             {
                 if (entityEntry.State == EntityState.Added || entityEntry.State == EntityState.Modified)
                 {
