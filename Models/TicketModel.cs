@@ -10,6 +10,8 @@
         public string Description { get; set; }
         public bool hasImages { get;set;}
         public List<Image> Images { get; set; }
+        public List<Image> ToAddImages { get; set; }
+        public List<Image> ToDeleteImages { get; set; }
         public List<CodeLink> CodeLinks { get; set; }
 
         public static TicketModel from(Ticket dbTicket)
@@ -33,8 +35,7 @@
                 CodeValue = this.CodeValue,
                 Description = this.Description,
                 codeLinks = this.CodeLinks,
-                Images = this.Images,
-                HasImages = this.Images?.Count > 0
+                Images = this.Images
             };
         }
     }

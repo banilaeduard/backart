@@ -8,6 +8,7 @@ namespace WebApi.Entities
     using System.Security.Claims;
     using System.Threading.Tasks;
     using System.Threading;
+    using System.IO;
 
     public class ComplaintSeriesDbContext : DbContext
     {
@@ -23,6 +24,7 @@ namespace WebApi.Entities
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Image>()
+                .Ignore(t => t.Extension)
                 .HasOne(p => p.Ticket)
                 .WithMany("Images")
                 .HasForeignKey(f => f.TicketId)
@@ -72,10 +74,7 @@ namespace WebApi.Entities
                 }
                 if (entityEntry.Entity is Ticket ticket)
                 {
-                    var newImages = ticket.Images?.ToList();
                     entityEntry.Navigation("Images").Load();
-
-                    ticket.Images = newImages;
                     ticket.HasImages = ticket.Images.Count() > 0;
 
                     var codeLinks = ticket.codeLinks?.ToList();

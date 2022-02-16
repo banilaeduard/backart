@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 using WebApi.Entities;
+using System.IO;
+using System;
 
 namespace BackArt
 {
@@ -19,7 +21,9 @@ namespace BackArt
             var host = CreateHostBuilder(args).Build();
 
             await Initialize(host.Services.GetRequiredService<IServiceScopeFactory>().CreateScope().ServiceProvider);
-
+            DirectoryInfo di = new DirectoryInfo("/photos");
+            Console.WriteLine("Exista? plm");
+            Console.WriteLine(di.Exists);
             host.Run();
         }
 
@@ -103,7 +107,10 @@ namespace BackArt
             })
             .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    webBuilder.UseStartup<Startup>().UseKestrel(options =>
+                    {
+                        options.Limits.MaxRequestBodySize = long.MaxValue;
+                    });
                 });
     }
 }
