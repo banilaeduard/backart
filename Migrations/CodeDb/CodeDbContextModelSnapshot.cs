@@ -31,6 +31,9 @@ namespace BackArt.Migrations.CodeDb
                     b.Property<string>("Id")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("TenantId")
+                        .HasColumnType("longtext");
+
                     b.HasKey("Tag", "InnerValue")
                         .HasName("Id");
 
@@ -57,6 +60,15 @@ namespace BackArt.Migrations.CodeDb
 
                     b.Property<string>("CodeValueFormat")
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("args")
                         .HasColumnType("longtext");

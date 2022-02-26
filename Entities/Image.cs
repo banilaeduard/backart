@@ -1,8 +1,9 @@
 namespace WebApi.Entities
 {
+    using System;
     using System.ComponentModel.DataAnnotations;
 
-    public class Image
+    public class Image: IBaseEntity
     {
         [Key]
         public int Id { get; set; }
@@ -11,5 +12,7 @@ namespace WebApi.Entities
         public int TicketId { get; set; }
         public Ticket Ticket { get; set; }
         public string Extension { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime UpdatedDate { get; set; }
     }
 }

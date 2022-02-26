@@ -1,9 +1,10 @@
 namespace WebApi.Entities
 {
+    using System;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
 
-    public class ComplaintSeries : IDataKey
+    public class ComplaintSeries : IDataKey, IBaseEntity, ITenant
     {
         public ComplaintSeries()
         {
@@ -14,5 +15,8 @@ namespace WebApi.Entities
         public int Id { get; set; }
         public List<Ticket> Tickets { get; set; }
         public string DataKey { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime UpdatedDate { get; set; }
+        public string TenantId { get; set; }
     }
 }

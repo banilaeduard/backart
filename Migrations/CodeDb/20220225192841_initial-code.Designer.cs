@@ -9,8 +9,8 @@ using WebApi.Entities;
 namespace BackArt.Migrations.CodeDb
 {
     [DbContext(typeof(CodeDbContext))]
-    [Migration("20220111142016_CodeDb")]
-    partial class CodeDb
+    [Migration("20220225192841_initial-code")]
+    partial class initialcode
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -31,6 +31,9 @@ namespace BackArt.Migrations.CodeDb
                         .HasColumnType("longtext");
 
                     b.Property<string>("Id")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("TenantId")
                         .HasColumnType("longtext");
 
                     b.HasKey("Tag", "InnerValue")
@@ -59,6 +62,15 @@ namespace BackArt.Migrations.CodeDb
 
                     b.Property<string>("CodeValueFormat")
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("args")
                         .HasColumnType("longtext");

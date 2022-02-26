@@ -22,7 +22,7 @@ namespace BackArt
 
             await Initialize(host.Services.GetRequiredService<IServiceScopeFactory>().CreateScope().ServiceProvider);
             DirectoryInfo di = new DirectoryInfo("/photos");
-            Console.WriteLine("Exista? plm");
+            Console.WriteLine("Exista? calea catre infinit");
             Console.WriteLine(di.Exists);
             host.Run();
         }

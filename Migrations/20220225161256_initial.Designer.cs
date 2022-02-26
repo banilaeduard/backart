@@ -9,8 +9,8 @@ using WebApi.Entities;
 namespace BackArt.Migrations
 {
     [DbContext(typeof(AppIdentityDbContext))]
-    [Migration("20211214143852_Initial")]
-    partial class Initial
+    [Migration("20220225161256_initial")]
+    partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

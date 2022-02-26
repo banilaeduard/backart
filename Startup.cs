@@ -18,6 +18,7 @@ using WebApi.Helpers;
 using WebApi.Services;
 using WebApi.Entities;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Console;
 
 namespace BackArt
 {
@@ -37,10 +38,12 @@ namespace BackArt
             switch (sqlOpt)
             {
                 case "mysql": 
-                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]));
+                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]))
+                        .EnableSensitiveDataLogging(); ;
                     return;
                 default:
-                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
+                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"])
+                        .EnableSensitiveDataLogging();
                     return;
             }
         }
@@ -72,11 +75,7 @@ namespace BackArt
 
             services.AddSingleton<EmailSender>();
             services.AddScoped<IUserService, UserService>();
-
-            services.AddDbContext<ComplaintSeriesDbContext>(options =>
-            {
-                configureConnectionString(Configuration, options);
-            }, ServiceLifetime.Transient);
+            services.AddDbContext<ComplaintSeriesDbContext>(options => configureConnectionString(Configuration, options));
             services.AddDbContext<CodeDbContext>(options => configureConnectionString(Configuration, options));
             services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(Configuration, options));
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()

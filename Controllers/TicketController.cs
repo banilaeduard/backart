@@ -14,8 +14,6 @@ namespace WebApi.Controllers
     using System.Security.Cryptography;
     using System.Text;
     using System;
-    using Microsoft.AspNetCore.Http;
-    using System.Collections.Generic;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -38,7 +36,7 @@ namespace WebApi.Controllers
                         .Include(t => t.Tickets)
                         .ThenInclude(t => t.codeLinks)
                         .Include(t => t.Tickets)
-                         .ThenInclude(t => t.Images)
+                        .ThenInclude(t => t.Images)
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
                         .Select(t => ComplaintSeriesModel.from(t))
@@ -63,6 +61,8 @@ namespace WebApi.Controllers
                 foreach (var toDelete in ticket.ToDeleteImages)
                 {
                     this.complaintSeriesDbContext.Entry(new Image() { Id = toDelete.Id }).State = EntityState.Deleted;
+                    FileInfo file = new FileInfo(toDelete.Data);
+                    if (file.Exists) file.Delete();
                 }
             }
 
@@ -90,7 +90,7 @@ namespace WebApi.Controllers
                         if (!file.Exists) // you may not want to overwrite existing files
                         {
                             Stream stream = file.OpenWrite();
-                            byte[] _file = System.Convert.FromBase64String(toAdd.Data);
+                            byte[] _file = Convert.FromBase64String(toAdd.Data);
                             stream.WriteAsync(_file, 0, _file.Length).Forget(this.logger, () =>
                                 stream.DisposeAsync());
                         }
@@ -99,14 +99,6 @@ namespace WebApi.Controllers
                         toAdd.Data = file.FullName;
                         this.complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
                     }
-                }
-            }
-
-            if (ticket.ToDeleteImages != null)
-            {
-                foreach (var toDelete in ticket.ToDeleteImages)
-                {
-                    this.complaintSeriesDbContext.Entry(new Image() { Id = toDelete.Id });
                 }
             }
 

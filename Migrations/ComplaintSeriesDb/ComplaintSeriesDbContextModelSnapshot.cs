@@ -31,6 +31,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("Id")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("TenantId")
+                        .HasColumnType("longtext");
+
                     b.HasKey("Tag", "InnerValue")
                         .HasName("Id");
 
@@ -58,8 +61,17 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("CodeValueFormat")
                         .HasColumnType("longtext");
 
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("longtext");
+
                     b.Property<int?>("TicketId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("args")
                         .HasColumnType("longtext");
@@ -82,8 +94,17 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("DataKey")
                         .HasColumnType("longtext");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 
@@ -96,6 +117,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Data")
                         .HasColumnType("longtext");
 
@@ -104,6 +128,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
                     b.Property<string>("Title")
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 
@@ -124,11 +151,17 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<int?>("ComplaintSeriesId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Description")
                         .HasColumnType("longtext");
 
                     b.Property<bool>("HasImages")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 

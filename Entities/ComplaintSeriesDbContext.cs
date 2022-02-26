@@ -1,22 +1,18 @@
 namespace WebApi.Entities
 {
+
+    using Microsoft.EntityFrameworkCore.ChangeTracking;
     using Microsoft.EntityFrameworkCore;
-    using Microsoft.EntityFrameworkCore.Metadata.Builders;
     using Microsoft.AspNetCore.Http;
 
     using System.Linq;
-    using System.Security.Claims;
-    using System.Threading.Tasks;
-    using System.Threading;
-    using System.IO;
+    using WebApi;
 
-    public class ComplaintSeriesDbContext : DbContext
+    public class ComplaintSeriesDbContext : BaseContext
     {
-        private IHttpContextAccessor httpContextAccessor;
         public ComplaintSeriesDbContext(DbContextOptions<ComplaintSeriesDbContext> ctxBuilder,
-            IHttpContextAccessor httpContextAccessor) : base(ctxBuilder)
+            IHttpContextAccessor httpContextAccessor) : base(ctxBuilder, httpContextAccessor)
         {
-            this.httpContextAccessor = httpContextAccessor;
         }
         public DbSet<ComplaintSeries> Complaints { get; set; }
         public DbSet<Ticket> Ticket { get; set; }
@@ -38,58 +34,20 @@ namespace WebApi.Entities
             modelBuilder.Entity<CodeLink>()
                 .ToTable("CodeLinkSnapshot");
 
-            AddHierarchicalQueryFilter(modelBuilder.Entity<ComplaintSeries>(), this);
             base.OnModelCreating(modelBuilder);
         }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        protected override void BeforeSave(EntityEntry entityEntry)
         {
-        }
-
-        public override int SaveChanges(bool acceptAllChangesOnSuccess)
-        {
-            this.addDataContext(ChangeTracker);
-            return base.SaveChanges(acceptAllChangesOnSuccess);
-        }
-
-        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
-        {
-            this.addDataContext(ChangeTracker);
-            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
-        }
-
-        private void addDataContext(Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker)
-        {
-            bool isAdmin = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value == "admin";
-
-            foreach (var entityEntry in ChangeTracker.Entries().ToList())
+            if (entityEntry.Entity is Ticket ticket)
             {
-                if (entityEntry.State == EntityState.Added || entityEntry.State == EntityState.Modified)
-                {
-                    // we ensure the separation of data based on clients
-                    if (entityEntry.State == EntityState.Added && entityEntry.Entity is IDataKey dataKey && !isAdmin)
-                        dataKey.DataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName)?.Value;
-                    else if (entityEntry.Entity is IDataKey)
-                        entityEntry.Property("DataKey").IsModified = false;
-                }
-                if (entityEntry.Entity is Ticket ticket)
-                {
-                    entityEntry.Navigation("Images").Load();
-                    ticket.HasImages = ticket.Images.Count() > 0;
+                entityEntry.Navigation("Images").Load();
+                ticket.HasImages = ticket.Images.Count() > 0;
 
-                    var codeLinks = ticket.codeLinks?.ToList();
-                    entityEntry.Navigation("codeLinks").Load();
-                    ticket.codeLinks = codeLinks;
-                }
+                var codeLinks = ticket.codeLinks?.ToList();
+                entityEntry.Navigation("codeLinks").Load();
+                ticket.codeLinks = codeLinks;
             }
-        }
-
-        private static void AddHierarchicalQueryFilter<T>(EntityTypeBuilder<T> builder, ComplaintSeriesDbContext _ctx)
-         where T : class, IDataKey
-        {
-            builder.HasQueryFilter(x =>
-            _ctx.httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role).Value == "admin" ?
-                true : x.DataKey.Equals(_ctx.httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName).Value));
         }
     }
 }
