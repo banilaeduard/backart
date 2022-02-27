@@ -31,7 +31,7 @@ namespace WebApi.Entities
             {
                 var baseFilter = (Expression<Func<Object, bool>>)(_ => filtersDisabled);
                 var tenantFilter = (Expression<Func<ITenant, bool>>)(e => e.TenantId == httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Actor).Value);
-                var dataKeyFilter = (Expression<Func<IDataKey, bool>>)(e => e.DataKey == httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName).Value);
+                var dataKeyFilter = (Expression<Func<IDataKey, bool>>)(e => e.DataKey == httpContextAccessor.HttpContext.User.FindFirst("dataKey").Value);
                 var isAdminDataKey = (Expression<Func<IDataKey, bool>>)(e => httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role).Value == "admin");
 
                 var filters = new List<LambdaExpression>();
@@ -84,7 +84,7 @@ namespace WebApi.Entities
         private void addDataContext(ChangeTracker ChangeTracker)
         {
             var tenant = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Actor).Value;
-            var dataKey = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.GivenName).Value;
+            var dataKey = httpContextAccessor.HttpContext.User.FindFirst("dataKey").Value;
             bool isAdmin = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Role)?.Value == "admin";
 
             foreach (var entityEntry in ChangeTracker.Entries().ToList())

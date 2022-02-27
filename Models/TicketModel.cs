@@ -1,5 +1,6 @@
 ﻿namespace WebApi.Models
 {
+    using System;
     using System.Collections.Generic;
     using WebApi.Entities;
 
@@ -13,6 +14,7 @@
         public List<Image> ToAddImages { get; set; }
         public List<Image> ToDeleteImages { get; set; }
         public List<CodeLink> CodeLinks { get; set; }
+        public DateTime Created { get; set; }
 
         public static TicketModel from(Ticket dbTicket)
         {
@@ -23,7 +25,8 @@
                 Description = dbTicket.Description,
                 hasImages = dbTicket.HasImages,
                 CodeLinks = dbTicket.codeLinks,
-                Images = dbTicket.Images
+                Images = dbTicket.Images,
+                Created = dbTicket.CreatedDate
             };
         }
 

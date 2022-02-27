@@ -10,19 +10,20 @@ namespace WebApi.Controllers
 
     using WebApi.Entities;
     using WebApi.Models;
-    using System.IO;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System;
+    using WebApi.Services;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
     {
         private ComplaintSeriesDbContext complaintSeriesDbContext;
-        public TicketController(ComplaintSeriesDbContext complaintSeriesDbContext,
-        ILogger<TicketController> logger) : base(logger)
+        private IStorageService storageService;
+        public TicketController(
+            ComplaintSeriesDbContext complaintSeriesDbContext,
+            IStorageService storageService,
+            ILogger<TicketController> logger) : base(logger)
         {
             this.complaintSeriesDbContext = complaintSeriesDbContext;
+            this.storageService = storageService;
         }
 
         [HttpGet("{page}/{pageSize}")]
@@ -60,45 +61,18 @@ namespace WebApi.Controllers
             {
                 foreach (var toDelete in ticket.ToDeleteImages)
                 {
-                    this.complaintSeriesDbContext.Entry(new Image() { Id = toDelete.Id }).State = EntityState.Deleted;
-                    FileInfo file = new FileInfo(toDelete.Data);
-                    if (file.Exists) file.Delete();
+                    this.complaintSeriesDbContext.Entry(toDelete).State = EntityState.Deleted;
+                    storageService.Delete(toDelete.Data);
                 }
             }
 
             if (ticket.ToAddImages != null && ticket.ToAddImages.Count > 0)
             {
-                using (HashAlgorithm algorithm = SHA256.Create())
+                foreach (var toAdd in ticket.ToAddImages)
                 {
-                    Func<string, byte[]> hasher = (inputString) => algorithm.ComputeHash(Encoding.UTF8.GetBytes(inputString));
-
-                    foreach (var toAdd in ticket.ToAddImages)
-                    {
-                        var hash = GetHashString(toAdd.Data, hasher);
-                        Console.WriteLine(hash);
-
-                        DirectoryInfo dir = new DirectoryInfo(string.Format("/photos/{0}", hash.Substring(0, 2)));
-
-                        if (!dir.Exists) dir.Create();
-
-                        var file = new FileInfo(Path.Combine(
-                                                dir.FullName, 
-                                                string.Format("{0}{1}", hash, Path.GetExtension(toAdd.Title)
-                                                ))
-                            );
-
-                        if (!file.Exists) // you may not want to overwrite existing files
-                        {
-                            Stream stream = file.OpenWrite();
-                            byte[] _file = Convert.FromBase64String(toAdd.Data);
-                            stream.WriteAsync(_file, 0, _file.Length).Forget(this.logger, () =>
-                                stream.DisposeAsync());
-                        }
-
-                        toAdd.Ticket = dbModel.Tickets[0];
-                        toAdd.Data = file.FullName;
-                        this.complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
-                    }
+                    toAdd.Data = this.storageService.Save(toAdd.Data, toAdd.Title);
+                    toAdd.Ticket = dbModel.Tickets[0];
+                    this.complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
                 }
             }
 
@@ -112,14 +86,6 @@ namespace WebApi.Controllers
                          .AsSplitQuery()
                          .SingleOrDefault(t => t.Id == dbModel.Id)
                          ));
-        }
-        public static string GetHashString(string inputString, Func<string, byte[]> hasher)
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (byte b in hasher(inputString))
-                sb.Append(b.ToString("X2"));
-
-            return sb.ToString();
         }
     }
 }

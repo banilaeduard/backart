@@ -4,12 +4,15 @@
     using WebApi.Entities;
     using System.Linq;
     using System.Text.Json.Serialization;
+    using System;
 
     public class ComplaintSeriesModel
     {
         public int Id { get; set; }
         public string DataKey { get; set; }
         public List<TicketModel> Tickets { get; set; }
+
+        public DateTime Created;
 
         [JsonConstructor]
         private ComplaintSeriesModel() { }
@@ -18,6 +21,7 @@
             this.Id = complaint.Id;
             this.DataKey = complaint.DataKey;
             this.Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
+            this.Created = complaint.CreatedDate;
         }
 
         public ComplaintSeries toDbModel()

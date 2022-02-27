@@ -116,10 +116,10 @@ namespace WebApi.Services
                     Name = user.Name,
                     Id = user.Id,
                     Address = user.Address,
-                    Birth = user.Birth,
                     Email = user.Email,
                     Password = "",
-                    Phone = user.PhoneNumber
+                    Phone = user.PhoneNumber,
+                    DataKey = user.DataKey,
                 });
             }
             return users;
@@ -134,10 +134,10 @@ namespace WebApi.Services
                 Name = user.Name,
                 Id = user.Id,
                 Address = user.Address,
-                Birth = user.Birth,
                 Email = user.Email,
                 Password = "",
-                Phone = user.PhoneNumber
+                Phone = user.PhoneNumber,
+                DataKey = user.DataKey,
             };
         }
 
@@ -157,9 +157,10 @@ namespace WebApi.Services
                     new Claim(ClaimTypes.GivenName, appUser.UserName?.ToString()??""),
                     new Claim(ClaimTypes.MobilePhone, appUser.PhoneNumber?.ToString()??""),
                     new Claim(ClaimTypes.Role, string.Join(",", await _userManager.GetRolesAsync(appUser))?? ""),
-                    new Claim(ClaimTypes.Actor, "cubik")
+                    new Claim(ClaimTypes.Actor, "cubik"),
+                    new Claim("dataKey", appUser.DataKey??"")
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(5),
+                Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);

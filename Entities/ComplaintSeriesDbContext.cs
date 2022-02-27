@@ -6,7 +6,6 @@ namespace WebApi.Entities
     using Microsoft.AspNetCore.Http;
 
     using System.Linq;
-    using WebApi;
 
     public class ComplaintSeriesDbContext : BaseContext
     {

@@ -18,7 +18,7 @@ using WebApi.Helpers;
 using WebApi.Services;
 using WebApi.Entities;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.FileProviders;
 
 namespace BackArt
 {
@@ -37,13 +37,11 @@ namespace BackArt
             var sqlOpt = Configuration["ConnectionStrings:instanceType"];
             switch (sqlOpt)
             {
-                case "mysql": 
-                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]))
-                        .EnableSensitiveDataLogging(); ;
+                case "mysql":
+                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]));
                     return;
                 default:
-                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"])
-                        .EnableSensitiveDataLogging();
+                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
                     return;
             }
         }
@@ -71,9 +69,10 @@ namespace BackArt
             // configure strongly typed settings objects
             var appSettingsSection = Configuration.GetSection("AppSettings");
             services.Configure<AppSettings>(appSettingsSection);
-            services.AddSingleton<AppSettings>(appSettingsSection.Get<AppSettings>());
+            services.AddSingleton(appSettingsSection.Get<AppSettings>());
 
             services.AddSingleton<EmailSender>();
+            services.AddScoped<IStorageService, ImageStorageService>();
             services.AddScoped<IUserService, UserService>();
             services.AddDbContext<ComplaintSeriesDbContext>(options => configureConnectionString(Configuration, options));
             services.AddDbContext<CodeDbContext>(options => configureConnectionString(Configuration, options));
@@ -150,6 +149,7 @@ namespace BackArt
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
+
             app.UseRouting();
 
             app.UseAuthentication();
@@ -160,6 +160,8 @@ namespace BackArt
                 app.UseEndpoints(x => x.MapControllers());
                 endpoints.MapHealthChecks("/health");
             });
+
+
         }
     }
 }
