@@ -10,8 +10,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
 using WebApi.Models;
-using WebApi.Entities;
-using WebApi.Helpers;
+using DataAccess.Entities;
+using core;
 
 namespace WebApi.Services
 {

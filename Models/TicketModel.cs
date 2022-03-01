@@ -2,8 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using WebApi.Entities;
-
+    using DataAccess.Entities;
     public class TicketModel
     {
         public int Id { get; set; }

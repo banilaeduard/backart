@@ -11,8 +11,9 @@ namespace WebApi.Controllers
 
     using WebApi.Services;
     using WebApi.Models;
-    using WebApi.Entities;
+    using DataAccess.Entities;
     using WebApi.Helpers;
+    using BackArt;
 
     public class UsersController : WebApiController2
     {

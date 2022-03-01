@@ -1,7 +1,7 @@
 ﻿namespace WebApi.Models
 {
     using System.Collections.Generic;
-    using WebApi.Entities;
+    using DataAccess.Entities;
     using System.Linq;
     using System.Text.Json.Serialization;
     using System;

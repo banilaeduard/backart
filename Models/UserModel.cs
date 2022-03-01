@@ -1,7 +1,6 @@
 namespace WebApi.Models
 {
-    using System;
-    using WebApi.Entities;
+    using DataAccess.Entities;
 
     public class UserModel
     {

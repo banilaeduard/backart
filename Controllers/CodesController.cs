@@ -7,7 +7,9 @@ namespace WebApi.Controllers
     using System.Collections.Generic;
     using Microsoft.Extensions.Logging;
 
-    using WebApi.Entities;
+
+    using DataAccess.Entities;
+    using DataAccess.Context;
     using System.Linq;
 
     public class CodesController : WebApiController2

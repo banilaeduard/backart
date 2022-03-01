@@ -10,9 +10,11 @@ namespace WebApi.Controllers
     using Microsoft.AspNetCore.WebUtilities;
     using Microsoft.Extensions.Logging;
 
-    using WebApi.Entities;
     using WebApi.Helpers;
     using WebApi.Models;
+    using DataAccess.Entities;
+    using BackArt;
+    using core;
 
     [AllowAnonymous]
     public class CreateAccountController : WebApiController2
@@ -35,7 +37,7 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(UserModel user, [FromQuery] string confirmationUrl)
         {
-            AppIdentityUser appUser = AppIdentityUser.From(user);
+            AppIdentityUser appUser = AppIdentityUserExtension.From(user);
 
             IdentityResult result = await userManager.CreateAsync(appUser, user.Password);
             if (result.Succeeded)

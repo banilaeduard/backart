@@ -8,9 +8,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
-using WebApi.Entities;
 using System.IO;
 using System;
+using DataAccess.Entities;
+using DataAccess.Context;
 
 namespace BackArt
 {
@@ -27,8 +28,7 @@ namespace BackArt
             host.Run();
         }
 
-
-        public static async Task Initialize(System.IServiceProvider serviceProvider)
+        public static async Task Initialize(IServiceProvider serviceProvider)
         {
             // we ensure databases are created and up to date
             var appIdentityDbContex = serviceProvider.GetRequiredService<AppIdentityDbContext>();

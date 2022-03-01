@@ -5,6 +5,24 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="core\**" />
+    <Compile Remove="CronJob\**" />
+    <Compile Remove="DataAccess\**" />
+    <Compile Remove="Storage\**" />
+    <Content Remove="core\**" />
+    <Content Remove="CronJob\**" />
+    <Content Remove="DataAccess\**" />
+    <Content Remove="Storage\**" />
+    <EmbeddedResource Remove="core\**" />
+    <EmbeddedResource Remove="CronJob\**" />
+    <EmbeddedResource Remove="DataAccess\**" />
+    <EmbeddedResource Remove="Storage\**" />
+    <None Remove="core\**" />
+    <None Remove="CronJob\**" />
+    <None Remove="DataAccess\**" />
+    <None Remove="Storage\**" />
+  </ItemGroup>
 <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="3.1.4" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="5.0.11" />
@@ -18,4 +36,11 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.5.1" />
     <PackageReference Include="System.Security.Cryptography.Primitives" Version="4.3.0" />
   </ItemGroup>
+<ItemGroup>
+  <ProjectReference Include="CronJob\CronJob.csproj" />
+  <ProjectReference Include="DataAccess\DataAccess.csproj" />
+</ItemGroup>
+<ItemGroup>
+  <Folder Include="Helpers\" />
+</ItemGroup>
 </Project>

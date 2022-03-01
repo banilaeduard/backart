@@ -13,8 +13,10 @@ namespace WebApi.Controllers
     using Microsoft.AspNetCore.WebUtilities;
 
     using WebApi.Models;
-    using WebApi.Entities;
     using WebApi.Helpers;
+    using DataAccess.Entities;
+    using BackArt;
+    using core;
 
     [Authorize(Roles = "admin")]
     public class UserManagerController : WebApiController2
@@ -33,7 +35,7 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> createUser(UserModel userModel, [FromQuery] string resetUrl)
         {
-            var identityUser = AppIdentityUser.From(userModel);
+            var identityUser = AppIdentityUserExtension.From(userModel);
             var result = await this.userManager.CreateAsync(identityUser);
             if (result.Succeeded)
             {

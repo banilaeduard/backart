@@ -8,9 +8,9 @@ namespace WebApi.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.Extensions.Logging;
 
-    using WebApi.Entities;
+    using DataAccess.Context;
     using WebApi.Models;
-    using WebApi.Services;
+    using Storage;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -33,7 +33,7 @@ namespace WebApi.Controllers
             {
                 count = this.complaintSeriesDbContext.Complaints.Count(),
                 complaints = this.complaintSeriesDbContext.Complaints
-                        .OrderByDescending(t => t.Id)
+                        .OrderByDescending(t => t.CreatedDate)
                         .Include(t => t.Tickets)
                         .ThenInclude(t => t.codeLinks)
                         .Include(t => t.Tickets)

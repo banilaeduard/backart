@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Diagnostics;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -14,37 +13,29 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 
+using Microsoft.Extensions.Hosting;
+
 using WebApi.Helpers;
 using WebApi.Services;
-using WebApi.Entities;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.FileProviders;
+using DataAccess.Entities;
+using DataAccess.Context;
+using CronJob;
+using DataAccess;
+using BackArt.Services;
+using core;
+using Storage;
 
 namespace BackArt
 {
+    public delegate IBaseContextAccesor ServiceResolver(string serviceType);
     public class Startup
     {
-
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
 
         public IConfiguration Configuration { get; }
-
-        private void configureConnectionString(IConfiguration Configuration, DbContextOptionsBuilder options)
-        {
-            var sqlOpt = Configuration["ConnectionStrings:instanceType"];
-            switch (sqlOpt)
-            {
-                case "mysql":
-                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]));
-                    return;
-                default:
-                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"]);
-                    return;
-            }
-        }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -71,12 +62,14 @@ namespace BackArt
             services.Configure<AppSettings>(appSettingsSection);
             services.AddSingleton(appSettingsSection.Get<AppSettings>());
 
+            services.configureCoreProject();
+            services.configureCronJob();
+            services.configureDataAccess(Configuration);
+            services.configureStorage();
+
             services.AddSingleton<EmailSender>();
-            services.AddScoped<IStorageService, ImageStorageService>();
             services.AddScoped<IUserService, UserService>();
-            services.AddDbContext<ComplaintSeriesDbContext>(options => configureConnectionString(Configuration, options));
-            services.AddDbContext<CodeDbContext>(options => configureConnectionString(Configuration, options));
-            services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(Configuration, options));
+
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()
                     .AddDefaultTokenProviders();
@@ -110,6 +103,9 @@ namespace BackArt
                 opts.Password.RequiredLength = 8;
                 opts.SignIn.RequireConfirmedEmail = true;
             });
+          
+            services.AddHostedService<EmailReaderCronJob>();
+            services.AddScoped<IBaseContextAccesor, HttpBaseContextAccesor>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
