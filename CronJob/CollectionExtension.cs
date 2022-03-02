@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using DataAccess.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using MimeKit;
 
 namespace CronJob
@@ -8,6 +9,7 @@ namespace CronJob
             public static IServiceCollection configureCronJob(this IServiceCollection services)
             {
                 services.AddScoped<IProcessor<MimeMessage>, EmailProcessor>();
+                services.AddScoped<IProcessor<ComplaintSeries>, GCalendarServiceProcessor>();
                 return services;
             }
     }

@@ -7,7 +7,7 @@ using MailKit.Search;
 using MimeKit;
 using core;
 
-namespace CronJob
+namespace CronJob.Services.FeedServices
 {
     internal class YahooEmailService
     {
@@ -38,7 +38,7 @@ namespace CronJob
                         if (await processor.shouldProcess(null, uid.Id.ToString()))
                         {
                             var message = client.Inbox.GetMessage(uid);
-                            lastFetched = lastFetched > DateTime.FromFileTime(message.Date.Ticks) ? DateTime.FromFileTime(message.Date.Ticks) : lastFetched;
+                            lastFetched = lastFetched > new DateTime(message.Date.Ticks) ? new DateTime(message.Date.Ticks) : lastFetched;
                             await processor.process(message, uid.Id.ToString());
                             Console.WriteLine("From: {0}", message.From.ToString());
                             Console.WriteLine("Subject: {0}\r\n", message.Subject);

@@ -51,7 +51,7 @@ namespace CronJob
                 if (message.Attachments?.Count() > 0)
                 {
                     var ticket = complaint.Tickets[0];
-                    
+
                     foreach (var attachment in message.Attachments)
                     {
                         var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType.Name;

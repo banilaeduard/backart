@@ -43,7 +43,7 @@
                             var scopedProcessingService =
                                 scope.ServiceProvider
                                     .GetRequiredService<IProcessor<T>>();
-                            await DoWork(cancellationToken, scopedProcessingService);
+                            await DoWork(cancellationToken, scopedProcessingService, scope);
 
                             completed = true;
                         }
@@ -58,8 +58,12 @@
             }
             await Task.CompletedTask;
         }
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            await ScheduleJob(stoppingToken);
+        }
 
-        public abstract Task DoWork(CancellationToken cancellationToken, IProcessor<T> processor);
+        public abstract Task DoWork(CancellationToken cancellationToken, IProcessor<T> processor, IServiceScope scope);
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {

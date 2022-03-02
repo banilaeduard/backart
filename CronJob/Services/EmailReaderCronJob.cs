@@ -6,6 +6,9 @@
     using System.Threading.Tasks;
 
     using core;
+    using CronJob.Services.FeedServices;
+    using Microsoft.Extensions.DependencyInjection;
+
     public class EmailReaderCronJob : CronJobService<MimeMessage>
     {
         static string exp = "0 0/30 * 1/1 * ? *";
@@ -15,14 +18,9 @@
             mailSvc = new YahooEmailService(settings);
         }
 
-        public async override Task DoWork(CancellationToken cancellationToken, IProcessor<MimeMessage> processor)
+        public async override Task DoWork(CancellationToken cancellationToken, IProcessor<MimeMessage> processor, IServiceScope scope)
         {
             await mailSvc.ReadDedMails(processor, cancellationToken);
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            await base.ScheduleJob(stoppingToken);
         }
     }
 }

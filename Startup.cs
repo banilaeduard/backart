@@ -105,6 +105,7 @@ namespace BackArt
             });
           
             services.AddHostedService<EmailReaderCronJob>();
+            services.AddHostedService<EventUpdaterCronJob>();
             services.AddScoped<IBaseContextAccesor, HttpBaseContextAccesor>();
         }
 

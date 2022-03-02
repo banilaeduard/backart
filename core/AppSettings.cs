@@ -9,5 +9,8 @@ namespace core
         public string salt { get; set; }
         public string yapppass { get; set; }
         public string yappuser { get; set; }
+        public string gcalendarkey { get; set; }
+        public string gcalendaruser { get; set; }
+        public string calendarid { get; set; }
     }
 }
