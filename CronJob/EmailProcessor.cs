@@ -17,23 +17,43 @@ namespace CronJob
     internal class EmailProcessor : IProcessor<MimeMessage>
     {
         ComplaintSeriesDbContext complaintSeriesDbContext;
+        AppIdentityDbContext usersDbContext;
         IStorageService storageService;
         public EmailProcessor(
             DbContextOptions<ComplaintSeriesDbContext> ctxBuilder,
             NoFilterBaseContext noFilter,
+            AppIdentityDbContext usersDbContext,
             IStorageService storageService)
         {
-            this.complaintSeriesDbContext = new ComplaintSeriesDbContext(ctxBuilder, noFilter);
+            complaintSeriesDbContext = new ComplaintSeriesDbContext(ctxBuilder, noFilter);
+            this.usersDbContext = usersDbContext;
             this.storageService = storageService;
         }
         public async Task process(MimeMessage message, string id)
         {
             try
             {
+                var email = message.From.Mailboxes?.ToList()[0]?.Address;
+                if (email == null) return;
+
+                var dataKeyLocation = usersDbContext.DataKeyLocation
+                    .Where(t => t.name == email)
+                    .SingleOrDefault();
+
+                if (dataKeyLocation == null)
+                {
+                    dataKeyLocation = new DataKeyLocation()
+                    {
+                        name = email,
+                        locationCode = email
+                    };
+                }
+
                 var composed_id = string.Format("{0}_{1}", id, string.IsNullOrWhiteSpace(message.HtmlBody) ? "text" : "html");
                 var complaint = new ComplaintSeries()
                 {
-                    DataKey = message.From.Mailboxes.ToList()[0].Address,
+                    DataKey = string.IsNullOrEmpty(dataKeyLocation.Id) ? dataKeyLocation : null,
+                    DataKeyId = dataKeyLocation.Id,
                     TenantId = "cubik",
                     Tickets = new List<Ticket>() {
                         new Ticket() {
@@ -83,7 +103,6 @@ namespace CronJob
                 }
 
                 complaintSeriesDbContext.Complaints.Add(complaint);
-
                 await complaintSeriesDbContext.SaveChangesAsync();
             }
             catch (Exception ex)

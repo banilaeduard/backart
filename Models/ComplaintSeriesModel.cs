@@ -12,6 +12,8 @@
         public string DataKey { get; set; }
         public List<TicketModel> Tickets { get; set; }
 
+        public string Status { get; set; }
+
         public DateTime Created;
 
         [JsonConstructor]
@@ -19,9 +21,10 @@
         private ComplaintSeriesModel(ComplaintSeries complaint)
         {
             this.Id = complaint.Id;
-            this.DataKey = complaint.DataKey;
+            this.DataKey = complaint.DataKey?.locationCode;
             this.Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
             this.Created = complaint.CreatedDate;
+            this.Status = complaint.Status;
         }
 
         public ComplaintSeries toDbModel()
@@ -29,8 +32,8 @@
             return new ComplaintSeries()
             {
                 Id = this.Id,
-                DataKey = this.DataKey,
-                Tickets = this.Tickets.Select(ticket => ticket.toDbModel()).ToList()
+                Tickets = this.Tickets.Select(ticket => ticket.toDbModel()).ToList(),
+                Status = this.Status,
             };
         }
 

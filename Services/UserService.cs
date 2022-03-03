@@ -119,7 +119,7 @@ namespace WebApi.Services
                     Email = user.Email,
                     Password = "",
                     Phone = user.PhoneNumber,
-                    DataKey = user.DataKey,
+                    DataKey = user.DataKeyLocation.locationCode,
                 });
             }
             return users;
@@ -137,10 +137,9 @@ namespace WebApi.Services
                 Email = user.Email,
                 Password = "",
                 Phone = user.PhoneNumber,
-                DataKey = user.DataKey,
+                DataKey = user.DataKeyLocation.locationCode,
             };
         }
-
         // helper methods
 
         private async Task<string> generateJwtToken(AppIdentityUser appUser)
@@ -157,8 +156,10 @@ namespace WebApi.Services
                     new Claim(ClaimTypes.GivenName, appUser.UserName?.ToString()??""),
                     new Claim(ClaimTypes.MobilePhone, appUser.PhoneNumber?.ToString()??""),
                     new Claim(ClaimTypes.Role, string.Join(",", await _userManager.GetRolesAsync(appUser))?? ""),
-                    new Claim(ClaimTypes.Actor, "cubik"),
-                    new Claim("dataKey", appUser.DataKey??"")
+                    new Claim(ClaimTypes.Actor, appUser.Tenant??"cubik"),
+                    new Claim("dataKeyLocation", appUser.DataKeyLocation?.locationCode ??""),
+                    new Claim("dataKeyId", appUser.DataKeyLocation?.Id.ToString() ??""),
+                    new Claim("dataKeyName", appUser.DataKeyLocation?.name ??"")
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

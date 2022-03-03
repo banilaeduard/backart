@@ -11,6 +11,7 @@ namespace WebApi.Controllers
     using DataAccess.Context;
     using WebApi.Models;
     using Storage;
+    using DataAccess.Entities;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -34,14 +35,27 @@ namespace WebApi.Controllers
                 count = this.complaintSeriesDbContext.Complaints.Count(),
                 complaints = this.complaintSeriesDbContext.Complaints
                         .OrderByDescending(t => t.CreatedDate)
-                        .Include(t => t.Tickets)
-                        .ThenInclude(t => t.codeLinks)
-                        .Include(t => t.Tickets)
-                        .ThenInclude(t => t.Images)
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
                         .Select(t => ComplaintSeriesModel.from(t))
             });
+        }
+
+        [HttpPost("delete")]
+        public async Task<IActionResult> Delete(ComplaintSeriesModel complaint)
+        {
+            complaintSeriesDbContext.Remove(complaint.toDbModel());
+            await complaintSeriesDbContext.SaveChangesAsync();
+            return Ok(200);
+        }
+
+        [HttpPost("status/{status}")]
+        public async Task<IActionResult> UpdateStatus(ComplaintSeriesModel complaint, string status)
+        {
+            var dbModel = complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id);
+            dbModel.Status = status;
+            await complaintSeriesDbContext.SaveChangesAsync();
+            return Ok(ComplaintSeriesModel.from(complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)));
         }
 
         [HttpPost]
@@ -78,14 +92,8 @@ namespace WebApi.Controllers
 
             await this.complaintSeriesDbContext.SaveChangesAsync();
             return Ok(ComplaintSeriesModel.from(
-                this.complaintSeriesDbContext.Complaints
-                         .Include(t => t.Tickets)
-                         .ThenInclude(t => t.codeLinks)
-                         .Include(t => t.Tickets)
-                         .ThenInclude(t => t.Images)
-                         .AsSplitQuery()
-                         .SingleOrDefault(t => t.Id == dbModel.Id)
-                         ));
+                this.complaintSeriesDbContext.Find<ComplaintSeries>(dbModel.Id))
+                );
         }
     }
 }

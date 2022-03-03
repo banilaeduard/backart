@@ -22,7 +22,7 @@ namespace WebApi.Models
             this.Name = model.Name;
             this.Phone = model.PhoneNumber;
             this.Address = model.Address;
-            this.DataKey = model.DataKey;
+            this.DataKey = model.DataKeyLocation.locationCode;
             return this;
         }
     }

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DataAccess.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Query;
 using System;
@@ -21,14 +22,38 @@ namespace DataAccess.Context
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            bool ignored = false;
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                .Where(e => e.ClrType.GetInterface(typeof(IDataKey).Name) != null))
+            {
+                if (!ignored)
+                {
+                    modelBuilder.Entity<DataKeyLocation>().ToTable("DataKeyLocation", t => t.ExcludeFromMigrations());
+                    ignored = true;
+                }
+
+                modelBuilder.Entity(entityType.ClrType)
+                            .HasOne("DataKey")
+                            .WithMany()
+                            .HasForeignKey("DataKeyId")
+                            .OnDelete(DeleteBehavior.Restrict);
+
+                modelBuilder.Entity(entityType.ClrType)
+                            .Navigation("DataKey")
+                            .AutoInclude();
+            }
+
             foreach (var entityType in modelBuilder.Model.GetEntityTypes()
                 .Where(e => e.ClrType.GetInterface(typeof(ITenant).Name) != null
-                            || e.ClrType.GetInterface(typeof(IDataKey).Name) != null))
+                            || e.ClrType.GetInterface(typeof(IDataKey).Name) != null
+                            || e.ClrType.GetInterface(typeof(ISoftDelete).Name) != null))
             {
                 var baseFilter = (Expression<Func<Object, bool>>)(_ => baseContextAccesor.disableFiltering);
                 var tenantFilter = (Expression<Func<ITenant, bool>>)(e => e.TenantId == baseContextAccesor.TenantId);
-                var dataKeyFilter = (Expression<Func<IDataKey, bool>>)(e => e.DataKey == baseContextAccesor.DataKey);
+                var dataKeyFilter = (Expression<Func<IDataKey, bool>>)(e => e.DataKey.locationCode == baseContextAccesor.DataKeyLocation ||
+                                                                            e.DataKey.Id == baseContextAccesor.DataKeyId);
                 var isAdminDataKey = (Expression<Func<IDataKey, bool>>)(e => baseContextAccesor.IsAdmin);
+                var softDeleted = (Expression<Func<ISoftDelete, bool>>)(e => e.isDeleted != true);
 
                 var filters = new List<LambdaExpression>();
 
@@ -36,7 +61,8 @@ namespace DataAccess.Context
                     filters.Add(tenantFilter);
                 if (typeof(IDataKey).IsAssignableFrom(entityType.ClrType))
                     filters.Add(CombineQueryFilters(entityType.ClrType, isAdminDataKey, new List<LambdaExpression>() { dataKeyFilter }));
-
+                if (typeof(ISoftDelete).IsAssignableFrom(entityType.ClrType))
+                    filters.Add(softDeleted);
                 if (filters.Count > 0)
                 {
                     var queryFilter = CombineQueryFilters(entityType.ClrType, baseFilter, filters);
@@ -51,7 +77,7 @@ namespace DataAccess.Context
         {
             var newParam = Expression.Parameter(entityType);
 
-            var andAlsoExprBase = (Expression<Func<Object, bool>>)(_ => true);
+            var andAlsoExprBase = (Expression<Func<object, bool>>)(_ => true);
             var andAlsoExpr = ReplacingExpressionVisitor.Replace(andAlsoExprBase.Parameters.Single(), newParam, andAlsoExprBase.Body);
             foreach (var expressionBase in andAlsoExpressions)
             {
@@ -85,7 +111,8 @@ namespace DataAccess.Context
                 if (!baseContextAccesor.disableFiltering)
                 {
                     entityEntry.handleCreatedUpdated();
-                    entityEntry.handleDataKey(baseContextAccesor.DataKey, baseContextAccesor.IsAdmin);
+                    entityEntry.handleIsDeleted();
+                    entityEntry.handleDataKey(baseContextAccesor);
                     entityEntry.handleTennant(baseContextAccesor.TenantId);
                 }
             }

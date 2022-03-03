@@ -7,6 +7,8 @@ namespace DataAccess.Entities
         public string Name { get; set; }
         public string Address { get; set; }
         public List<RefreshToken> RefreshTokens { get; set; }
-        public string DataKey { get; set; }
+        public DataKeyLocation DataKeyLocation { get; set; }
+        public string DataKeyLocationId { get; set; }
+        public string Tenant { get; set; }
     }
 }

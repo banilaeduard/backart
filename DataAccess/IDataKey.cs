@@ -1,7 +1,10 @@
+using DataAccess.Entities;
+
 namespace DataAccess
 {
     public interface IDataKey
     {
-        string DataKey { get; set; }
+        string DataKeyId { get; set; }
+        DataKeyLocation DataKey { get; set; }
     }
 }

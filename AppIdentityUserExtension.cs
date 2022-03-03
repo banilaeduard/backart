@@ -10,7 +10,10 @@ namespace BackArt
             user.Name = userModel.Name;
             user.PhoneNumber = userModel.Phone;
             user.Address = userModel.Address;
-            user.DataKey = userModel.DataKey;
+            if (user.DataKeyLocation != null)
+            {
+                user.DataKeyLocation.locationCode = userModel.DataKey;
+            }
             return user;
         }
 
@@ -20,7 +23,6 @@ namespace BackArt
             {
                 UserName = userModel.UserName ?? userModel.Email,
                 Email = userModel.Email,
-                DataKey = userModel.DataKey,
             }.fromUserModel(userModel);
         }
     }

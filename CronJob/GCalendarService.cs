@@ -16,6 +16,7 @@ namespace CronJob
     {
         private AppSettings appSettings;
         private CalendarService service;
+        private string eventIdFormat = "calendarcomplaintseries{0}";
         public GCalendarServiceProcessor(AppSettings appSettings)
         {
             this.appSettings = appSettings;
@@ -34,57 +35,61 @@ namespace CronJob
 
         public Task<bool> shouldProcess(ComplaintSeries message, string id)
         {
-            var result = service.Events.Instances(appSettings.calendarid, "complaintseries" + id).Execute();
-            return Task.FromResult(result.Items?.Count > 0 ? false : true);
+            var result = service.Events.Instances(appSettings.calendarid, string.Format(eventIdFormat, id)).Execute();
+            return Task.FromResult(result.Items?.Count <= 0 && message.Status == Constants.COMPLAINT_SUCCESS
+                || result.Items?.Count > 0 && message.Status == Constants.COMPLAINT_REJECT);
         }
 
         public async Task process(ComplaintSeries message, string id)
         {
-            var myEvent = new Event()
+            if (message.Status == Constants.COMPLAINT_REJECT)
             {
-                Id = "complaintseries" + id,
-                Summary = message.DataKey,
-                Location = "Reclamatii",
-                Description = message.Tickets[0]?.Description,
-                Start = new EventDateTime()
+                try
                 {
-                    Date = message.CreatedDate.ToString("yyyy-MM-dd")
-                },
-                End = new EventDateTime()
-                {
-                    Date = message.CreatedDate.ToString("yyyy-MM-dd")
-                },
-                Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=14" },
-                Attachments = new List<EventAttachment>()
-            };
-            foreach (var attachment in message.Tickets[0]?.Images)
-            {
-                myEvent.Attachments.Add(new EventAttachment()
-                {
-                    Title = attachment.Title,
-                    FileUrl = attachment.Data
-                });
-            }
-            var InsertRequest = service.Events.Insert(myEvent, appSettings.calendarid);
-
-            try
-            {
-                myEvent = InsertRequest.Execute();
-            }
-            catch (Exception)
-            {
-                /*try
-                {
-                    service.Events.Update(myEvent, appSettings.calendarid, myEvent.Id).Execute();
-                    Console.WriteLine("Insert/Update new Event ");
-                    Console.Read();
-
+                    service.Events.Delete(appSettings.calendarid, string.Format(eventIdFormat, id)).Execute();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    Console.WriteLine("can't Insert/Update new Event ");
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else
+            {
+                var myEvent = new Event()
+                {
+                    Id = string.Format(eventIdFormat, id),
+                    Summary = message.DataKey?.locationCode,
+                    Location = "Reclamatii",
+                    Description = message.Tickets[0]?.Description,
+                    Start = new EventDateTime()
+                    {
+                        Date = message.CreatedDate.ToString("yyyy-MM-dd")
+                    },
+                    End = new EventDateTime()
+                    {
+                        Date = message.CreatedDate.ToString("yyyy-MM-dd")
+                    },
+                    Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=14" },
+                    Attachments = new List<EventAttachment>()
+                };
+                foreach (var attachment in message.Tickets[0]?.Images)
+                {
+                    myEvent.Attachments.Add(new EventAttachment()
+                    {
+                        Title = attachment.Title,
+                        FileUrl = attachment.Data
+                    });
+                }
+                var InsertRequest = service.Events.Insert(myEvent, appSettings.calendarid);
 
-                }*/
+                try
+                {
+                    myEvent = InsertRequest.Execute();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             }
         }
 

@@ -21,8 +21,6 @@ namespace CronJob.Services.FeedServices
         public async Task FeedComplaints(IProcessor<ComplaintSeries> processor, CancellationToken cancellationToken)
         {
             foreach (var complaint in complaintService.Complaints
-                                                .Include(t => t.Tickets).ThenInclude(t => t.Images)
-                                                .Include(t => t.Tickets).ThenInclude(t => t.codeLinks)
                                                 .Where(t => t.CreatedDate > DateTime.Now.AddDays(-14)).OrderBy(t => t.CreatedDate))
             {
                 if (cancellationToken.IsCancellationRequested)

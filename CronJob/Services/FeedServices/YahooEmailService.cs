@@ -11,7 +11,6 @@ namespace CronJob.Services.FeedServices
 {
     internal class YahooEmailService
     {
-        static DateTime lastFetched = DateTime.MinValue;
         private AppSettings appSettings;
         public YahooEmailService(AppSettings appSettings)
         {
@@ -27,7 +26,11 @@ namespace CronJob.Services.FeedServices
                     client.Authenticate(appSettings.yappuser, appSettings.yapppass);
 
                     client.Inbox.Open(FolderAccess.ReadOnly);
-                    var uids = client.Inbox.Search(SearchQuery.FromContains("dedeman.ro"));
+                    var uids = client.Inbox.Search(
+                        SearchQuery.FromContains("dedeman.ro").And(
+                            SearchQuery.DeliveredAfter(DateTime.Now.AddDays(-7))
+                            )
+                        );
                     foreach (var uid in uids)
                     {
                         if (cancellationToken.IsCancellationRequested)
@@ -38,7 +41,6 @@ namespace CronJob.Services.FeedServices
                         if (await processor.shouldProcess(null, uid.Id.ToString()))
                         {
                             var message = client.Inbox.GetMessage(uid);
-                            lastFetched = lastFetched > new DateTime(message.Date.Ticks) ? new DateTime(message.Date.Ticks) : lastFetched;
                             await processor.process(message, uid.Id.ToString());
                             Console.WriteLine("From: {0}", message.From.ToString());
                             Console.WriteLine("Subject: {0}\r\n", message.Subject);

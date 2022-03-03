@@ -104,8 +104,6 @@ namespace BackArt
                 opts.SignIn.RequireConfirmedEmail = true;
             });
           
-            services.AddHostedService<EmailReaderCronJob>();
-            services.AddHostedService<EventUpdaterCronJob>();
             services.AddScoped<IBaseContextAccesor, HttpBaseContextAccesor>();
         }
 

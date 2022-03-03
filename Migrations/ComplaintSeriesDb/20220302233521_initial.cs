@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
-    public partial class initialcomplaint : Migration
+    public partial class initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -38,16 +38,25 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    DataKey = table.Column<string>(type: "longtext", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     TenantId = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Status = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    isDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    DataKeyId = table.Column<string>(type: "varchar(255)", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Complaints", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Complaints_DataKeyLocation_DataKeyId",
+                        column: x => x.DataKeyId,
+                        principalTable: "DataKeyLocation",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -155,6 +164,11 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 name: "IX_CodeLinkSnapshot_TicketId",
                 table: "CodeLinkSnapshot",
                 column: "TicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Complaints_DataKeyId",
+                table: "Complaints",
+                column: "DataKeyId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Image_TicketId",

@@ -1,6 +1,5 @@
 namespace DataAccess.Context
 {
-
     using Microsoft.EntityFrameworkCore.ChangeTracking;
     using Microsoft.EntityFrameworkCore;
 
@@ -32,6 +31,15 @@ namespace DataAccess.Context
 
             modelBuilder.Entity<CodeLink>()
                 .ToTable("CodeLinkSnapshot");
+
+            modelBuilder.Entity<ComplaintSeries>()
+                .Navigation<Ticket>(t => t.Tickets).AutoInclude();
+
+            modelBuilder.Entity<Ticket>()
+                .Navigation<Image>(t => t.Images).AutoInclude();
+
+            modelBuilder.Entity<Ticket>()
+                .Navigation<CodeLink>(t => t.codeLinks).AutoInclude();
 
             base.OnModelCreating(modelBuilder);
         }

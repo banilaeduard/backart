@@ -22,15 +22,37 @@ namespace DataAccess
             }
         }
 
-        internal static void handleDataKey(this EntityEntry entityEntry, string key, bool isAdmin)
+        internal static void handleDataKey(this EntityEntry entityEntry, IBaseContextAccesor accesor)
         {
             // we ensure the separation of data based on clients
             if (entityEntry.Entity is IDataKey dataKey)
             {
-                if (entityEntry.State == EntityState.Added && !isAdmin)
-                    dataKey.DataKey = key;
+                if (entityEntry.State == EntityState.Added)
+                    dataKey.DataKeyId = accesor.DataKeyId;
                 else
-                    entityEntry.Property("DataKey").IsModified = false;
+                {
+                    entityEntry.Property("DataKeyId").IsModified = false;
+                    entityEntry.Navigation("DataKey").IsModified = false;
+                }
+            }
+        }
+
+        internal static void handleIsDeleted(this EntityEntry entityEntry)
+        {
+            // we ensure the separation of data based on clients
+            if (entityEntry.Entity is ISoftDelete softDelete)
+            {
+                if (entityEntry.State == EntityState.Deleted)
+                {
+                    foreach(var prop in entityEntry.Properties)
+                    {
+                        prop.IsModified = false;
+                    }
+                    softDelete.isDeleted = true;
+                    entityEntry.State = EntityState.Modified;
+                }
+                else
+                    entityEntry.Property("isDeleted").IsModified = false;
             }
         }
 

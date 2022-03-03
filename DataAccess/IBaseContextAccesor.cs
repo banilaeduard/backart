@@ -3,7 +3,9 @@
     public interface IBaseContextAccesor
     {
         string TenantId { get; }
-        string DataKey { get; }
+        string DataKeyLocation { get; }
+        string DataKeyName { get; }
+        string DataKeyId { get; }
         bool IsAdmin { get; }
         bool disableFiltering { get; }
     }

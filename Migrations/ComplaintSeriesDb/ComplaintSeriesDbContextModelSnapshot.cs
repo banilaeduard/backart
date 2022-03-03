@@ -3,6 +3,7 @@ using System;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
@@ -16,7 +17,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 .HasAnnotation("Relational:MaxIdentifierLength", 64)
                 .HasAnnotation("ProductVersion", "5.0.11");
 
-            modelBuilder.Entity("WebApi.Entities.CodeAttribute", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeAttribute", b =>
                 {
                     b.Property<string>("Tag")
                         .HasColumnType("varchar(255)");
@@ -39,7 +40,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.ToTable("CodeAttributeSnapshot");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -87,7 +88,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.ToTable("CodeLinkSnapshot");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.ComplaintSeries", b =>
+            modelBuilder.Entity("DataAccess.Entities.ComplaintSeries", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -96,7 +97,10 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("DataKey")
+                    b.Property<string>("DataKeyId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Status")
                         .HasColumnType("longtext");
 
                     b.Property<string>("TenantId")
@@ -105,12 +109,33 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<bool>("isDeleted")
+                        .HasColumnType("tinyint(1)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("DataKeyId");
 
                     b.ToTable("Complaints");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Image", b =>
+            modelBuilder.Entity("DataAccess.Entities.DataKeyLocation", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("locationCode")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("name")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataKeyLocation", t => t.ExcludeFromMigrations());
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Image", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -138,7 +163,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.ToTable("Image");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Ticket", b =>
+            modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -169,20 +194,30 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.ToTable("Ticket");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
-                    b.HasOne("WebApi.Entities.CodeLink", null)
+                    b.HasOne("DataAccess.Entities.CodeLink", null)
                         .WithMany("Children")
                         .HasForeignKey("CodeLinkId");
 
-                    b.HasOne("WebApi.Entities.Ticket", null)
+                    b.HasOne("DataAccess.Entities.Ticket", null)
                         .WithMany("codeLinks")
                         .HasForeignKey("TicketId");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Image", b =>
+            modelBuilder.Entity("DataAccess.Entities.ComplaintSeries", b =>
                 {
-                    b.HasOne("WebApi.Entities.Ticket", "Ticket")
+                    b.HasOne("DataAccess.Entities.DataKeyLocation", "DataKey")
+                        .WithMany()
+                        .HasForeignKey("DataKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DataKey");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Image", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Ticket", "Ticket")
                         .WithMany("Images")
                         .HasForeignKey("TicketId")
                         .OnDelete(DeleteBehavior.ClientCascade)
@@ -191,24 +226,24 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Navigation("Ticket");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Ticket", b =>
+            modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
-                    b.HasOne("WebApi.Entities.ComplaintSeries", null)
+                    b.HasOne("DataAccess.Entities.ComplaintSeries", null)
                         .WithMany("Tickets")
                         .HasForeignKey("ComplaintSeriesId");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
                     b.Navigation("Children");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.ComplaintSeries", b =>
+            modelBuilder.Entity("DataAccess.Entities.ComplaintSeries", b =>
                 {
                     b.Navigation("Tickets");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Ticket", b =>
+            modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
                     b.Navigation("codeLinks");
 

@@ -161,8 +161,8 @@ namespace WebApi.Controllers
             var identityUser = await this._userManager.FindByEmailAsync(userModel.Email);
             if (identityUser == null) return NotFound();
 
-            var tempKey = identityUser.DataKey;
-            identityUser.fromUserModel(userModel).DataKey = tempKey;
+/*            var tempKey = identityUser.DataKey;
+            identityUser.fromUserModel(userModel).DataKey = tempKey;*/
             var result = await this._userManager.UpdateAsync(identityUser);
             if (result.Succeeded)
             {

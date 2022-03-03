@@ -4,10 +4,14 @@
     {
         public string TenantId => "";
 
-        public string DataKey => "";
-
         public bool IsAdmin => false;
 
         public bool disableFiltering => true;
+
+        public string DataKeyLocation => "";
+
+        public string DataKeyName => "";
+
+        public string DataKeyId => "";
     }
 }

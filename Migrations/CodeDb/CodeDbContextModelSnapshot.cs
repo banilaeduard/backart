@@ -3,6 +3,7 @@ using System;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackArt.Migrations.CodeDb
 {
@@ -16,7 +17,7 @@ namespace BackArt.Migrations.CodeDb
                 .HasAnnotation("Relational:MaxIdentifierLength", 64)
                 .HasAnnotation("ProductVersion", "5.0.11");
 
-            modelBuilder.Entity("WebApi.Entities.CodeAttribute", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeAttribute", b =>
                 {
                     b.Property<string>("Tag")
                         .HasColumnType("varchar(255)");
@@ -39,7 +40,7 @@ namespace BackArt.Migrations.CodeDb
                     b.ToTable("CodeAttribute");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -82,14 +83,14 @@ namespace BackArt.Migrations.CodeDb
                     b.ToTable("Codes");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
-                    b.HasOne("WebApi.Entities.CodeLink", null)
+                    b.HasOne("DataAccess.Entities.CodeLink", null)
                         .WithMany("Children")
                         .HasForeignKey("CodeLinkId");
                 });
 
-            modelBuilder.Entity("WebApi.Entities.CodeLink", b =>
+            modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
                     b.Navigation("Children");
                 });
