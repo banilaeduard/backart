@@ -1,4 +1,5 @@
-﻿using CronJob.Services.FeedServices;
+﻿using core;
+using CronJob.Services.FeedServices;
 using DataAccess;
 using DataAccess.Context;
 using DataAccess.Entities;
@@ -12,8 +13,7 @@ namespace CronJob
 {
     public class EventUpdaterCronJob : CronJobService<ComplaintSeries>
     {
-        static string exp = "0 0/55 * 1/1 * ? *";
-        public EventUpdaterCronJob(IServiceProvider services) : base(exp, services)
+        public EventUpdaterCronJob(IServiceProvider services, AppSettings appsetting) : base(appsetting.calreccurencepattern, services)
         {
         }
         public override async Task DoWork(CancellationToken cancellationToken, IProcessor<ComplaintSeries> processor, IServiceScope scope)

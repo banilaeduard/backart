@@ -30,11 +30,12 @@ namespace CronJob.Services.FeedServices
 
                 if (await processor.shouldProcess(complaint, complaint.Id.ToString()))
                 {
+                    Console.WriteLine("Processing: {0}\r\n", complaint.DataKey?.locationCode);
                     await processor.process(complaint, complaint.Id.ToString());
                 }
                 else
                 {
-                    Console.WriteLine("Skipping: {0}\r\n", complaint.Id);
+                    Console.WriteLine("Skipping complaint feed: {0}\r\n", complaint.DataKey?.locationCode);
                 }
             }
         }

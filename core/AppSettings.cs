@@ -12,5 +12,7 @@ namespace core
         public string gcalendarkey { get; set; }
         public string gcalendaruser { get; set; }
         public string calendarid { get; set; }
+        public string calreccurencepattern { get; set; }
+        public string mailreccurencepattern { get; set; }
     }
 }

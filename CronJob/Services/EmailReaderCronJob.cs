@@ -11,9 +11,8 @@
 
     public class EmailReaderCronJob : CronJobService<MimeMessage>
     {
-        static string exp = "0 0/35 * 1/1 * ? *";
         YahooEmailService mailSvc;
-        public EmailReaderCronJob(IServiceProvider services, AppSettings settings) : base(exp, services)
+        public EmailReaderCronJob(IServiceProvider services, AppSettings settings) : base(settings.mailreccurencepattern, services)
         {
             mailSvc = new YahooEmailService(settings);
         }

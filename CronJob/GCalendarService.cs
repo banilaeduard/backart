@@ -16,7 +16,7 @@ namespace CronJob
     {
         private AppSettings appSettings;
         private CalendarService service;
-        private string eventIdFormat = "calendarcomplaintseries{0}";
+        private string eventIdFormat = "casalcosdmpserq{0}";
         public GCalendarServiceProcessor(AppSettings appSettings)
         {
             this.appSettings = appSettings;
@@ -36,17 +36,20 @@ namespace CronJob
         public Task<bool> shouldProcess(ComplaintSeries message, string id)
         {
             var result = service.Events.Instances(appSettings.calendarid, string.Format(eventIdFormat, id)).Execute();
-            return Task.FromResult(result.Items?.Count <= 0 && message.Status == Constants.COMPLAINT_SUCCESS
-                || result.Items?.Count > 0 && message.Status == Constants.COMPLAINT_REJECT);
+            return Task.FromResult(
+                (message.Status != Constants.COMPLAINT_SUCCESS || message.isDeleted) && result.Items.Count > 0
+                ||
+                message.Status == Constants.COMPLAINT_SUCCESS && !message.isDeleted && result.Items.Count == 0);
         }
 
         public async Task process(ComplaintSeries message, string id)
         {
-            if (message.Status == Constants.COMPLAINT_REJECT)
+            if (message.Status == Constants.COMPLAINT_REJECT
+                || message.isDeleted)
             {
                 try
                 {
-                    service.Events.Delete(appSettings.calendarid, string.Format(eventIdFormat, id)).Execute();
+                    var test = service.Events.Delete(appSettings.calendarid, string.Format(eventIdFormat, id)).Execute();
                 }
                 catch (Exception ex)
                 {
@@ -59,19 +62,22 @@ namespace CronJob
                 {
                     Id = string.Format(eventIdFormat, id),
                     Summary = message.DataKey?.locationCode,
-                    Location = "Reclamatii",
+                    Location = "Targoviste, Romania",
                     Description = message.Tickets[0]?.Description,
                     Start = new EventDateTime()
                     {
-                        Date = message.CreatedDate.ToString("yyyy-MM-dd")
+                        Date = DateTime.Now.ToString("yyyy-MM-dd")
                     },
                     End = new EventDateTime()
                     {
-                        Date = message.CreatedDate.ToString("yyyy-MM-dd")
+                        Date = DateTime.Now.ToString("yyyy-MM-dd")
                     },
-                    Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=14" },
-                    Attachments = new List<EventAttachment>()
+                    Recurrence = new List<string>
+                    { String.Format("RRULE:FREQ=DAILY;UNTIL={0};INTERVAL=2", DateTime.Now.AddDays(8).ToString("yyyyMMdd")) },
+                    Attachments = new List<EventAttachment>(),
+                    ColorId = new Random().Next(11).ToString()
                 };
+
                 foreach (var attachment in message.Tickets[0]?.Images)
                 {
                     myEvent.Attachments.Add(new EventAttachment()
@@ -80,14 +86,21 @@ namespace CronJob
                         FileUrl = attachment.Data
                     });
                 }
-                var InsertRequest = service.Events.Insert(myEvent, appSettings.calendarid);
 
                 try
                 {
-                    myEvent = InsertRequest.Execute();
+                    myEvent = service.Events.Insert(myEvent, appSettings.calendarid).Execute();
                 }
                 catch (Exception ex)
                 {
+                    try
+                    {
+                        myEvent = service.Events.Update(myEvent, appSettings.calendarid, myEvent.Id).Execute();
+                    }
+                    catch (Exception ex2)
+                    {
+                        Console.WriteLine(ex2.Message);
+                    }
                     Console.WriteLine(ex.Message);
                 }
             }
