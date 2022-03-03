@@ -11,6 +11,7 @@ using DataAccess.Context;
 using Storage;
 using System.IO;
 using MimeKit;
+using System.Text.RegularExpressions;
 
 namespace CronJob
 {
@@ -19,6 +20,8 @@ namespace CronJob
         ComplaintSeriesDbContext complaintSeriesDbContext;
         AppIdentityDbContext usersDbContext;
         IStorageService storageService;
+        System.Text.RegularExpressions.Regex regex =
+            new System.Text.RegularExpressions.Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
         public EmailProcessor(
             DbContextOptions<ComplaintSeriesDbContext> ctxBuilder,
             NoFilterBaseContext noFilter,
@@ -58,7 +61,7 @@ namespace CronJob
                     Tickets = new List<Ticket>() {
                         new Ticket() {
                             CodeValue = composed_id,
-                            Description = message.HtmlBody ?? message.TextBody,
+                            Description = string.IsNullOrEmpty(message.HtmlBody) ? message.TextBody : regex.Replace(message.HtmlBody, ""),
                             Images = new List<Image>(),
                             CreatedDate = new DateTime(message.Date.Ticks),
                             UpdatedDate = new DateTime(message.ResentDate.Ticks),

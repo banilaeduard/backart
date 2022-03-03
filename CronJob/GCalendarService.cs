@@ -63,7 +63,7 @@ namespace CronJob
                     Id = string.Format(eventIdFormat, id),
                     Summary = message.DataKey?.locationCode,
                     Location = "Targoviste, Romania",
-                    Description = message.Tickets[0]?.Description,
+                    Description = message.Tickets[0]?.Description.Replace("\n", " ").Replace("\r", " "),
                     Start = new EventDateTime()
                     {
                         Date = DateTime.Now.ToString("yyyy-MM-dd")
