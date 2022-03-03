@@ -19,6 +19,7 @@ namespace DataAccess.Entities
         public DateTime UpdatedDate { get; set; }
         public string TenantId { get; set; }
         public string Status { get; set; }
+        public string NrComanda { get; set; }
         public bool isDeleted { get; set; }
         public string DataKeyId { get; set; }
     }

@@ -100,6 +100,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("DataKeyId")
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("NrComanda")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Status")
                         .HasColumnType("longtext");
 
@@ -122,6 +125,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
             modelBuilder.Entity("DataAccess.Entities.DataKeyLocation", b =>
                 {
                     b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("varchar(255)");
 
                     b.Property<string>("locationCode")

@@ -78,24 +78,22 @@ namespace CronJob
 
                         using (var stream = new MemoryStream())
                         {
-                            if (attachment is MessagePart)
-                            {
-                                var rfc822 = (MessagePart)attachment;
+                          if (attachment is MessagePart) {
+                                var part = (MessagePart) attachment;
 
-                                rfc822.Message.WriteTo(stream);
-                            }
-                            else
-                            {
-                                var part = (MimePart)attachment;
+                                part.Message.WriteTo (stream);
+                            } else {
+                                var part = (MimePart) attachment;
 
-                                part.Content.DecodeTo(stream);
+                                part.Content.DecodeTo (stream);
                             }
+
                             var img = new Image()
                             {
                                 Title = fileName
-                            };
+                            }; await attachment.WriteToAsync(stream);
 
-                            img.Data = storageService.Save(Convert.ToBase64String(stream.ToArray()), fileName);
+                            img.Data = storageService.Save(stream.ToArray(), fileName);
                             img.Ticket = ticket;
                             this.complaintSeriesDbContext.Entry(img).State = EntityState.Added;
                         }

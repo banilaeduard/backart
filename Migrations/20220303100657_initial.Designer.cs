@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BackArt.Migrations
 {
     [DbContext(typeof(AppIdentityDbContext))]
-    [Migration("20220302233943_initial")]
+    [Migration("20220303100657_initial")]
     partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

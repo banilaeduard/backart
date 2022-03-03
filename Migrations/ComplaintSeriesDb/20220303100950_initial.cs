@@ -44,6 +44,8 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Status = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    NrComanda = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     isDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     DataKeyId = table.Column<string>(type: "varchar(255)", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4")

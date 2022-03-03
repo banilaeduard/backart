@@ -84,7 +84,7 @@ namespace WebApi.Controllers
             {
                 foreach (var toAdd in ticket.ToAddImages)
                 {
-                    toAdd.Data = this.storageService.Save(toAdd.Data, toAdd.Title);
+                    toAdd.Data = this.storageService.SaveBase64(toAdd.Data, toAdd.Title);
                     toAdd.Ticket = dbModel.Tickets[0];
                     this.complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
                 }

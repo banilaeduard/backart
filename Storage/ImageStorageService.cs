@@ -41,9 +41,14 @@
             return sb.ToString();
         }
 
-        public string Save(string path, string name)
+        public string SaveBase64(string base64, string name)
         {
-            var hash = ProbePath(Encoding.UTF8.GetBytes(path));
+            return Save(Convert.FromBase64String(base64), name);
+        }
+
+        public string Save(byte[] content, string name)
+        {
+            var hash = ProbePath(content);
             DirectoryInfo dir = new DirectoryInfo(string.Format("{0}/{1}", StoragePath, hash.Substring(0, 2)));
 
             if (!dir.Exists) dir.Create();
@@ -56,12 +61,9 @@
 
             if (!file.Exists) // you may not want to overwrite existing files
             {
-                using (Stream stream = file.OpenWrite())
-                {
-                    byte[] _file = Convert.FromBase64String(path);
-                    stream.WriteAsync(_file, 0, _file.Length).Forget(logger, () =>
-                        stream.DisposeAsync());
-                }
+                Stream stream = file.OpenWrite();
+                stream.WriteAsync(content, 0, content.Length).Forget(logger, () =>
+                      stream.DisposeAsync());
             }
             return file.FullName;
         }
