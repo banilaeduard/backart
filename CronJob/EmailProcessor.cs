@@ -20,8 +20,7 @@ namespace CronJob
         ComplaintSeriesDbContext complaintSeriesDbContext;
         AppIdentityDbContext usersDbContext;
         IStorageService storageService;
-        System.Text.RegularExpressions.Regex regex =
-            new System.Text.RegularExpressions.Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
+        Regex regex = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
         public EmailProcessor(
             DbContextOptions<ComplaintSeriesDbContext> ctxBuilder,
             NoFilterBaseContext noFilter,
@@ -115,8 +114,8 @@ namespace CronJob
         public async Task<bool> shouldProcess(MimeMessage _, string id)
         {
             return await Task.FromResult(
-                complaintSeriesDbContext.Complaints
-                                .Where(t => t.Tickets.Any(t => t.CodeValue.StartsWith(id))).Count() == 0
+                complaintSeriesDbContext.Ticket
+                                .Where(t => t.CodeValue.StartsWith(id)).Count() == 0
                 );
         }
     }

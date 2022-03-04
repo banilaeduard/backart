@@ -8,6 +8,7 @@ using Google.Apis.Services;
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace CronJob
@@ -17,6 +18,7 @@ namespace CronJob
         private AppSettings appSettings;
         private CalendarService service;
         private string eventIdFormat = "casalcosdmpserq{0}";
+        private Regex regex = new Regex(@"\r\n?|\n|<p>|</p>");
         public GCalendarServiceProcessor(AppSettings appSettings)
         {
             this.appSettings = appSettings;
@@ -63,7 +65,7 @@ namespace CronJob
                     Id = string.Format(eventIdFormat, id),
                     Summary = message.DataKey?.locationCode,
                     Location = "Targoviste, Romania",
-                    Description = message.Tickets[0]?.Description.Replace("\n", " ").Replace("\r", " "),
+                    Description = regex.Replace(message.Tickets[0]?.Description, " "),
                     Start = new EventDateTime()
                     {
                         Date = DateTime.Now.ToString("yyyy-MM-dd")
