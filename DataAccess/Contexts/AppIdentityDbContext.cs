@@ -49,15 +49,39 @@ namespace DataAccess.Context
                 {
                     if (entityEntry.State == EntityState.Added)
                     {
+                        // we sanitize the location based on our logic
+
                         user.DataKeyLocationId = user.UserName;
+
+                        var prevDataKey = user.DataKeyLocation;
+                        if (user.DataKeyLocation != null)
+                        {
+                            user.DataKeyLocation = null;
+                            entityEntry.Navigation("DataKeyLocation").IsLoaded = false;
+                        }
                         entityEntry.Navigation("DataKeyLocation").Load();
                         if (entityEntry.Navigation("DataKeyLocation").CurrentValue == null)
                         {
                             user.DataKeyLocation = new DataKeyLocation()
                             {
-                                locationCode = user.UserName,
+                                locationCode = prevDataKey?.locationCode ?? user.UserName,
                                 name = user.UserName,
                             };
+                        }
+                        else
+                        {
+                            user.DataKeyLocation.locationCode = prevDataKey?.locationCode ?? user.DataKeyLocation.locationCode;
+                        }
+
+                        if (prevDataKey != null)
+                        {
+                            ChangeTracker.Entries<DataKeyLocation>().ToList().ForEach(t =>
+                            {
+                                if (t.Entity == prevDataKey)
+                                {
+                                    t.State = EntityState.Detached;
+                                }
+                            });
                         }
                     }
                     else

@@ -14,6 +14,14 @@ namespace BackArt
             {
                 user.DataKeyLocation.locationCode = userModel.DataKey;
             }
+            else
+            {
+                user.DataKeyLocation = new DataKeyLocation()
+                {
+                    name = userModel.UserName,
+                    locationCode = userModel.DataKey
+                };
+            }
             return user;
         }
 
