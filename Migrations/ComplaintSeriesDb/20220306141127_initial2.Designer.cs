@@ -3,14 +3,16 @@ using System;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
     [DbContext(typeof(ComplaintSeriesDbContext))]
-    partial class ComplaintSeriesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220306141127_initial2")]
+    partial class initial2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

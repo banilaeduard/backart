@@ -17,10 +17,9 @@ namespace DataAccess.Context
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Image>()
-                .Ignore(t => t.Extension)
+            modelBuilder.Entity<Attachment>()
                 .HasOne(p => p.Ticket)
-                .WithMany("Images")
+                .WithMany(t => t.Attachments)
                 .HasForeignKey(f => f.TicketId)
                 .OnDelete(DeleteBehavior.ClientCascade);
 
@@ -36,10 +35,10 @@ namespace DataAccess.Context
                 .Navigation<Ticket>(t => t.Tickets).AutoInclude();
 
             modelBuilder.Entity<Ticket>()
-                .Navigation<Image>(t => t.Images).AutoInclude();
+                .Navigation<Attachment>(t => t.Attachments).AutoInclude();
 
             modelBuilder.Entity<Ticket>()
-                .Navigation<CodeLink>(t => t.codeLinks).AutoInclude();
+                .Navigation<CodeLink>(t => t.CodeLinks).AutoInclude();
 
             base.OnModelCreating(modelBuilder);
         }
@@ -48,12 +47,12 @@ namespace DataAccess.Context
         {
             if (entityEntry.Entity is Ticket ticket)
             {
-                entityEntry.Navigation("Images").Load();
-                ticket.HasImages = ticket.Images.Count() > 0;
+                entityEntry.Navigation("Attachments").Load();
+                ticket.HasAttachments = ticket.Attachments.Count() > 0;
 
-                var codeLinks = ticket.codeLinks?.ToList();
-                entityEntry.Navigation("codeLinks").Load();
-                ticket.codeLinks = codeLinks;
+                var codeLinks = ticket.CodeLinks?.ToList();
+                entityEntry.Navigation("CodeLinks").Load();
+                ticket.CodeLinks = codeLinks;
 
                 if (entityEntry.State == EntityState.Modified)
                 {

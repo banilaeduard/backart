@@ -21,12 +21,15 @@ namespace DataAccess
             switch (sqlOpt)
             {
                 case "mysql":
-                    options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]),
-                        b => b.MigrationsAssembly("BackArt"));
+                    options.UseMySql(
+                        Configuration["ConnectionStrings:DefaultConnection"],
+                        ServerVersion.AutoDetect(Configuration["ConnectionStrings:DefaultConnection"]),
+                        b => b.MigrationsAssembly("BackArt").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
                     return;
                 default:
-                    options.UseSqlServer(Configuration["ConnectionStrings:DefaultConnection"],
-                        b => b.MigrationsAssembly("BackArt"));
+                    options.UseSqlServer(
+                        Configuration["ConnectionStrings:DefaultConnection"],
+                        b => b.MigrationsAssembly("BackArt").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
                     return;
             }
         }

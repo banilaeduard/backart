@@ -12,6 +12,7 @@ namespace WebApi.Controllers
     using WebApi.Models;
     using Storage;
     using DataAccess.Entities;
+    using System.IO;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -71,21 +72,24 @@ namespace WebApi.Controllers
 
             var ticket = complaint.Tickets[0];
 
-            if (ticket.ToDeleteImages != null)
+            if (ticket.ToDeleteAttachment != null)
             {
-                foreach (var toDelete in ticket.ToDeleteImages)
+                foreach (var toDelete in ticket.ToDeleteAttachment)
                 {
                     this.complaintSeriesDbContext.Entry(toDelete).State = EntityState.Deleted;
                     storageService.Delete(toDelete.Data);
                 }
             }
 
-            if (ticket.ToAddImages != null && ticket.ToAddImages.Count > 0)
+            if (ticket.ToAddAttachment != null && ticket.ToAddAttachment.Count > 0)
             {
-                foreach (var toAdd in ticket.ToAddImages)
+                foreach (var toAdd in ticket.ToAddAttachment)
                 {
                     toAdd.Data = this.storageService.SaveBase64(toAdd.Data, toAdd.Title);
+                    toAdd.ContentType = toAdd.ContentType;
+                    toAdd.Extension = Path.GetExtension(toAdd.Title);
                     toAdd.Ticket = dbModel.Tickets[0];
+                    toAdd.StorageType = this.storageService.StorageType;
                     this.complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
                 }
             }

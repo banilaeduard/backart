@@ -46,7 +46,7 @@ namespace CronJob
 
         public async Task process(ComplaintSeries message, string id)
         {
-            if (message.Status == Constants.COMPLAINT_REJECT
+            if (message.Status != Constants.COMPLAINT_SUCCESS
                 || message.isDeleted)
             {
                 try
@@ -80,13 +80,17 @@ namespace CronJob
                     ColorId = new Random().Next(11).ToString()
                 };
 
-                foreach (var attachment in message.Tickets[0]?.Images)
+                foreach (var attachment in message.Tickets[0]?.Attachments)
                 {
-                    myEvent.Attachments.Add(new EventAttachment()
+                    if (attachment.StorageType == "GoogleDrive")
                     {
-                        Title = attachment.Title,
-                        FileUrl = attachment.Data
-                    });
+                        myEvent.Attachments.Add(new EventAttachment()
+                        {
+                            Title = attachment.Title,
+                            FileUrl = attachment.Data,
+                            MimeType = attachment.ContentType
+                        });
+                    }
                 }
 
                 try

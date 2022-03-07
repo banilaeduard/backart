@@ -9,9 +9,9 @@ using DataAccess;
 using DataAccess.Entities;
 using DataAccess.Context;
 using Storage;
-using System.IO;
 using MimeKit;
 using System.Text.RegularExpressions;
+using System.IO;
 
 namespace CronJob
 {
@@ -61,7 +61,7 @@ namespace CronJob
                         new Ticket() {
                             CodeValue = composed_id,
                             Description = string.IsNullOrEmpty(message.HtmlBody) ? message.TextBody : regex.Replace(message.HtmlBody, ""),
-                            Images = new List<Image>(),
+                            Attachments = new List<Attachment>(),
                             CreatedDate = new DateTime(message.Date.Ticks),
                             UpdatedDate = new DateTime(message.ResentDate.Ticks),
                         }
@@ -78,25 +78,32 @@ namespace CronJob
                     {
                         var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType.Name;
 
-                        using (var stream = new MemoryStream())
+                        string filePath;
+                        using (var stream = storageService.TryAquireStream(message.MessageId, fileName, out filePath))
                         {
-                          if (attachment is MessagePart) {
-                                var part = (MessagePart) attachment;
-
-                                part.Message.WriteTo (stream);
-                            } else {
-                                var part = (MimePart) attachment;
-
-                                part.Content.DecodeTo (stream);
-                            }
-
-                            var img = new Image()
+                            if (attachment is MessagePart)
                             {
-                                Title = fileName
-                            }; await attachment.WriteToAsync(stream);
+                                var part = (MessagePart)attachment;
 
-                            img.Data = storageService.Save(stream.ToArray(), fileName);
-                            img.Ticket = ticket;
+                                await part.Message.WriteToAsync(stream);
+                            }
+                            else
+                            {
+                                var part = (MimePart)attachment;
+
+                                await part.Content.DecodeToAsync(stream);
+                            }
+                            var img = new Attachment()
+                            {
+                                Title = fileName,
+                                Data = filePath,
+                                Ticket = ticket,
+                                CreatedDate = new DateTime(message.Date.Ticks),
+                                UpdatedDate = new DateTime(message.ResentDate.Ticks),
+                                ContentType = attachment.ContentType.MimeType,
+                                Extension = Path.GetExtension(fileName),
+                                StorageType = storageService.StorageType
+                            };
                             this.complaintSeriesDbContext.Entry(img).State = EntityState.Added;
                         }
                     }

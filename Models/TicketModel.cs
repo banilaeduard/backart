@@ -8,10 +8,10 @@
         public int Id { get; set; }
         public string CodeValue { get; set; }
         public string Description { get; set; }
-        public bool hasImages { get;set;}
-        public List<Image> Images { get; set; }
-        public List<Image> ToAddImages { get; set; }
-        public List<Image> ToDeleteImages { get; set; }
+        public bool hasAttachments { get;set;}
+        public List<Attachment> Attachments { get; set; }
+        public List<Attachment> ToAddAttachment { get; set; }
+        public List<Attachment> ToDeleteAttachment { get; set; }
         public List<CodeLink> CodeLinks { get; set; }
         public DateTime Created { get; set; }
 
@@ -22,9 +22,9 @@
                 Id = dbTicket.Id,
                 CodeValue = dbTicket.CodeValue,
                 Description = dbTicket.Description,
-                hasImages = dbTicket.HasImages,
-                CodeLinks = dbTicket.codeLinks,
-                Images = dbTicket.Images,
+                hasAttachments = dbTicket.HasAttachments,
+                CodeLinks = dbTicket.CodeLinks,
+                Attachments = dbTicket.Attachments,
                 Created = dbTicket.CreatedDate
             };
         }
@@ -36,8 +36,8 @@
                 Id = this.Id,
                 CodeValue = this.CodeValue,
                 Description = this.Description,
-                codeLinks = this.CodeLinks,
-                Images = this.Images
+                CodeLinks = this.CodeLinks,
+                Attachments = this.Attachments
             };
         }
     }

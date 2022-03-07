@@ -43,51 +43,43 @@ namespace DataAccess.Context
 
         private void addDataContext(ChangeTracker ChangeTracker)
         {
-            foreach (var entityEntry in ChangeTracker.Entries().ToList())
+            foreach (var entityEntry in ChangeTracker.Entries<AppIdentityUser>().ToList())
             {
-                if (entityEntry.Entity is AppIdentityUser user)
+                if (entityEntry.State == EntityState.Added)
                 {
-                    if (entityEntry.State == EntityState.Added)
+                    var user = entityEntry.Entity;
+                    // we sanitize the location based on our logic
+
+                    user.DataKeyLocationId = user.UserName;
+
+                    var prevDataKey = user.DataKeyLocation;
+                    if (user.DataKeyLocation != null)
                     {
-                        // we sanitize the location based on our logic
-
-                        user.DataKeyLocationId = user.UserName;
-
-                        var prevDataKey = user.DataKeyLocation;
-                        if (user.DataKeyLocation != null)
-                        {
-                            user.DataKeyLocation = null;
-                            entityEntry.Navigation("DataKeyLocation").IsLoaded = false;
-                        }
-                        entityEntry.Navigation("DataKeyLocation").Load();
-                        if (entityEntry.Navigation("DataKeyLocation").CurrentValue == null)
-                        {
-                            user.DataKeyLocation = new DataKeyLocation()
+                        user.DataKeyLocation = null;
+                        entityEntry.Navigation("DataKeyLocation").IsLoaded = false;
+                        foreach (var dataKey in ChangeTracker.Entries<DataKeyLocation>().ToList())
+                            if (dataKey.Entity == prevDataKey)
                             {
-                                locationCode = prevDataKey?.locationCode ?? user.UserName,
-                                name = user.UserName,
-                            };
-                        }
-                        else
+                                dataKey.State = EntityState.Detached;
+                            }
+                    }
+                    entityEntry.Navigation("DataKeyLocation").Load();
+                    if (entityEntry.Navigation("DataKeyLocation").CurrentValue == null)
+                    {
+                        user.DataKeyLocation = new DataKeyLocation()
                         {
-                            user.DataKeyLocation.locationCode = prevDataKey?.locationCode ?? user.DataKeyLocation.locationCode;
-                        }
-
-                        if (prevDataKey != null)
-                        {
-                            ChangeTracker.Entries<DataKeyLocation>().ToList().ForEach(t =>
-                            {
-                                if (t.Entity == prevDataKey)
-                                {
-                                    t.State = EntityState.Detached;
-                                }
-                            });
-                        }
+                            locationCode = prevDataKey?.locationCode ?? user.UserName,
+                            name = user.UserName,
+                        };
                     }
                     else
                     {
-                        entityEntry.Property("DataKeyLocationId").IsModified = false;
+                        user.DataKeyLocation.locationCode = prevDataKey?.locationCode ?? user.DataKeyLocation.locationCode;
                     }
+                }
+                else
+                {
+                    entityEntry.Property("DataKeyLocationId").IsModified = false;
                 }
             }
         }

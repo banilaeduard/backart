@@ -3,7 +3,7 @@ namespace DataAccess.Entities
     using System;
     using System.ComponentModel.DataAnnotations;
 
-    public class Image: IBaseEntity
+    public class Attachment: IBaseEntity
     {
         [Key]
         public int Id { get; set; }
@@ -12,6 +12,8 @@ namespace DataAccess.Entities
         public int TicketId { get; set; }
         public Ticket Ticket { get; set; }
         public string Extension { get; set; }
+        public string ContentType { get; set; }
+        public string StorageType { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime UpdatedDate { get; set; }
     }

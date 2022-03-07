@@ -72,7 +72,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Description = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    HasImages = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    HasAttachments = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     ComplaintSeriesId = table.Column<int>(type: "int", nullable: true)
@@ -84,6 +84,36 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         name: "FK_Ticket_Complaints_ComplaintSeriesId",
                         column: x => x.ComplaintSeriesId,
                         principalTable: "Complaints",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "Attachment",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Data = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Title = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    TicketId = table.Column<int>(type: "int", nullable: false),
+                    Extension = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ContentType = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Attachment", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Attachment_Ticket_TicketId",
+                        column: x => x.TicketId,
+                        principalTable: "Ticket",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 })
@@ -131,31 +161,10 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
-            migrationBuilder.CreateTable(
-                name: "Image",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Data = table.Column<string>(type: "longtext", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Title = table.Column<string>(type: "longtext", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    TicketId = table.Column<int>(type: "int", nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Image", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Image_Ticket_TicketId",
-                        column: x => x.TicketId,
-                        principalTable: "Ticket",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+            migrationBuilder.CreateIndex(
+                name: "IX_Attachment_TicketId",
+                table: "Attachment",
+                column: "TicketId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CodeLinkSnapshot_CodeLinkId",
@@ -173,11 +182,6 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 column: "DataKeyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Image_TicketId",
-                table: "Image",
-                column: "TicketId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Ticket_ComplaintSeriesId",
                 table: "Ticket",
                 column: "ComplaintSeriesId");
@@ -186,13 +190,13 @@ namespace BackArt.Migrations.ComplaintSeriesDb
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "Attachment");
+
+            migrationBuilder.DropTable(
                 name: "CodeAttributeSnapshot");
 
             migrationBuilder.DropTable(
                 name: "CodeLinkSnapshot");
-
-            migrationBuilder.DropTable(
-                name: "Image");
 
             migrationBuilder.DropTable(
                 name: "Ticket");

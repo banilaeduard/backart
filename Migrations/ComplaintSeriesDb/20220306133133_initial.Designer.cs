@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
     [DbContext(typeof(ComplaintSeriesDbContext))]
-    [Migration("20220303100950_initial")]
+    [Migration("20220306133133_initial")]
     partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -18,6 +18,40 @@ namespace BackArt.Migrations.ComplaintSeriesDb
             modelBuilder
                 .HasAnnotation("Relational:MaxIdentifierLength", 64)
                 .HasAnnotation("ProductVersion", "5.0.11");
+
+            modelBuilder.Entity("DataAccess.Entities.Attachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Extension")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("TicketId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("Attachment");
+                });
 
             modelBuilder.Entity("DataAccess.Entities.CodeAttribute", b =>
                 {
@@ -141,34 +175,6 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.ToTable("DataKeyLocation", t => t.ExcludeFromMigrations());
                 });
 
-            modelBuilder.Entity("DataAccess.Entities.Image", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Data")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("TicketId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TicketId");
-
-                    b.ToTable("Image");
-                });
-
             modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
                     b.Property<int>("Id")
@@ -187,7 +193,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("Description")
                         .HasColumnType("longtext");
 
-                    b.Property<bool>("HasImages")
+                    b.Property<bool>("HasAttachments")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime>("UpdatedDate")
@@ -200,6 +206,17 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.ToTable("Ticket");
                 });
 
+            modelBuilder.Entity("DataAccess.Entities.Attachment", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Ticket", "Ticket")
+                        .WithMany("Attachments")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.Navigation("Ticket");
+                });
+
             modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>
                 {
                     b.HasOne("DataAccess.Entities.CodeLink", null)
@@ -207,7 +224,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .HasForeignKey("CodeLinkId");
 
                     b.HasOne("DataAccess.Entities.Ticket", null)
-                        .WithMany("codeLinks")
+                        .WithMany("CodeLinks")
                         .HasForeignKey("TicketId");
                 });
 
@@ -219,17 +236,6 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("DataKey");
-                });
-
-            modelBuilder.Entity("DataAccess.Entities.Image", b =>
-                {
-                    b.HasOne("DataAccess.Entities.Ticket", "Ticket")
-                        .WithMany("Images")
-                        .HasForeignKey("TicketId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
-
-                    b.Navigation("Ticket");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
@@ -251,9 +257,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
             modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
-                    b.Navigation("codeLinks");
+                    b.Navigation("Attachments");
 
-                    b.Navigation("Images");
+                    b.Navigation("CodeLinks");
                 });
 #pragma warning restore 612, 618
         }

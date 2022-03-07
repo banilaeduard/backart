@@ -6,6 +6,7 @@ using MailKit.Net.Imap;
 using MailKit.Search;
 using MimeKit;
 using core;
+using System.Collections.Generic;
 
 namespace CronJob.Services.FeedServices
 {
@@ -25,29 +26,56 @@ namespace CronJob.Services.FeedServices
                     client.Connect("imap.mail.yahoo.com", 993, true); //For SSL                
                     client.Authenticate(appSettings.yappuser, appSettings.yapppass);
 
-                    client.Inbox.Open(FolderAccess.ReadOnly);
-                    var uids = client.Inbox.Search(
-                        SearchQuery.FromContains("dedeman.ro").And(
-                            SearchQuery.DeliveredAfter(DateTime.Now.AddDays(-7))
-                            )
-                        );
-                    foreach (var uid in uids)
+                    foreach (var folder in GetFolders(client, cancellationToken))
                     {
-                        if (cancellationToken.IsCancellationRequested)
+                        folder.Open(FolderAccess.ReadOnly);
+                        Console.WriteLine(folder.Name);
+
+                        SearchQuery queryFromContains = null;
+
+                        foreach (var from in appSettings.fromContains.Split(';'))
                         {
-                            return;
+                            if (queryFromContains == null)
+                            {
+                                queryFromContains = SearchQuery.FromContains(from);
+                            }
+                            else
+                            {
+                                queryFromContains = queryFromContains.Or(SearchQuery.FromContains(from));
+                            }
                         }
 
-                        if (await processor.shouldProcess(null, uid.Id.ToString()))
+                        var uids = folder.Search(
+                                SearchQuery.DeliveredAfter(DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset))).And(
+                                  queryFromContains
+                                )
+                            , cancellationToken);
+                        try
                         {
-                            var message = client.Inbox.GetMessage(uid);
-                            await processor.process(message, uid.Id.ToString());
-                            Console.WriteLine("From: {0}", message.From.ToString());
-                            Console.WriteLine("Subject: {0}\r\n", message.Subject);
+                            foreach (var uid in uids)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+
+                                if (await processor.shouldProcess(null, uid.Id.ToString()))
+                                {
+                                    var message = folder.GetMessage(uid);
+                                    await processor.process(message, uid.Id.ToString());
+                                    Console.WriteLine("From: {0}", message.From.ToString());
+                                    Console.WriteLine("Subject: {0}\r\n", message.Subject);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                                }
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                            Console.WriteLine(ex.Message);
+                        }
+                        finally
+                        {
+                            folder.Close();
                         }
                     }
                 }
@@ -55,6 +83,15 @@ namespace CronJob.Services.FeedServices
             catch (Exception ep)
             {
                 Console.WriteLine(ep.Message);
+            }
+        }
+        IEnumerable<IMailFolder> GetFolders(ImapClient client, CancellationToken cancellationToken)
+        {
+            var personal = client.GetFolder(client.PersonalNamespaces[0]);
+
+            foreach (var folder in appSettings.mailfolders.Split(','))
+            {
+                yield return personal.GetSubfolder(folder, cancellationToken);
             }
         }
     }

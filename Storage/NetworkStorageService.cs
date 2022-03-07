@@ -6,11 +6,11 @@
     using System.Security.Cryptography;
     using System.Text;
     using core;
-    public class ImageStorageService : IStorageService, IDisposable
+    public class NetworkStorageService : IStorageService, IDisposable
     {
-        private ILogger<ImageStorageService> logger;
+        private ILogger<NetworkStorageService> logger;
         private HashAlgorithm algorithm;
-        public ImageStorageService(ILogger<ImageStorageService> logger)
+        public NetworkStorageService(ILogger<NetworkStorageService> logger)
         {
             this.logger = logger;
             algorithm = SHA256.Create();
@@ -66,6 +66,20 @@
                       stream.DisposeAsync());
             }
             return file.FullName;
+        }
+
+        public Stream TryAquireStream(string pathTo, string fileName, out string filePath)
+        {
+            DirectoryInfo dir = new DirectoryInfo(Path.Combine(StoragePath, pathTo));
+            if (!dir.Exists) dir.Create();
+
+            var file = new FileInfo(Path.Combine(
+                                    dir.FullName,
+                                    fileName
+                                    ));
+            filePath = file.FullName;
+
+            return file.OpenWrite();
         }
     }
 }

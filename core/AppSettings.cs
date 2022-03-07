@@ -14,5 +14,8 @@ namespace core
         public string calendarid { get; set; }
         public string calreccurencepattern { get; set; }
         public string mailreccurencepattern { get; set; }
+        public string mailfolders { get; set; }
+        public string daysoffset { get; set; }
+        public string fromContains { get; set; }
     }
 }

@@ -6,7 +6,7 @@ namespace Storage
     {
             public static IServiceCollection configureStorage(this IServiceCollection services)
             {
-                services.AddScoped<IStorageService, ImageStorageService>();
+                services.AddScoped<IStorageService, NetworkStorageService>();
                 return services;
             }
     }
