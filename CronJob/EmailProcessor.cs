@@ -59,6 +59,15 @@ namespace CronJob
                     .Where(t => t.name == email)
                     .SingleOrDefault();
 
+                if (dataKeyLocation == null)
+                {
+                    dataKeyLocation = new DataKeyLocation()
+                    {
+                        name = email,
+                        locationCode = email
+                    };
+                }
+
                 var description = string.Empty;
                 var body = !string.IsNullOrWhiteSpace(message.HtmlBody) ?
                     htmlStrip.StripHtml(regexHtml.Replace(message.HtmlBody, "\r\n")) : message.TextBody ?? "";
@@ -75,8 +84,8 @@ namespace CronJob
 
                 var complaint = new ComplaintSeries()
                 {
-                    DataKey = dataKeyLocation,
-                    DataKeyId = dataKeyLocation?.Id,
+                    DataKey = string.IsNullOrEmpty(dataKeyLocation.Id) ? dataKeyLocation : null,
+                    DataKeyId = dataKeyLocation.Id,
                     TenantId = "cubik",
                     NrComanda = nrComanda,
                     Tickets = new List<Ticket>() {
