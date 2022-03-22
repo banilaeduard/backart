@@ -9,18 +9,29 @@
     <Compile Remove="core\**" />
     <Compile Remove="CronJob\**" />
     <Compile Remove="DataAccess\**" />
+    <Compile Remove="NER2\**" />
+    <Compile Remove="NER\**" />
+    <Compile Remove="packages\**" />
     <Compile Remove="Storage\**" />
     <Content Remove="core\**" />
     <Content Remove="CronJob\**" />
     <Content Remove="DataAccess\**" />
+    <Content Remove="NER\**" />
+    <Content Remove="packages\**" />
     <Content Remove="Storage\**" />
     <EmbeddedResource Remove="core\**" />
     <EmbeddedResource Remove="CronJob\**" />
     <EmbeddedResource Remove="DataAccess\**" />
+    <EmbeddedResource Remove="NER2\**" />
+    <EmbeddedResource Remove="NER\**" />
+    <EmbeddedResource Remove="packages\**" />
     <EmbeddedResource Remove="Storage\**" />
     <None Remove="core\**" />
     <None Remove="CronJob\**" />
     <None Remove="DataAccess\**" />
+    <None Remove="NER2\**" />
+    <None Remove="NER\**" />
+    <None Remove="packages\**" />
     <None Remove="Storage\**" />
   </ItemGroup>
 <ItemGroup>
@@ -39,8 +50,16 @@
 <ItemGroup>
   <ProjectReference Include="CronJob\CronJob.csproj" />
   <ProjectReference Include="DataAccess\DataAccess.csproj" />
+  <ProjectReference Include="NER\NER.csproj" />
 </ItemGroup>
 <ItemGroup>
   <Folder Include="Helpers\" />
 </ItemGroup>
+  <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
+    <ItemGroup>
+      <MyFiles Include="NER\IKVMNet5build\*.*" />
+    </ItemGroup>
+    <Message Text="Executing Copy IKVM DLLs task" Importance="High" />
+    <Copy SourceFiles="@(MyFiles)" DestinationFolder="$(OutDir)" />
+  </Target>
 </Project>

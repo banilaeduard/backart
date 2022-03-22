@@ -14,6 +14,7 @@ Properties/launchSettings.json
 *.launch
 .settings/
 *.sublime-workspace
+packages
 
 # IDE - VSCode
 .vscode

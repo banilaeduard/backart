@@ -24,6 +24,7 @@ using DataAccess;
 using BackArt.Services;
 using core;
 using Storage;
+using NER;
 
 namespace BackArt
 {
@@ -66,6 +67,7 @@ namespace BackArt
             services.configureCronJob();
             services.configureDataAccess(Configuration);
             services.configureStorage();
+            services.configureNER();
 
             services.AddSingleton<EmailSender>();
             services.AddScoped<IUserService, UserService>();

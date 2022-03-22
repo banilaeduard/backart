@@ -1,17 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
+using NER;
 using DataAccess;
 using DataAccess.Entities;
 using DataAccess.Context;
 using Storage;
 using MimeKit;
-using System.Text.RegularExpressions;
-using System.IO;
+
 
 namespace CronJob
 {
@@ -20,17 +22,32 @@ namespace CronJob
         ComplaintSeriesDbContext complaintSeriesDbContext;
         AppIdentityDbContext usersDbContext;
         IStorageService storageService;
-        Regex regex = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
+        SentenceTokenizer sentTok;
+        WordTokenizer wordTok;
+        NameFinder nameFinder;
+        HtmlStripper htmlStrip;
+        private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
+        private static Regex regexText = new Regex(@"\r\n|\n");
+
         public EmailProcessor(
             DbContextOptions<ComplaintSeriesDbContext> ctxBuilder,
             NoFilterBaseContext noFilter,
             AppIdentityDbContext usersDbContext,
-            IStorageService storageService)
+            IStorageService storageService,
+            SentenceTokenizer sentTok,
+            WordTokenizer wordTok,
+            NameFinder nameFinder,
+            HtmlStripper htmlStrip)
         {
             complaintSeriesDbContext = new ComplaintSeriesDbContext(ctxBuilder, noFilter);
             this.usersDbContext = usersDbContext;
             this.storageService = storageService;
+            this.sentTok = sentTok;
+            this.wordTok = wordTok;
+            this.nameFinder = nameFinder;
+            this.htmlStrip = htmlStrip;
         }
+
         public async Task process(MimeMessage message, string id)
         {
             try
@@ -42,25 +59,30 @@ namespace CronJob
                     .Where(t => t.name == email)
                     .SingleOrDefault();
 
-                if (dataKeyLocation == null)
-                {
-                    dataKeyLocation = new DataKeyLocation()
-                    {
-                        name = email,
-                        locationCode = email
-                    };
-                }
+                var description = string.Empty;
+                var body = !string.IsNullOrWhiteSpace(message.HtmlBody) ?
+                    htmlStrip.StripHtml(regexHtml.Replace(message.HtmlBody, "\r\n")) : message.TextBody ?? "";
+                var nrComanda = string.Empty;
 
-                var composed_id = string.Format("{0}_{1}", id, string.IsNullOrWhiteSpace(message.HtmlBody) ? "text" : "html");
+                var sentences = sentTok.DetectSentences(body);
+                description = sentences.Aggregate((agg, val) => agg = (agg ?? "") + " \r\n" + regexText.Replace(val, " "));
+
+                var names = nameFinder.getNames(wordTok.Tokenize(body));
+
+                foreach (var name in names)
+                    if (name.Probability > 0.49999)
+                        nrComanda += string.Format("{0}: {1}; ", name.Type, name.Value);
+
                 var complaint = new ComplaintSeries()
                 {
-                    DataKey = string.IsNullOrEmpty(dataKeyLocation.Id) ? dataKeyLocation : null,
-                    DataKeyId = dataKeyLocation.Id,
+                    DataKey = dataKeyLocation,
+                    DataKeyId = dataKeyLocation?.Id,
                     TenantId = "cubik",
+                    NrComanda = nrComanda,
                     Tickets = new List<Ticket>() {
                         new Ticket() {
-                            CodeValue = composed_id,
-                            Description = string.IsNullOrEmpty(message.HtmlBody) ? message.TextBody : regex.Replace(message.HtmlBody, ""),
+                            CodeValue = id,
+                            Description = description,
                             Attachments = new List<Attachment>(),
                             CreatedDate = new DateTime(message.Date.Ticks),
                             UpdatedDate = new DateTime(message.ResentDate.Ticks),
@@ -84,13 +106,11 @@ namespace CronJob
                             if (attachment is MessagePart)
                             {
                                 var part = (MessagePart)attachment;
-
                                 await part.Message.WriteToAsync(stream);
                             }
                             else
                             {
                                 var part = (MimePart)attachment;
-
                                 await part.Content.DecodeToAsync(stream);
                             }
                             var img = new Attachment()

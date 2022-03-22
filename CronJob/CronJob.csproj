@@ -1,10 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.56.0.2590" />
     <PackageReference Include="MailKit" Version="3.1.1" />
@@ -12,10 +10,9 @@
     <PackageReference Include="Google.Apis.Auth" Version="1.56.0" />
     <PackageReference Include="Quartz" Version="3.3.3" />
     </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
+    <ProjectReference Include="..\NER\NER.csproj" />
     <ProjectReference Include="..\Storage\Storage.csproj" />
   </ItemGroup>
-
 </Project>

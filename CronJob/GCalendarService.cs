@@ -8,7 +8,6 @@ using Google.Apis.Services;
 
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace CronJob
@@ -18,7 +17,6 @@ namespace CronJob
         private AppSettings appSettings;
         private CalendarService service;
         private string eventIdFormat = "casalcosdmpserq{0}";
-        private Regex regex = new Regex(@"\r\n?|\n|<p>|</p>");
         public GCalendarServiceProcessor(AppSettings appSettings)
         {
             this.appSettings = appSettings;
@@ -44,7 +42,7 @@ namespace CronJob
                 message.Status == Constants.COMPLAINT_SUCCESS && !message.isDeleted && result.Items.Count == 0);
         }
 
-        public async Task process(ComplaintSeries message, string id)
+        public Task process(ComplaintSeries message, string id)
         {
             if (message.Status != Constants.COMPLAINT_SUCCESS
                 || message.isDeleted)
@@ -65,7 +63,7 @@ namespace CronJob
                     Id = string.Format(eventIdFormat, id),
                     Summary = message.DataKey?.locationCode,
                     Location = "Targoviste, Romania",
-                    Description = regex.Replace(message.Tickets[0]?.Description, " "),
+                    Description = string.Format("{0} \r\n {1}", message.Tickets[0]?.Description, message.NrComanda),
                     Start = new EventDateTime()
                     {
                         Date = DateTime.Now.ToString("yyyy-MM-dd")
@@ -110,6 +108,8 @@ namespace CronJob
                     Console.WriteLine(ex.Message);
                 }
             }
+
+            return Task.FromResult(false);
         }
 
         public void Dispose()

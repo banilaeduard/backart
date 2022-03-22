@@ -50,7 +50,7 @@ namespace DataAccess
 
             public Initializer(IServiceProvider provider)
             {
-                this.providerScope = provider;
+                providerScope = provider;
             }
             protected async override Task ExecuteAsync(CancellationToken stoppingToken)
             {
@@ -115,7 +115,7 @@ namespace DataAccess
                                 Tenant = "cubik",
                                 DataKeyLocation = new DataKeyLocation() { name= "admin", locationCode = "admin" }
                             };
-                            var result = await userManager.CreateAsync(user);
+                            var result = await userManager.CreateAsync(user, "123EWQasd!@#");
                             if (result.Succeeded)
                             {
                                 await userManager.ConfirmEmailAsync(user, await userManager.GenerateEmailConfirmationTokenAsync(user));

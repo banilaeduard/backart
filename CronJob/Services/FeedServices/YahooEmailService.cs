@@ -23,59 +23,48 @@ namespace CronJob.Services.FeedServices
             {
                 using (ImapClient client = new ImapClient())
                 {
-                    client.Connect("imap.mail.yahoo.com", 993, true); //For SSL                
+                    client.Connect("imap.mail.yahoo.com", 993, true); //For SSL
                     client.Authenticate(appSettings.yappuser, appSettings.yapppass);
 
                     foreach (var folder in GetFolders(client, cancellationToken))
                     {
-                        folder.Open(FolderAccess.ReadOnly);
-                        Console.WriteLine(folder.Name);
-
-                        SearchQuery queryFromContains = null;
-
                         foreach (var from in appSettings.fromContains.Split(';'))
                         {
-                            if (queryFromContains == null)
-                            {
-                                queryFromContains = SearchQuery.FromContains(from);
-                            }
-                            else
-                            {
-                                queryFromContains = queryFromContains.Or(SearchQuery.FromContains(from));
-                            }
-                        }
+                            folder.Open(FolderAccess.ReadOnly);
+                            Console.WriteLine("{0} - {1}", folder.Name, from);
 
-                        var uids = folder.Search(
+                            var uids = folder.Search(
                                 SearchQuery.DeliveredAfter(DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset))).And(
-                                  queryFromContains
+                                  SearchQuery.FromContains(from)
                                 )
                             , cancellationToken);
-                        try
-                        {
-                            foreach (var uid in uids)
+                            try
                             {
-                                cancellationToken.ThrowIfCancellationRequested();
+                                foreach (var uid in uids)
+                                {
+                                    cancellationToken.ThrowIfCancellationRequested();
 
-                                if (await processor.shouldProcess(null, uid.Id.ToString()))
-                                {
-                                    var message = folder.GetMessage(uid);
-                                    await processor.process(message, uid.Id.ToString());
-                                    Console.WriteLine("From: {0}", message.From.ToString());
-                                    Console.WriteLine("Subject: {0}\r\n", message.Subject);
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                                    if (await processor.shouldProcess(null, uid.Id.ToString()))
+                                    {
+                                        var message = folder.GetMessage(uid);
+                                        await processor.process(message, uid.Id.ToString());
+                                        Console.WriteLine("From: {0}", message.From.ToString());
+                                        Console.WriteLine("Subject: {0}\r\n", message.Subject);
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                                    }
                                 }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine(ex.Message);
-                        }
-                        finally
-                        {
-                            folder.Close();
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(ex.Message);
+                            }
+                            finally
+                            {
+                                folder.Close();
+                            }
                         }
                     }
                 }

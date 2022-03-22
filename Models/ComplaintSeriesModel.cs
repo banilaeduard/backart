@@ -20,22 +20,22 @@
         private ComplaintSeriesModel() { }
         private ComplaintSeriesModel(ComplaintSeries complaint)
         {
-            this.Id = complaint.Id;
-            this.DataKey = complaint.DataKey?.locationCode;
-            this.Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
-            this.Created = complaint.CreatedDate;
-            this.Status = complaint.Status;
-            this.NrComanda = NrComanda;
+            Id = complaint.Id;
+            DataKey = complaint.DataKey?.locationCode;
+            Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
+            Created = complaint.CreatedDate;
+            Status = complaint.Status;
+            NrComanda = complaint.NrComanda;
         }
 
         public ComplaintSeries toDbModel()
         {
             return new ComplaintSeries()
             {
-                Id = this.Id,
-                Tickets = this.Tickets.Select(ticket => ticket.toDbModel()).ToList(),
-                Status = this.Status,
-                NrComanda = this.NrComanda,
+                Id = Id,
+                Tickets = Tickets.Select(ticket => ticket.toDbModel()).ToList(),
+                Status = Status,
+                NrComanda = NrComanda,
             };
         }
 

@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="trainmodels\en-sent.bin" />
+    <None Remove="trainmodels\en-token.bin" />
+    <None Remove="trainmodels\ner-custom-model.bin" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="trainmodels\en-sent.bin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="trainmodels\en-token.bin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="trainmodels\ner-custom-model.bin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.42" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
+    <PackageReference Include="OpenNLP.NET" Version="1.9.4" />
+  </ItemGroup>
+
+</Project>

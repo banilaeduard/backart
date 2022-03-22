@@ -1,4 +1,5 @@
 FROM mcr.microsoft.com/dotnet/aspnet:5.0 AS base
+
 WORKDIR /app
 EXPOSE 5000
 
@@ -14,6 +15,8 @@ RUN dotnet build "BackArt.csproj" -c Release -o /app/build
 
 FROM build AS publish
 RUN dotnet publish "BackArt.csproj" -c Release -o /app/publish
+COPY ./NER/IKVMNet5build/* /app/publish/
+COPY ./NER/trainmodels/* /app/publish/NER/trainmodels/
 
 FROM base AS final
 WORKDIR /app
