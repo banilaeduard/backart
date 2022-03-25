@@ -35,7 +35,7 @@ namespace CronJob.Services.FeedServices
                 }
                 else
                 {
-                    Console.WriteLine("Skipping complaint feed: {0}\r\n", complaint.DataKey?.locationCode);
+                    // Console.WriteLine("Skipping complaint feed: {0}\r\n", complaint.DataKey?.locationCode);
                 }
             }
         }

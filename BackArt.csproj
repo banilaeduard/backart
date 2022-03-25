@@ -12,12 +12,16 @@
     <Compile Remove="NER2\**" />
     <Compile Remove="NER\**" />
     <Compile Remove="packages\**" />
+    <Compile Remove="Piping\**" />
+    <Compile Remove="SolrIndexing\**" />
     <Compile Remove="Storage\**" />
     <Content Remove="core\**" />
     <Content Remove="CronJob\**" />
     <Content Remove="DataAccess\**" />
     <Content Remove="NER\**" />
     <Content Remove="packages\**" />
+    <Content Remove="Piping\**" />
+    <Content Remove="SolrIndexing\**" />
     <Content Remove="Storage\**" />
     <EmbeddedResource Remove="core\**" />
     <EmbeddedResource Remove="CronJob\**" />
@@ -25,6 +29,8 @@
     <EmbeddedResource Remove="NER2\**" />
     <EmbeddedResource Remove="NER\**" />
     <EmbeddedResource Remove="packages\**" />
+    <EmbeddedResource Remove="Piping\**" />
+    <EmbeddedResource Remove="SolrIndexing\**" />
     <EmbeddedResource Remove="Storage\**" />
     <None Remove="core\**" />
     <None Remove="CronJob\**" />
@@ -32,6 +38,8 @@
     <None Remove="NER2\**" />
     <None Remove="NER\**" />
     <None Remove="packages\**" />
+    <None Remove="Piping\**" />
+    <None Remove="SolrIndexing\**" />
     <None Remove="Storage\**" />
   </ItemGroup>
 <ItemGroup>
@@ -48,12 +56,13 @@
     <PackageReference Include="System.Security.Cryptography.Primitives" Version="4.3.0" />
   </ItemGroup>
 <ItemGroup>
+  <ProjectReference Include="core\core.csproj" />
   <ProjectReference Include="CronJob\CronJob.csproj" />
   <ProjectReference Include="DataAccess\DataAccess.csproj" />
   <ProjectReference Include="NER\NER.csproj" />
-</ItemGroup>
-<ItemGroup>
-  <Folder Include="Helpers\" />
+  <ProjectReference Include="Piping\Piping.csproj" />
+  <ProjectReference Include="SolrIndexing\SolrIndexing.csproj" />
+  <ProjectReference Include="Storage\Storage.csproj" />
 </ItemGroup>
   <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
     <ItemGroup>

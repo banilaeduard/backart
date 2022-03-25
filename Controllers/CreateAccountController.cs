@@ -14,24 +14,20 @@ namespace WebApi.Controllers
     using WebApi.Models;
     using DataAccess.Entities;
     using BackArt;
-    using core;
 
     [AllowAnonymous]
     public class CreateAccountController : WebApiController2
     {
         UserManager<AppIdentityUser> userManager;
         EmailSender emailSender;
-        AppSettings appSettings;
 
         public CreateAccountController(
             UserManager<AppIdentityUser> userManager,
             EmailSender emailSender,
-            AppSettings appSettings,
             ILogger<CreateAccountController> logger) : base(logger)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
-            this.appSettings = appSettings;
         }
 
         [HttpPost]
@@ -42,7 +38,7 @@ namespace WebApi.Controllers
             IdentityResult result = await userManager.CreateAsync(appUser, user.Password);
             if (result.Succeeded)
             {
-                this.logger.LogInformation("Account creat cu succes {0}", user.Email);
+                logger.LogInformation("Account creat cu succes {0}", user.Email);
 
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(appUser);
                 var param = new Dictionary<string, string>() {
@@ -50,11 +46,11 @@ namespace WebApi.Controllers
                         { "email", user.Email }
                     };
                 var confirmationLink = QueryHelpers.AddQueryString(confirmationUrl, param);
-                this.emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
+                emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
             }
             else
             {
-                this.logger.LogError("Account failed {0}. {1}", user.Email, result.ToString());
+                logger.LogError("Account failed {0}. {1}", user.Email, result.ToString());
                 return BadRequest(result.Errors);
             }
 
@@ -73,12 +69,12 @@ namespace WebApi.Controllers
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(identityUser, "basic");
-                this.logger.LogInformation("Account confirmat cu succes {0}", email);
+                logger.LogInformation("Account confirmat cu succes {0}", email);
                 return Ok(new { user = identityUser.UserName });
             }
             else
             {
-                this.logger.LogError("Account failed {0}. {1}", email, result.ToString());
+                logger.LogError("Account failed {0}. {1}", email, result.ToString());
                 return BadRequest(result.Errors);
             }
         }
@@ -94,14 +90,14 @@ namespace WebApi.Controllers
             var result = await userManager.ResetPasswordAsync(identityUser, token, password["password"].Value<string>());
             if (result.Succeeded)
             {
-                this.logger.LogInformation("Parola modificata cu succes {0}", email);
+                logger.LogInformation("Parola modificata cu succes {0}", email);
                 identityUser.RefreshTokens.Clear();
                 await userManager.UpdateAsync(identityUser);
                 return Ok(new { user = identityUser.UserName });
             }
             else
             {
-                this.logger.LogError("Account failed {0}. {1}", email, result.ToString());
+                logger.LogError("Account failed {0}. {1}", email, result.ToString());
                 return BadRequest(result.Errors);
             }
         }

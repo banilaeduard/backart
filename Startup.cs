@@ -25,6 +25,8 @@ using BackArt.Services;
 using core;
 using Storage;
 using NER;
+using Piping;
+using SolrIndexing;
 
 namespace BackArt
 {
@@ -68,6 +70,8 @@ namespace BackArt
             services.configureDataAccess(Configuration);
             services.configureStorage();
             services.configureNER();
+            services.configureSolr(Configuration);
+            services.configurePiping();
 
             services.AddSingleton<EmailSender>();
             services.AddScoped<IUserService, UserService>();

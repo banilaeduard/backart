@@ -8,12 +8,12 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
 using NER;
+using Piping;
 using DataAccess;
 using DataAccess.Entities;
 using DataAccess.Context;
 using Storage;
 using MimeKit;
-
 
 namespace CronJob
 {
@@ -26,6 +26,8 @@ namespace CronJob
         WordTokenizer wordTok;
         NameFinder nameFinder;
         HtmlStripper htmlStrip;
+        EnrichService enrichService;
+
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
         private static Regex regexText = new Regex(@"\r\n|\n");
 
@@ -37,7 +39,8 @@ namespace CronJob
             SentenceTokenizer sentTok,
             WordTokenizer wordTok,
             NameFinder nameFinder,
-            HtmlStripper htmlStrip)
+            HtmlStripper htmlStrip,
+            EnrichService enrichService)
         {
             complaintSeriesDbContext = new ComplaintSeriesDbContext(ctxBuilder, noFilter);
             this.usersDbContext = usersDbContext;
@@ -46,6 +49,7 @@ namespace CronJob
             this.wordTok = wordTok;
             this.nameFinder = nameFinder;
             this.htmlStrip = htmlStrip;
+            this.enrichService = enrichService;
         }
 
         public async Task process(MimeMessage message, string id)
@@ -77,10 +81,9 @@ namespace CronJob
                 description = sentences.Aggregate((agg, val) => agg = (agg ?? "") + " \r\n" + regexText.Replace(val, " "));
 
                 var names = nameFinder.getNames(wordTok.Tokenize(body));
-
-                foreach (var name in names)
-                    if (name.Probability > 0.49999)
-                        nrComanda += string.Format("{0}: {1}; ", name.Type, name.Value);
+                nrComanda = names?.Where(t => t.Type == "comanda")?
+                    .OrderByDescending(t => t.Probability)?
+                    .FirstOrDefault()?.Value;
 
                 var complaint = new ComplaintSeries()
                 {
@@ -133,16 +136,20 @@ namespace CronJob
                                 Extension = Path.GetExtension(fileName),
                                 StorageType = storageService.StorageType
                             };
-                            this.complaintSeriesDbContext.Entry(img).State = EntityState.Added;
+                            complaintSeriesDbContext.Entry(img).State = EntityState.Added;
                         }
                     }
                 }
 
                 complaintSeriesDbContext.Complaints.Add(complaint);
                 await complaintSeriesDbContext.SaveChangesAsync();
+
+                // indexing
+                await enrichService.Enrich(complaint.Tickets[0], complaint);
             }
             catch (Exception ex)
             {
+                Console.WriteLine("ERROR EMAIL PROCESSOR");
                 Console.WriteLine(ex.Message);
             }
         }

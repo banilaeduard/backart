@@ -13,39 +13,57 @@ namespace WebApi.Controllers
     using Storage;
     using DataAccess.Entities;
     using System.IO;
+    using SolrIndexing;
+    using Piping;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
     {
         private ComplaintSeriesDbContext complaintSeriesDbContext;
         private IStorageService storageService;
+        private SolrCRUD solrIndex;
+        private EnrichService enrichService;
         public TicketController(
             ComplaintSeriesDbContext complaintSeriesDbContext,
             IStorageService storageService,
+            SolrCRUD solrIndex,
+            EnrichService enrichService,
             ILogger<TicketController> logger) : base(logger)
         {
             this.complaintSeriesDbContext = complaintSeriesDbContext;
             this.storageService = storageService;
+            this.solrIndex = solrIndex;
+            this.enrichService = enrichService;
         }
 
         [HttpGet("{page}/{pageSize}")]
         public IActionResult GetAll(int page, int pageSize)
         {
-            return Ok(new
-            {
-                count = this.complaintSeriesDbContext.Complaints.Count(),
-                complaints = this.complaintSeriesDbContext.Complaints
+            var complaints = complaintSeriesDbContext.Complaints
                         .OrderByDescending(t => t.CreatedDate)
                         .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .Select(t => ComplaintSeriesModel.from(t))
+                        .Take(pageSize);
+
+            return Ok(new
+            {
+                count = complaintSeriesDbContext.Complaints.Count(),
+                complaints = complaints.Select(t => ComplaintSeriesModel.from(t, null))
             });
+        }
+
+        [HttpGet("find/{skip}/{take}/{query}")]
+        public async Task<IActionResult> Find(int skip, int take, string query)
+        {
+            var solrResults = await solrIndex.query(skip, take, query);
+            return Ok(solrResults);
         }
 
         [HttpPost("delete")]
         public async Task<IActionResult> Delete(ComplaintSeriesModel complaint)
         {
-            complaintSeriesDbContext.Remove(complaint.toDbModel());
+            var dbModel = complaint.toDbModel();
+            complaintSeriesDbContext.Remove(dbModel);
+            await solrIndex.deleteDocument(dbModel.Id.ToString());
             await complaintSeriesDbContext.SaveChangesAsync();
             return Ok(200);
         }
@@ -56,7 +74,7 @@ namespace WebApi.Controllers
             var dbModel = complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id);
             dbModel.Status = status;
             await complaintSeriesDbContext.SaveChangesAsync();
-            return Ok(ComplaintSeriesModel.from(complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)));
+            return Ok(ComplaintSeriesModel.from(complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id), null));
         }
 
         [HttpPost]
@@ -65,9 +83,9 @@ namespace WebApi.Controllers
             var dbModel = complaint.toDbModel();
 
             if (complaint.Id < 1)
-                this.complaintSeriesDbContext.Complaints.Add(dbModel);
+                complaintSeriesDbContext.Complaints.Add(dbModel);
             else
-                this.complaintSeriesDbContext.Complaints.Update(dbModel);
+                complaintSeriesDbContext.Complaints.Update(dbModel);
 
 
             var ticket = complaint.Tickets[0];
@@ -76,7 +94,7 @@ namespace WebApi.Controllers
             {
                 foreach (var toDelete in ticket.ToDeleteAttachment)
                 {
-                    this.complaintSeriesDbContext.Entry(toDelete).State = EntityState.Deleted;
+                    complaintSeriesDbContext.Entry(toDelete).State = EntityState.Deleted;
                     storageService.Delete(toDelete.Data);
                 }
             }
@@ -85,18 +103,20 @@ namespace WebApi.Controllers
             {
                 foreach (var toAdd in ticket.ToAddAttachment)
                 {
-                    toAdd.Data = this.storageService.SaveBase64(toAdd.Data, toAdd.Title);
+                    toAdd.Data = storageService.SaveBase64(toAdd.Data, toAdd.Title);
                     toAdd.ContentType = toAdd.ContentType;
                     toAdd.Extension = Path.GetExtension(toAdd.Title);
                     toAdd.Ticket = dbModel.Tickets[0];
-                    toAdd.StorageType = this.storageService.StorageType;
-                    this.complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
+                    toAdd.StorageType = storageService.StorageType;
+                    complaintSeriesDbContext.Entry(toAdd).State = EntityState.Added;
                 }
             }
 
-            await this.complaintSeriesDbContext.SaveChangesAsync();
+            await complaintSeriesDbContext.SaveChangesAsync();
+            await enrichService.Enrich(dbModel.Tickets[0], dbModel);
+
             return Ok(ComplaintSeriesModel.from(
-                this.complaintSeriesDbContext.Find<ComplaintSeries>(dbModel.Id))
+                complaintSeriesDbContext.Find<ComplaintSeries>(dbModel.Id), null)
                 );
         }
     }

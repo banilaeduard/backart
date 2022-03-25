@@ -16,7 +16,7 @@ namespace WebApi.Controllers
         [AllowAnonymous]
         public string test()
         {
-            this.logger.LogInformation("web api core up and running");
+            logger.LogInformation("web api core up and running");
             return "web api core up and running";
         }
 

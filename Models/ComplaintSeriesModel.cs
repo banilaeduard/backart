@@ -18,11 +18,11 @@
 
         [JsonConstructor]
         private ComplaintSeriesModel() { }
-        private ComplaintSeriesModel(ComplaintSeries complaint)
+        private ComplaintSeriesModel(ComplaintSeries complaint, List<Dictionary<string, object>> tags)
         {
             Id = complaint.Id;
             DataKey = complaint.DataKey?.locationCode;
-            Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
+            Tickets = complaint.Tickets.Select(t => TicketModel.from(t, tags?.Find(solrDoc => Convert.ToInt32(solrDoc["id"]) == t.Id))).ToList();
             Created = complaint.CreatedDate;
             Status = complaint.Status;
             NrComanda = complaint.NrComanda;
@@ -39,9 +39,9 @@
             };
         }
 
-        public static ComplaintSeriesModel from(ComplaintSeries dbModel)
+        public static ComplaintSeriesModel from(ComplaintSeries dbModel, List<Dictionary<string, object>> tags)
         {
-            return new ComplaintSeriesModel(dbModel);
+            return new ComplaintSeriesModel(dbModel, tags);
         }
     }
 }

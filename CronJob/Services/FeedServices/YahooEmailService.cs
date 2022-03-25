@@ -53,7 +53,7 @@ namespace CronJob.Services.FeedServices
                                     }
                                     else
                                     {
-                                        Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                                        // Console.WriteLine("Skipping: {0}\r\n", uid.Id);
                                     }
                                 }
                             }
