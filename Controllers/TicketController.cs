@@ -65,7 +65,7 @@ namespace WebApi.Controllers
             complaintSeriesDbContext.Remove(dbModel);
             await solrIndex.deleteDocument(dbModel.Id.ToString());
             await complaintSeriesDbContext.SaveChangesAsync();
-            return Ok(200);
+            return Ok();
         }
 
         [HttpPost("status/{status}")]

@@ -17,6 +17,13 @@ namespace SolrIndexing
         public async Task createDocument(IDictionary<string, object> document)
         {
             var tst = new Dictionary<string, object>(document);
+            foreach (var key in SolrConstants.ignoreFields)
+            {
+                if (tst.ContainsKey(key))
+                {
+                    tst.Remove(key);
+                }
+            }
             await client.AddAsync(tst);
             await client.CommitAsync();
         }

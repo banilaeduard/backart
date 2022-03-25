@@ -185,7 +185,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("CodeValue")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("ComplaintSeriesId")
+                    b.Property<int>("ComplaintId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedDate")
@@ -202,7 +202,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ComplaintSeriesId");
+                    b.HasIndex("ComplaintId");
 
                     b.ToTable("Ticket");
                 });
@@ -241,9 +241,13 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
             modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
-                    b.HasOne("DataAccess.Entities.ComplaintSeries", null)
+                    b.HasOne("DataAccess.Entities.ComplaintSeries", "Complaint")
                         .WithMany("Tickets")
-                        .HasForeignKey("ComplaintSeriesId");
+                        .HasForeignKey("ComplaintId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.Navigation("Complaint");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>

@@ -14,5 +14,7 @@ namespace DataAccess.Entities
         public bool HasAttachments { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime UpdatedDate { get; set; }
+        public int ComplaintId { get; set; }
+        public ComplaintSeries Complaint { get; set; }
     }
 }

@@ -75,14 +75,14 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     HasAttachments = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    ComplaintSeriesId = table.Column<int>(type: "int", nullable: true)
+                    ComplaintId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Ticket", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Ticket_Complaints_ComplaintSeriesId",
-                        column: x => x.ComplaintSeriesId,
+                        name: "FK_Ticket_Complaints_ComplaintId",
+                        column: x => x.ComplaintId,
                         principalTable: "Complaints",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -103,6 +103,8 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     Extension = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     ContentType = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    StorageType = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false)
@@ -182,9 +184,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                 column: "DataKeyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Ticket_ComplaintSeriesId",
+                name: "IX_Ticket_ComplaintId",
                 table: "Ticket",
-                column: "ComplaintSeriesId");
+                column: "ComplaintId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

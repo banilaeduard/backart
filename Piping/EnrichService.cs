@@ -29,8 +29,8 @@ namespace Piping
             try
             {
                 var dict = model.AsDictionary();
+                dict[SolrConstants.SourceField] = src;
 
-                dict["complaintid"] = series.Id;
                 if (series.DataKey != null)
                 {
                     dict["datakey"] = new List<string>() { series.DataKey.locationCode, series.DataKey.name };

@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
     [DbContext(typeof(ComplaintSeriesDbContext))]
-    [Migration("20220306133133_initial")]
+    [Migration("20220325121604_initial")]
     partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -35,6 +35,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                         .HasColumnType("longtext");
 
                     b.Property<string>("Extension")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("StorageType")
                         .HasColumnType("longtext");
 
                     b.Property<int>("TicketId")
@@ -184,7 +187,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     b.Property<string>("CodeValue")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("ComplaintSeriesId")
+                    b.Property<int>("ComplaintId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedDate")
@@ -201,7 +204,7 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ComplaintSeriesId");
+                    b.HasIndex("ComplaintId");
 
                     b.ToTable("Ticket");
                 });
@@ -240,9 +243,13 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
             modelBuilder.Entity("DataAccess.Entities.Ticket", b =>
                 {
-                    b.HasOne("DataAccess.Entities.ComplaintSeries", null)
+                    b.HasOne("DataAccess.Entities.ComplaintSeries", "Complaint")
                         .WithMany("Tickets")
-                        .HasForeignKey("ComplaintSeriesId");
+                        .HasForeignKey("ComplaintId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.Navigation("Complaint");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.CodeLink", b =>

@@ -31,6 +31,12 @@ namespace DataAccess.Context
             modelBuilder.Entity<CodeLink>()
                 .ToTable("CodeLinkSnapshot");
 
+            modelBuilder.Entity<Ticket>()
+                    .HasOne(t => t.Complaint)
+                    .WithMany(t => t.Tickets)
+                    .HasForeignKey(f => f.ComplaintId)
+                    .OnDelete(DeleteBehavior.ClientCascade);
+
             modelBuilder.Entity<ComplaintSeries>()
                 .Navigation<Ticket>(t => t.Tickets).AutoInclude();
 

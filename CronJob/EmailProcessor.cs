@@ -145,7 +145,7 @@ namespace CronJob
                 await complaintSeriesDbContext.SaveChangesAsync();
 
                 // indexing
-                await enrichService.Enrich(complaint.Tickets[0], complaint);
+                await enrichService.Enrich(complaint.Tickets[0], complaint, Source.MailImport);
             }
             catch (Exception ex)
             {

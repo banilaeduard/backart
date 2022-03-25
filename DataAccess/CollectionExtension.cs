@@ -37,6 +37,7 @@ namespace DataAccess
         {
             services.AddDbContext<ComplaintSeriesDbContext>(options => configureConnectionString(Configuration, options));
             services.AddDbContext<CodeDbContext>(options => configureConnectionString(Configuration, options));
+            services.AddDbContext<FilterDbContext>(options => configureConnectionString(Configuration, options));
             services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(Configuration, options));
 
             services.AddScoped<NoFilterBaseContext>();
@@ -67,6 +68,9 @@ namespace DataAccess
 
                         var complaintSeriesDbContext = provider.ServiceProvider.GetRequiredService<ComplaintSeriesDbContext>();
                         complaintSeriesDbContext.Database.Migrate();
+
+                        var filterDbContext = provider.ServiceProvider.GetRequiredService<FilterDbContext>();
+                        filterDbContext.Database.Migrate();
 
                         // we ensure roles are created
                         var roleManager = provider.ServiceProvider.GetRequiredService<RoleManager<AppIdentityRole>>();
