@@ -78,6 +78,8 @@ namespace CronJob.Services.FeedServices
         {
             var personal = client.GetFolder(client.PersonalNamespaces[0]);
 
+            yield return client.Inbox;
+
             foreach (var folder in appSettings.mailfolders.Split(','))
             {
                 yield return personal.GetSubfolder(folder, cancellationToken);

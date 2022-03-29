@@ -37,10 +37,11 @@ namespace WebApi.Controllers
         [HttpGet]
         public IActionResult get()
         {
-            return Ok(filterContext.Filters.Select(t => FilterModel.From(t)));
+            return Ok(filterContext.Filters.OrderByDescending(t => t.CreatedDate).Select(t => FilterModel.From(t)));
         }
 
         [HttpPost("delete")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> delete(FilterModel filterModel)
         {
             filterContext.Filters.Remove(filterModel.toDatabaseModel());
@@ -49,6 +50,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("update")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> update(FilterModel filterModel)
         {
             var dbModel = filterModel.toDatabaseModel();

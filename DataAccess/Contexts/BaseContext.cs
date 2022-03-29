@@ -51,7 +51,8 @@ namespace DataAccess.Context
                 var baseFilter = (Expression<Func<Object, bool>>)(_ => baseContextAccesor.disableFiltering);
                 var tenantFilter = (Expression<Func<ITenant, bool>>)(e => e.TenantId == baseContextAccesor.TenantId);
                 var dataKeyFilter = (Expression<Func<IDataKey, bool>>)(e => e.DataKey.locationCode == baseContextAccesor.DataKeyLocation ||
-                                                                            e.DataKey.Id == baseContextAccesor.DataKeyId);
+                                                                            e.DataKey.Id == baseContextAccesor.DataKeyId ||
+                                                                            baseContextAccesor.DataKeyLocation == "admin");
                 var isAdminDataKey = (Expression<Func<IDataKey, bool>>)(e => baseContextAccesor.IsAdmin);
                 var softDeleted = (Expression<Func<ISoftDelete, bool>>)(e => e.isDeleted != true);
 

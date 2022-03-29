@@ -51,13 +51,6 @@ namespace WebApi.Controllers
             });
         }
 
-        [HttpGet("find/{skip}/{take}/{query}")]
-        public async Task<IActionResult> Find(int skip, int take, string query)
-        {
-            var solrResults = await solrIndex.query(skip, take, query);
-            return Ok(solrResults);
-        }
-
         [HttpPost("delete")]
         public async Task<IActionResult> Delete(ComplaintSeriesModel complaint)
         {
