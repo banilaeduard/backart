@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
     [DbContext(typeof(ComplaintSeriesDbContext))]
-    [Migration("20220325121604_initial")]
+    [Migration("20220329115605_initial")]
     partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -201,6 +201,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("isDeleted")
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
 

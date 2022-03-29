@@ -3,7 +3,7 @@ namespace DataAccess.Entities
     using System;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
-    public class Ticket: IBaseEntity
+    public class Ticket: IBaseEntity, ISoftDelete
     {
         [Key]
         public int Id { get; set; }
@@ -16,5 +16,6 @@ namespace DataAccess.Entities
         public DateTime UpdatedDate { get; set; }
         public int ComplaintId { get; set; }
         public ComplaintSeries Complaint { get; set; }
+        public bool isDeleted { get; set; }
     }
 }

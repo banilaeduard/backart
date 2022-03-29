@@ -75,7 +75,8 @@ namespace BackArt.Migrations.ComplaintSeriesDb
                     HasAttachments = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    ComplaintId = table.Column<int>(type: "int", nullable: false)
+                    ComplaintId = table.Column<int>(type: "int", nullable: false),
+                    isDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
                 {

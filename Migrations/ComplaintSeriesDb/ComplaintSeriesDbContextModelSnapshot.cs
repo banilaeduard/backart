@@ -3,7 +3,6 @@ using System;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackArt.Migrations.ComplaintSeriesDb
 {
@@ -199,6 +198,9 @@ namespace BackArt.Migrations.ComplaintSeriesDb
 
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("isDeleted")
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
 

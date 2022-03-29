@@ -13,12 +13,15 @@ namespace CronJob.Services.FeedServices
     internal class YahooEmailService
     {
         private AppSettings appSettings;
+
+        Dictionary<string, DateTime> processedMessages = new Dictionary<string, DateTime>();
         public YahooEmailService(AppSettings appSettings)
         {
             this.appSettings = appSettings;
         }
         public async Task ReadDedMails(IProcessor<MimeMessage> processor, CancellationToken cancellationToken)
         {
+            DateTime defaultDate = DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset));
             try
             {
                 using (ImapClient client = new ImapClient())
@@ -30,11 +33,19 @@ namespace CronJob.Services.FeedServices
                     {
                         foreach (var from in appSettings.fromContains.Split(';'))
                         {
+                            bool success = false;
+                            DateTime fromDate = DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset));
+
+                            if (processedMessages.ContainsKey(getKey(folder, from)))
+                            {
+                                fromDate = processedMessages[getKey(folder, from)];
+                            }
+
                             folder.Open(FolderAccess.ReadOnly);
                             Console.WriteLine("{0} - {1}", folder.Name, from);
 
                             var uids = folder.Search(
-                                SearchQuery.DeliveredAfter(DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset))).And(
+                                SearchQuery.DeliveredAfter(fromDate).And(
                                   SearchQuery.FromContains(from)
                                 )
                             , cancellationToken);
@@ -53,9 +64,11 @@ namespace CronJob.Services.FeedServices
                                     }
                                     else
                                     {
-                                        // Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                                        Console.WriteLine("Skipping: {0}\r\n", uid.Id);
                                     }
                                 }
+
+                                success = true;
                             }
                             catch (Exception ex)
                             {
@@ -63,6 +76,10 @@ namespace CronJob.Services.FeedServices
                             }
                             finally
                             {
+                                if (success)
+                                {
+                                    processedMessages[getKey(folder, from)] = DateTime.Now.AddHours(-1);
+                                }
                                 folder.Close();
                             }
                         }
@@ -74,6 +91,12 @@ namespace CronJob.Services.FeedServices
                 Console.WriteLine(ep.Message);
             }
         }
+
+        string getKey(IMailFolder folder, string from)
+        {
+            return string.Format("{0}_{1}", folder.Name, from);
+        }
+
         IEnumerable<IMailFolder> GetFolders(ImapClient client, CancellationToken cancellationToken)
         {
             var personal = client.GetFolder(client.PersonalNamespaces[0]);
