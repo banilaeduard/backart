@@ -86,8 +86,8 @@ namespace CronJob
 
                     description += words.Aggregate((agg, val) =>
                         agg = (agg ?? "") +
-                     (String.IsNullOrWhiteSpace(val) ? "" : ("" + regexText.Replace(val.Trim(), "")))
-                     + " \r\n");
+                     (String.IsNullOrWhiteSpace(regexText.Replace(val, "")) ? "" : ("" + regexText.Replace(val.Trim(), "")))
+                     + " ") + "\r\n";
                 }
 
                 var names = nameFinder.getNames(wordTok.Tokenize(body));
