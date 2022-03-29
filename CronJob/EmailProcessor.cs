@@ -78,7 +78,17 @@ namespace CronJob
                 var nrComanda = string.Empty;
 
                 var sentences = sentTok.DetectSentences(body);
-                description = sentences.Aggregate((agg, val) => agg = (agg ?? "") + " \r\n" + regexText.Replace(val, " "));
+                foreach (var sentence in sentences)
+                {
+                    if (sentence == null) continue;
+                    var words = wordTok.Tokenize(sentence);
+                    if (words == null || words.Length == 0) continue;
+
+                    description += words.Aggregate((agg, val) =>
+                        agg = (agg ?? "") +
+                     (String.IsNullOrWhiteSpace(val) ? "" : ("" + regexText.Replace(val.Trim(), "")))
+                     + " \r\n");
+                }
 
                 var names = nameFinder.getNames(wordTok.Tokenize(body));
                 nrComanda = names?.Where(t => t.Type == "comanda")?
