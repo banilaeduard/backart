@@ -19,7 +19,14 @@
 
         public async override Task DoWork(CancellationToken cancellationToken, IProcessor<MimeMessage> processor, IServiceScope scope)
         {
-            await mailSvc.ReadDedMails(processor, cancellationToken);
+            try
+            {
+                await mailSvc.ReadDedMails(processor, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 }
