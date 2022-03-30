@@ -17,5 +17,6 @@ namespace core
         public string mailfolders { get; set; }
         public string daysoffset { get; set; }
         public string fromContains { get; set; }
+        public string retrySeconds { get; set; }
     }
 }

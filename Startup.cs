@@ -27,6 +27,7 @@ using Storage;
 using NER;
 using Piping;
 using SolrIndexing;
+using System.Threading.Tasks;
 
 namespace BackArt
 {
@@ -116,6 +117,15 @@ namespace BackArt
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory factory)
         {
+            app.UseWhen(ctx => Program.IsInitializing && ctx.Request.Method != "OPTIONS", appBuilder =>
+            {
+                appBuilder.Use(async (httpContext, next) =>
+                {
+                    httpContext.Response.StatusCode = 503;
+                    await Task.FromResult(true);
+                });
+            });
+
             if (env.IsDevelopment())
             {
                  app.UseDeveloperExceptionPage();

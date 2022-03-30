@@ -15,6 +15,7 @@
 
         public string[] DetectSentences(string textBody)
         {
+            if (string.IsNullOrWhiteSpace(textBody)) return new string[0];
             return detector.sentDetect(textBody);
         }
     }

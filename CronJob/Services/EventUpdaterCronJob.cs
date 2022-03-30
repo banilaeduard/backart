@@ -13,10 +13,10 @@ namespace CronJob
 {
     public class EventUpdaterCronJob : CronJobService<ComplaintSeries>
     {
-        public EventUpdaterCronJob(IServiceProvider services, AppSettings appsetting) : base(appsetting.calreccurencepattern, services)
+        public EventUpdaterCronJob(IServiceProvider services, AppSettings appsetting) : base(appsetting.calreccurencepattern, services, appsetting)
         {
         }
-        public override async Task DoWork(CancellationToken cancellationToken, IProcessor<ComplaintSeries> processor, IServiceScope scope)
+        public override async Task<Boolean> DoWork(CancellationToken cancellationToken, IProcessor<ComplaintSeries> processor, IServiceScope scope)
         {
             try
             {
@@ -24,10 +24,13 @@ namespace CronJob
                     scope.ServiceProvider.GetRequiredService<DbContextOptions<ComplaintSeriesDbContext>>(),
                     scope.ServiceProvider.GetRequiredService<NoFilterBaseContext>()
                     ).FeedComplaints(processor, cancellationToken);
+
+                return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                return false;
             }
         }
     }

@@ -28,4 +28,10 @@
     <PackageReference Include="OpenNLP.NET" Version="1.9.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="trainmodels\en-ner-location.bin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

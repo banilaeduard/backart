@@ -24,11 +24,12 @@ namespace Piping
         public async Task Enrich(
             Ticket model,
             ComplaintSeries series,
-            Source src = Source.UserInput)
+            Source src = Source.UserInput,
+            IDictionary<string, object> extras = null)
         {
             try
             {
-                var dict = model.AsDictionary();
+                var dict = model.AsDictionary().mergeWith(extras);
                 dict[SolrConstants.SourceField] = src;
 
                 if (series.DataKey != null)
@@ -41,9 +42,15 @@ namespace Piping
 
                 dict.mergeWith(names.toAgregateDictionary(t => t.Type, t => t.Value));
 
-                if (!dict.ContainsKey("comanda") && !string.IsNullOrWhiteSpace(series.NrComanda))
+                if (!string.IsNullOrWhiteSpace(series.NrComanda))
                 {
-                    dict.Add("comdanda", series.NrComanda);
+                    foreach (var comanda in series.NrComanda?.Split(' ', ';', ','))
+                    {
+                        if (!string.IsNullOrWhiteSpace(comanda))
+                        {
+                            dict.mergeWith(new KeyValuePair<string, object>("comanda", comanda));
+                        }
+                    }
                 }
 
                 await solrIndex.createDocument(dict);
@@ -55,3 +62,4 @@ namespace Piping
         }
     }
 }
+

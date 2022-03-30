@@ -1,5 +1,6 @@
 ﻿namespace CronJob
 {
+    using core;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
     using Quartz;
@@ -9,29 +10,27 @@
 
     public abstract class CronJobService<T> : BackgroundService, IDisposable
     {
+        private DateTimeOffset lastRun = DateTimeOffset.MinValue;
         private System.Timers.Timer _timer;
-        private bool completed = true;
+
         private readonly CronExpression _expression;
         protected readonly IServiceProvider services;
+        private readonly int _defaultRetry;
 
-        protected CronJobService(string cronExpression, IServiceProvider services)
+        protected CronJobService(string cronExpression, IServiceProvider services, AppSettings appSettings)
         {
+            _defaultRetry = int.Parse(appSettings.retrySeconds);
             _expression = new CronExpression(cronExpression);
             this.services = services;
         }
 
         protected virtual async Task ScheduleJob(CancellationToken cancellationToken)
         {
-            var next = _expression.GetNextValidTimeAfter(DateTimeOffset.Now);
+            var next = _expression.GetNextValidTimeAfter(lastRun);
             if (next.HasValue)
             {
                 var delay = next.Value - DateTimeOffset.Now;
-                if (delay.TotalMilliseconds <= 0 || !completed)   // prevent non-positive values from being passed into Timer
-                {
-                    await ScheduleJob(cancellationToken);
-                }
-                _timer = new System.Timers.Timer(delay.TotalMilliseconds);
-                completed = false;
+                _timer = new System.Timers.Timer(Math.Max(_defaultRetry, (int)delay.TotalMilliseconds));
                 _timer.Elapsed += async (sender, args) =>
                 {
                     _timer.Dispose();  // reset and dispose timer
@@ -44,8 +43,7 @@
                                 scope.ServiceProvider
                                     .GetRequiredService<IProcessor<T>>();
                             await DoWork(cancellationToken, scopedProcessingService, scope);
-
-                            completed = true;
+                            lastRun = DateTimeOffset.Now;
                         }
                     }
 
@@ -63,7 +61,7 @@
             await ScheduleJob(stoppingToken);
         }
 
-        public abstract Task DoWork(CancellationToken cancellationToken, IProcessor<T> processor, IServiceScope scope);
+        public abstract Task<Boolean> DoWork(CancellationToken cancellationToken, IProcessor<T> processor, IServiceScope scope);
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {

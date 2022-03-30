@@ -51,9 +51,17 @@ namespace SolrIndexing
 
         public static IDictionary<string, object> mergeWith(this IDictionary<string, object> src, IDictionary<string, object> other)
         {
+            if (other == null) return src;
+
             foreach (var kvp in other)
                 mergeToList(src, kvp.Key, kvp.Value);
 
+            return src;
+        }
+
+        public static IDictionary<string, object> mergeWith<T>(this IDictionary<string, object> src, KeyValuePair<string, T> kvp)
+        {
+            mergeToList(src, kvp.Key, kvp.Value);
             return src;
         }
 
@@ -78,6 +86,7 @@ namespace SolrIndexing
             {
                 if (Convert.GetTypeCode(value) != TypeCode.Object)
                 {
+                    value = ValueConvertor.tryConvert(key, value);
                     if (agregator.ContainsKey(key))
                     {
                         if ((agregator[key] as IList<object>) == null)
@@ -87,11 +96,11 @@ namespace SolrIndexing
                             ((IList<object>)agregator[key]).Add(item);
                         }
                         if (!((IList<object>)agregator[key]).Contains(value))
-                            ((IList<object>)agregator[key]).Add(Convert.ToString(value));
+                            ((IList<object>)agregator[key]).Add(value);
                     }
                     else
                     {
-                        agregator.Add(key, Convert.ToString(value));
+                        agregator.Add(key, value);
                     }
                 }
                 else if (value.GetType().IsGenericType)

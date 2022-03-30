@@ -14,6 +14,8 @@
 
         public string[] Tokenize(string textBody)
         {
+            if (string.IsNullOrWhiteSpace(textBody)) return new string[0];
+
             return tokenizer.tokenize(textBody);
         }
     }

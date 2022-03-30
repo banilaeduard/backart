@@ -7,6 +7,8 @@ using MailKit.Search;
 using MimeKit;
 using core;
 using System.Collections.Generic;
+using System.Security.Authentication;
+using MailKit.Security;
 
 namespace CronJob.Services.FeedServices
 {
@@ -21,20 +23,25 @@ namespace CronJob.Services.FeedServices
         }
         public async Task ReadDedMails(IProcessor<MimeMessage> processor, CancellationToken cancellationToken)
         {
-            DateTime defaultDate = DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset));
-            try
+            using (ImapClient client = new ImapClient(/*new ProtocolLogger(Console.OpenStandardOutput())*/ ))
             {
-                using (ImapClient client = new ImapClient())
-                {
-                    client.Connect("imap.mail.yahoo.com", 993, true); //For SSL
-                    client.Authenticate(appSettings.yappuser, appSettings.yapppass);
+                //client.CheckCertificateRevocation = false;
+                //client.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
-                    foreach (var folder in GetFolders(client, cancellationToken))
+                await client.ConnectAsync(
+                    "imap.mail.yahoo.com", 
+                    993, 
+                    true); //For SSL
+                await client.AuthenticateAsync(appSettings.yappuser, appSettings.yapppass);
+
+                foreach (var folder in GetFolders(client, cancellationToken))
+                {
+                    foreach (var from in appSettings.fromContains.Split(';'))
                     {
-                        foreach (var from in appSettings.fromContains.Split(';'))
+                        bool success = false;
+                        DateTime fromDate = DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset));
+                        try
                         {
-                            bool success = false;
-                            DateTime fromDate = DateTime.Now.AddDays(-int.Parse(appSettings.daysoffset));
 
                             if (processedMessages.ContainsKey(getKey(folder, from)))
                             {
@@ -49,46 +56,41 @@ namespace CronJob.Services.FeedServices
                                   SearchQuery.FromContains(from)
                                 )
                             , cancellationToken);
-                            try
-                            {
-                                foreach (var uid in uids)
-                                {
-                                    cancellationToken.ThrowIfCancellationRequested();
 
-                                    if (await processor.shouldProcess(null, uid.Id.ToString()))
-                                    {
-                                        var message = folder.GetMessage(uid);
-                                        await processor.process(message, uid.Id.ToString());
-                                        Console.WriteLine("From: {0}", message.From.ToString());
-                                        Console.WriteLine("Subject: {0}\r\n", message.Subject);
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine("Skipping: {0}\r\n", uid.Id);
-                                    }
-                                }
+                            foreach (var uid in uids)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
 
-                                success = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex.Message);
-                            }
-                            finally
-                            {
-                                if (success)
+                                if (await processor.shouldProcess(null, uid.Id.ToString()))
                                 {
-                                    processedMessages[getKey(folder, from)] = DateTime.Now.AddHours(-1);
+                                    var message = folder.GetMessage(uid);
+                                    await processor.process(message, uid.Id.ToString());
+                                    Console.WriteLine("From: {0}", message.From.ToString());
+                                    Console.WriteLine("Subject: {0}\r\n", message.Subject);
                                 }
-                                folder.Close();
+                                else
+                                {
+                                    Console.WriteLine("Skipping: {0}\r\n", uid.Id);
+                                }
                             }
+
+                            success = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                        }
+                        finally
+                        {
+                            if (success)
+                            {
+                                processedMessages[getKey(folder, from)] = DateTime.Now.AddHours(-1);
+                            }
+                            folder.Close();
                         }
                     }
                 }
-            }
-            catch (Exception ep)
-            {
-                Console.WriteLine(ep.Message);
+                client.Disconnect(true);
             }
         }
 

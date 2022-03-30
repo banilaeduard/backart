@@ -21,8 +21,8 @@
                 models[i] = new NameFinderModel()
                 {
                     Probability = spans[i].getProb(),
-                    Type = spans[i].getType(),
-                    Value = tokens[spans[i].getStart()]
+                    Type = spans[i].getType()?.Trim(),
+                    Value = tokens[spans[i].getStart()]?.Trim()
                 };
 
             return models;

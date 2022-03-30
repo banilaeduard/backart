@@ -11,7 +11,7 @@ namespace CronJob
             services.AddScoped<IProcessor<MimeMessage>, EmailProcessor>();
             services.AddScoped<IProcessor<ComplaintSeries>, GCalendarServiceProcessor>();
             services.AddHostedService<EmailReaderCronJob>();
-            services.AddHostedService<EventUpdaterCronJob>();
+            // services.AddHostedService<EventUpdaterCronJob>();
             return services;
         }
     }

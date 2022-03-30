@@ -9,6 +9,7 @@ using System.Collections.Generic;
 
 using NER;
 using Piping;
+using SolrIndexing;
 using DataAccess;
 using DataAccess.Entities;
 using DataAccess.Context;
@@ -24,13 +25,17 @@ namespace CronJob
         IStorageService storageService;
         SentenceTokenizer sentTok;
         WordTokenizer wordTok;
-        NameFinder nameFinder;
         HtmlStripper htmlStrip;
         EnrichService enrichService;
 
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
-        private static Regex regexText = new Regex(@"\r\n|\n");
-
+        private static Regex nrComdanda = new Regex(@"4\d{9}");
+        private static readonly string[] punctuation = new string[] { ".", ":", "!", "," };
+        private static readonly string[] address = new string[] { "jud", "judet", "com", "comuna", "municipiul", "mun",
+                                                                    "str", "strada", "oras", "soseaua", "valea",
+                                                                    "sat", "satu", "cod postal", "postal code",
+                                                                    "bulevardul", "bulevard", "bdul", "bld-ul", "b-dul",
+                                                                    "calea", "aleea", "sos", "sect", "sectorul", "sector" };
         public EmailProcessor(
             DbContextOptions<ComplaintSeriesDbContext> ctxBuilder,
             NoFilterBaseContext noFilter,
@@ -38,7 +43,6 @@ namespace CronJob
             IStorageService storageService,
             SentenceTokenizer sentTok,
             WordTokenizer wordTok,
-            NameFinder nameFinder,
             HtmlStripper htmlStrip,
             EnrichService enrichService)
         {
@@ -47,7 +51,6 @@ namespace CronJob
             this.storageService = storageService;
             this.sentTok = sentTok;
             this.wordTok = wordTok;
-            this.nameFinder = nameFinder;
             this.htmlStrip = htmlStrip;
             this.enrichService = enrichService;
         }
@@ -72,31 +75,147 @@ namespace CronJob
                     };
                 }
 
-                var description = string.Empty;
                 var body = !string.IsNullOrWhiteSpace(message.HtmlBody) ?
-                    htmlStrip.StripHtml(regexHtml.Replace(message.HtmlBody, "\r\n")) : message.TextBody ?? "";
+                    htmlStrip.StripHtml(regexHtml.Replace(message.HtmlBody, " ")) : message.TextBody ?? "";
+
+                if (string.IsNullOrWhiteSpace(body)) return;
+
                 var nrComanda = string.Empty;
+                var status = string.Empty;
+                List<string> adrese = new List<string>();
+                var extras = new Dictionary<string, object>();
+                var description = String.Empty;
+                body = body?
+                    .Replace("nr.", "nr: ", true, null)
+                    .Replace("jud.", "jud: ", true, null)
+                    .Replace("str.", "str: ", true, null)
+                    .Replace("com.", "com: ", true, null)
+                    .Replace("bld-ul.", "bld-ul: ", true, null)
+                    .Replace("mun.", "mun: ", true, null)
+                    .Replace("sos.", "sos: ", true, null)
+                    .Replace("sect.", "sect: ", true, null)
+                    .Replace("\r\n", " ")
+                    .Replace("\r", " ")
+                    .Replace("\n", " ");
 
-                var sentences = sentTok.DetectSentences(body);
-                foreach (var sentence in sentences)
+                foreach (var sent in sentTok.DetectSentences(body))
                 {
-                    if (sentence == null) continue;
-                    var words = wordTok.Tokenize(sentence);
-                    if (words == null || words.Length == 0) continue;
+                    var match = nrComdanda.Match(sent);
+                    if (match.Success)
+                    {
+                        for (int i = 0; i < match.Groups.Count; i++)
+                        {
+                            nrComanda += match.Groups[i].Value + " ";
+                            double numarComanda = 0;
+                            if (double.TryParse(match.Groups[i].Value, out numarComanda))
+                            {
+                                extras.mergeWith(KeyValuePair.Create("comanda", numarComanda));
+                            }
+                        }
+                    }
 
-                    description += words.Aggregate((agg, val) =>
-                        agg = (agg ?? "") +
-                     (String.IsNullOrWhiteSpace(regexText.Replace(val, "")) ? "" : ("" + regexText.Replace(val.Trim(), "")))
-                     + " ") + "\r\n";
+                    var words = wordTok.Tokenize(sent);
+
+                    if (words?.Length > 0)
+                    {
+                        var addressLine = string.Empty;
+                        bool shouldProcess = false;
+                        bool ignoreNextPunctaion = false;
+                        bool nearAddress = false;
+                        bool postalCode = true;
+                        bool wasCountry = false;
+                        // bool? wasDigit = null;
+                        int wasNumber = 0;
+                        int number = 0;
+                        int lastAddressIndex = -1;
+                        var descLine = string.Empty;
+
+                        for (int i = 0; i < words.Length; i++)
+                        {
+                            var word = words[i];
+                            nearAddress = lastAddressIndex != -1
+                                && (i - lastAddressIndex) < 3;
+                            if (!nearAddress)
+                            {
+                                wasNumber = 0;
+                            }
+                            if (address.Contains(word, StringComparer.InvariantCultureIgnoreCase)
+                                || (word.Contains("nr", StringComparison.InvariantCultureIgnoreCase) && nearAddress))
+                            {
+                                if (word.Contains("nr", StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    wasNumber++;
+                                }
+                                if (wasNumber < 2)
+                                {
+                                    addressLine += word + " ";
+                                    shouldProcess = true;
+                                    ignoreNextPunctaion = true;
+                                    lastAddressIndex = i;
+                                    postalCode = true;
+                                    //wasDigit = null;
+                                }
+                            }
+                            else if (shouldProcess
+                               // && (!wasDigit.HasValue || wasDigit.Value == Char.IsDigit(word[0]))
+                                )
+                            {
+                                if (Char.IsLetterOrDigit(word[0]))
+                                {
+                                    addressLine += word + " ";
+                                   // wasDigit = Char.IsDigit(word[0]);
+                                }
+                                else if (ignoreNextPunctaion)
+                                    addressLine += word + " ";
+                                else
+                                    shouldProcess = false;
+
+                                lastAddressIndex = i;
+                                ignoreNextPunctaion = false;
+                            }
+                            else if (nearAddress && !wasCountry && wasNumber < 2)
+                            {
+                                if (punctuation.Contains(word))
+                                {
+                                    addressLine += word + " ";
+                                    lastAddressIndex++;
+                                }
+                                else if (int.TryParse(word, out number) && postalCode)
+                                {
+                                    addressLine += number + " ";
+                                    extras.mergeWith(KeyValuePair.Create("postalcode", number));
+                                    postalCode = false;
+                                }
+                                else
+                                {
+                                    if (new string[] { "RO", "Romania" }.Contains(word, StringComparer.InvariantCultureIgnoreCase))
+                                    {
+                                        wasCountry = true;
+                                    }
+                                    addressLine += word + " ";
+                                }
+                            }
+                            descLine += (punctuation.Contains(word) ? "" : " ") + word;
+                        }
+                        descLine += Environment.NewLine;
+                        description += descLine.Trim();
+                        if(!string.IsNullOrWhiteSpace(addressLine) &&
+                            !status.Contains(addressLine.Trim(), StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            status += " " + addressLine.Trim() + " / ";
+                            adrese.Add(addressLine.Trim());
+                        }
+                    }
                 }
 
-                var names = nameFinder.getNames(wordTok.Tokenize(body));
-                nrComanda = names?.Where(t => t.Type == "comanda")?
-                    .OrderByDescending(t => t.Probability)?
-                    .FirstOrDefault()?.Value;
+                if (!string.IsNullOrEmpty(status))
+                {
+                    extras.mergeWith(adrese.toAgregateDictionary(t => "adresa", t => t));
+                }
 
                 var complaint = new ComplaintSeries()
                 {
+                    Status = status.Trim(),
                     DataKey = string.IsNullOrEmpty(dataKeyLocation.Id) ? dataKeyLocation : null,
                     DataKeyId = dataKeyLocation.Id,
                     TenantId = "cubik",
@@ -155,7 +274,7 @@ namespace CronJob
                 await complaintSeriesDbContext.SaveChangesAsync();
 
                 // indexing
-                await enrichService.Enrich(complaint.Tickets[0], complaint, Source.MailImport);
+                await enrichService.Enrich(complaint.Tickets[0], complaint, Source.MailImport, extras);
             }
             catch (Exception ex)
             {

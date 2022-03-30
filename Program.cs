@@ -4,20 +4,28 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Builder;
 
-using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 
 namespace BackArt
 {
     public class Program
     {
+        public static bool IsInitializing = true;
         public static void Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
 
-            DirectoryInfo di = new DirectoryInfo("/photos");
-            Console.WriteLine("Exista? calea catre infinit");
-            Console.WriteLine(di.Exists);
+            host.Services.GetRequiredService<IServiceScopeFactory>()
+                .CreateScope().ServiceProvider
+                .GetRequiredService<DataAccess.Initializer>()
+                .ExecuteAsync(System.Threading.CancellationToken.None)
+                .ContinueWith(t =>
+                {
+                    IsInitializing = false;
+                    Console.WriteLine("SYSTEM INITIALIZED");
+                });
+
             host.Run();
         }
 
