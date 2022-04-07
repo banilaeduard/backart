@@ -84,7 +84,7 @@ namespace CronJob.Services.FeedServices
                         {
                             if (success)
                             {
-                                processedMessages[getKey(folder, from)] = DateTime.Now.AddHours(-1);
+                                processedMessages[getKey(folder, from)] = DateTime.Now;
                             }
                             folder.Close();
                         }

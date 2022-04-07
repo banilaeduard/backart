@@ -42,8 +42,10 @@
                             var scopedProcessingService =
                                 scope.ServiceProvider
                                     .GetRequiredService<IProcessor<T>>();
-                            await DoWork(cancellationToken, scopedProcessingService, scope);
-                            lastRun = DateTimeOffset.Now;
+                            if (await DoWork(cancellationToken, scopedProcessingService, scope))
+                            {
+                                lastRun = DateTimeOffset.Now;
+                            }
                         }
                     }
 

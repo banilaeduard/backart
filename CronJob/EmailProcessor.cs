@@ -29,8 +29,9 @@ namespace CronJob
         EnrichService enrichService;
 
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
+        private static Regex regexNewLine = new Regex(@"\r\n|\r|\n");
         private static Regex nrComdanda = new Regex(@"4\d{9}");
-        private static readonly string[] punctuation = new string[] { ".", ":", "!", "," };
+        private static readonly string[] punctuation = new string[] { ".", ":", "!", ",", "-" };
         private static readonly string[] address = new string[] { "jud", "judet", "com", "comuna", "municipiul", "mun",
                                                                     "str", "strada", "oras", "soseaua", "valea",
                                                                     "sat", "satu", "cod postal", "postal code",
@@ -82,21 +83,22 @@ namespace CronJob
 
                 var nrComanda = string.Empty;
                 var status = string.Empty;
-                List<string> adrese = new List<string>();
+                var description = string.Empty;
                 var extras = new Dictionary<string, object>();
-                var description = String.Empty;
-                body = body?
-                    .Replace("nr.", "nr: ", true, null)
-                    .Replace("jud.", "jud: ", true, null)
-                    .Replace("str.", "str: ", true, null)
-                    .Replace("com.", "com: ", true, null)
-                    .Replace("bld-ul.", "bld-ul: ", true, null)
-                    .Replace("mun.", "mun: ", true, null)
-                    .Replace("sos.", "sos: ", true, null)
-                    .Replace("sect.", "sect: ", true, null)
-                    .Replace("\r\n", " ")
-                    .Replace("\r", " ")
-                    .Replace("\n", " ");
+
+                var addressLine = string.Empty;
+                var addressEntry = new HashSet<string>();
+                bool shouldProcess = false;
+                bool ignoreNextPunctaion = false;
+                bool nearAddress = false;
+                bool postalCode = true;
+                bool wasCountry = false;
+                // bool? wasDigit = null;
+                int wasNumber = 0;
+                int number = 0;
+                int addressHits = 0;
+                int lastAddressIndex = -1;
+                int offsetAddressIndex = 0;
 
                 foreach (var sent in sentTok.DetectSentences(body))
                 {
@@ -113,104 +115,114 @@ namespace CronJob
                             }
                         }
                     }
-
                     var words = wordTok.Tokenize(sent);
 
-                    if (words?.Length > 0)
+                    var descLine = string.Empty;
+                    for (int i = 0; i < words.Length; i++)
                     {
-                        var addressLine = string.Empty;
-                        bool shouldProcess = false;
-                        bool ignoreNextPunctaion = false;
-                        bool nearAddress = false;
-                        bool postalCode = true;
-                        bool wasCountry = false;
-                        // bool? wasDigit = null;
-                        int wasNumber = 0;
-                        int number = 0;
-                        int lastAddressIndex = -1;
-                        var descLine = string.Empty;
+                        var word = words[i];
+                        nearAddress = lastAddressIndex != -1
+                            && (i - lastAddressIndex + offsetAddressIndex) < 3;
 
-                        for (int i = 0; i < words.Length; i++)
+                        if (!nearAddress)
                         {
-                            var word = words[i];
-                            nearAddress = lastAddressIndex != -1
-                                && (i - lastAddressIndex) < 3;
-                            if (!nearAddress)
+                            if (!string.IsNullOrWhiteSpace(addressLine) &&
+                                !addressEntry.Contains(addressLine.Trim()) && addressHits > 1)
                             {
-                                wasNumber = 0;
+                                status += " " + addressLine.Trim().Trim(punctuation.Select(t => t[0]).ToArray()) + " / ";
+                                addressEntry.Add(addressLine.Trim().Trim(punctuation.Select(t => t[0]).ToArray()));
                             }
-                            if (address.Contains(word, StringComparer.InvariantCultureIgnoreCase)
-                                || (word.Contains("nr", StringComparison.InvariantCultureIgnoreCase) && nearAddress))
-                            {
-                                if (word.Contains("nr", StringComparison.InvariantCultureIgnoreCase))
-                                {
-                                    wasNumber++;
-                                }
-                                if (wasNumber < 2)
-                                {
-                                    addressLine += word + " ";
-                                    shouldProcess = true;
-                                    ignoreNextPunctaion = true;
-                                    lastAddressIndex = i;
-                                    postalCode = true;
-                                    //wasDigit = null;
-                                }
-                            }
-                            else if (shouldProcess
-                               // && (!wasDigit.HasValue || wasDigit.Value == Char.IsDigit(word[0]))
-                                )
-                            {
-                                if (Char.IsLetterOrDigit(word[0]))
-                                {
-                                    addressLine += word + " ";
-                                   // wasDigit = Char.IsDigit(word[0]);
-                                }
-                                else if (ignoreNextPunctaion)
-                                    addressLine += word + " ";
-                                else
-                                    shouldProcess = false;
+                            addressLine = string.Empty;
+                            shouldProcess = false;
+                            ignoreNextPunctaion = false;
+                            postalCode = true;
+                            wasCountry = false;
+                            // bool? wasDigit = null;
+                            wasNumber = 0;
+                            number = 0;
+                            addressHits = 0;
+                            lastAddressIndex = -1;
+                        }
 
-                                lastAddressIndex = i;
-                                ignoreNextPunctaion = false;
-                            }
-                            else if (nearAddress && !wasCountry && wasNumber < 2)
-                            {
-                                if (punctuation.Contains(word))
-                                {
-                                    addressLine += word + " ";
-                                    lastAddressIndex++;
-                                }
-                                else if (int.TryParse(word, out number) && postalCode)
-                                {
-                                    addressLine += number + " ";
-                                    extras.mergeWith(KeyValuePair.Create("postalcode", number));
-                                    postalCode = false;
-                                }
-                                else
-                                {
-                                    if (new string[] { "RO", "Romania" }.Contains(word, StringComparer.InvariantCultureIgnoreCase))
-                                    {
-                                        wasCountry = true;
-                                    }
-                                    addressLine += word + " ";
-                                }
-                            }
-                            descLine += (punctuation.Contains(word) ? "" : " ") + word;
-                        }
-                        descLine += Environment.NewLine;
-                        description += descLine.Trim();
-                        if(!string.IsNullOrWhiteSpace(addressLine) &&
-                            !status.Contains(addressLine.Trim(), StringComparison.InvariantCultureIgnoreCase))
+                        if (address.Contains(word, StringComparer.InvariantCultureIgnoreCase)
+                            || (word.Contains("nr", StringComparison.InvariantCultureIgnoreCase) && nearAddress))
                         {
-                            status += " " + addressLine.Trim() + " / ";
-                            adrese.Add(addressLine.Trim());
+                            if (word.Contains("nr", StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                wasNumber++;
+                            }
+                            if (wasNumber < 2)
+                            {
+                                addressLine += word + " ";
+                                shouldProcess = true;
+                                ignoreNextPunctaion = true;
+                                lastAddressIndex = i + offsetAddressIndex;
+                                postalCode = true;
+                                //wasDigit = null;
+                                addressHits++;
+                            }
                         }
+                        else if (shouldProcess
+                            // && (!wasDigit.HasValue || wasDigit.Value == Char.IsDigit(word[0]))
+                            )
+                        {
+                            if (Char.IsLetterOrDigit(word[0]))
+                            {
+                                addressLine += word + " ";
+                                // wasDigit = Char.IsDigit(word[0]);
+                            }
+                            else if (ignoreNextPunctaion)
+                                addressLine += word + " ";
+                            else
+                                shouldProcess = false;
+
+                            lastAddressIndex = i + offsetAddressIndex;
+                            ignoreNextPunctaion = false;
+                        }
+                        else if (nearAddress && !wasCountry && wasNumber < 2)
+                        {
+                            if (punctuation.Contains(word))
+                            {
+                                addressLine += word + " ";
+                                lastAddressIndex++;
+                            }
+                            else if (int.TryParse(word, out number) && postalCode)
+                            {
+                                addressLine += number + " ";
+                                extras.mergeWith(KeyValuePair.Create("postalcode", number));
+                                postalCode = false;
+                            }
+                            else
+                            {
+                                if (new string[] { "RO", "Romania" }.Contains(word, StringComparer.InvariantCultureIgnoreCase))
+                                {
+                                    wasCountry = true;
+                                }
+                                addressLine += word + " ";
+                            }
+                        }
+                        else
+                        {
+                            lastAddressIndex = -1;
+                        }
+
+                        descLine += (punctuation.Contains(word) ? "" : " ") + word;
                     }
+
+                    description += descLine.Trim() + " " + Environment.NewLine;
+                    offsetAddressIndex += words.Length - 1;
+                }
+
+                if (!string.IsNullOrWhiteSpace(addressLine) &&
+                                !addressEntry.Contains(addressLine.Trim()) && addressHits > 1)
+                {
+                    status += " " + addressLine.Trim() + " / ";
+                    addressEntry.Add(addressLine.Trim());
                 }
 
                 if (!string.IsNullOrEmpty(status))
                 {
-                    extras.mergeWith(adrese.toAgregateDictionary(t => "adresa", t => t));
+                    extras.mergeWith(addressEntry.toAgregateDictionary(t => "adresa", t => t));
                 }
 
                 var complaint = new ComplaintSeries()
@@ -222,7 +234,7 @@ namespace CronJob
                     NrComanda = nrComanda,
                     Tickets = new List<Ticket>() {
                         new Ticket() {
-                            CodeValue = id,
+                            CodeValue = string.Format("{0}", id), //!string.IsNullOrWhiteSpace(message.HtmlBody) ? "html" : "text"),
                             Description = description,
                             Attachments = new List<Attachment>(),
                             CreatedDate = new DateTime(message.Date.Ticks),

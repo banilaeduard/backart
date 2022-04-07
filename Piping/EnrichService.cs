@@ -38,20 +38,9 @@ namespace Piping
                 }
 
                 var tokens = wordTokenizer.Tokenize(model.Description);
-                var names = nameFinder.getNames(tokens);
+/*                var names = nameFinder.getNames(tokens);
 
-                dict.mergeWith(names.toAgregateDictionary(t => t.Type, t => t.Value));
-
-                if (!string.IsNullOrWhiteSpace(series.NrComanda))
-                {
-                    foreach (var comanda in series.NrComanda?.Split(' ', ';', ','))
-                    {
-                        if (!string.IsNullOrWhiteSpace(comanda))
-                        {
-                            dict.mergeWith(new KeyValuePair<string, object>("comanda", comanda));
-                        }
-                    }
-                }
+                dict.mergeWith(names.toAgregateDictionary(t => t.Type, t => t.Value));*/
 
                 await solrIndex.createDocument(dict);
             }

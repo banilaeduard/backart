@@ -20,8 +20,12 @@ namespace WebApi.Controllers
         [HttpGet("{skip}/{take}/{query}")]
         public async Task<IActionResult> Find(int skip, int take, string query)
         {
-            var solrResults = await solrIndex.query(skip, take, query);
-            return Ok(solrResults);
+            var solrResults = await solrIndex.query((skip-1) * take, take, query);
+            return Ok(new {
+                count = solrResults.NumFound,
+                results = solrResults
+            });
+
         }
     }
 }

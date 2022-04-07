@@ -37,8 +37,19 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("{page}/{pageSize}")]
-        public IActionResult GetAll(int page, int pageSize)
+        public IActionResult GetAll(int page, int pageSize, [FromQuery] int[] documentIds)
         {
+            if(documentIds?.Length > 0)
+            {
+                return Ok(new
+                {
+                    count = complaintSeriesDbContext.Complaints.Count(),
+                    complaints = complaintSeriesDbContext.Complaints
+                                                        .Where(complaint => documentIds.Contains(complaint.Id))
+                                                        .Select(t => ComplaintSeriesModel.from(t, null))
+                });
+            }
+
             var complaints = complaintSeriesDbContext.Complaints
                         .OrderByDescending(t => t.CreatedDate)
                         .Skip((page - 1) * pageSize)

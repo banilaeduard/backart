@@ -43,7 +43,7 @@ namespace SolrIndexing
 
         public async Task<SolrQueryResults<Dictionary<string, object>>> query(int start, int rows, params string[] querys)
         {
-            var query = querys[0];
+            AbstractSolrQuery query = new SolrQuery(querys[0]);
             foreach (var param in querys.Skip(1))
             {
                 query += new SolrQuery(param);
