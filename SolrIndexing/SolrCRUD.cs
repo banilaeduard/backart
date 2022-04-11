@@ -16,15 +16,31 @@ namespace SolrIndexing
         }
         public async Task createDocument(IDictionary<string, object> document)
         {
-            var tst = new Dictionary<string, object>(document);
-            foreach (var key in SolrConstants.ignoreFields)
+            var temp = new Dictionary<string, object>(document);
+
+            if (temp.ContainsKey("id"))
             {
-                if (tst.ContainsKey(key))
+                var oldObjs = await query(0, 1, string.Format("id:{0}", Convert.ToString(temp["id"])));
+                if (oldObjs?.Count > 0)
                 {
-                    tst.Remove(key);
+                    var oldDoc = oldObjs[0];
+                    foreach (var kvp in oldDoc)
+                    {
+                        if (!temp.ContainsKey(kvp.Key))
+                            temp.Add(kvp.Key, kvp.Value);
+                    }
                 }
             }
-            await client.AddAsync(tst);
+
+            foreach (var key in SolrConstants.ignoreFields)
+            {
+                if (temp.ContainsKey(key))
+                {
+                    temp.Remove(key);
+                }
+            }
+
+            await client.AddAsync(temp);
             await client.CommitAsync();
         }
 
@@ -51,11 +67,7 @@ namespace SolrIndexing
             return await client.QueryAsync(query, new QueryOptions()
             {
                 StartOrCursor = new StartOrCursor.Start(start),
-                Rows = rows,
-                Highlight = new HighlightingParameters()
-                {
-                    MergeContiguous = true,
-                }
+                Rows = rows
             });
         }
     }
