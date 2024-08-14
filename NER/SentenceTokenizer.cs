@@ -1,22 +1,18 @@
-﻿namespace NER
-{
-    using java.io;
-    using opennlp.tools.sentdetect;
+﻿using System.Linq;
 
+namespace NER
+{
     public class SentenceTokenizer
     {
-        private SentenceDetectorME detector;
-        private string trainModelPath = "./NER/trainmodels/en-sent.bin";
-        public SentenceTokenizer()
+        static SentenceTokenizer()
         {
-            InputStream inputStream = new FileInputStream(trainModelPath);
-            detector = new SentenceDetectorME(new SentenceModel(inputStream));
+
         }
 
         public string[] DetectSentences(string textBody)
         {
             if (string.IsNullOrWhiteSpace(textBody)) return new string[0];
-            return detector.sentDetect(textBody);
+            return PragmaticSegmenterNet.Segmenter.Segment(textBody).ToArray();
         }
     }
 }

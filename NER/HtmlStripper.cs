@@ -5,7 +5,7 @@ namespace NER
 {
     public class HtmlStripper
     {
-        public string StripHtml(string html)
+        public static string StripHtml(string html)
         {
             HtmlDocument htmlDoc = new HtmlDocument();
             htmlDoc.LoadHtml(html);

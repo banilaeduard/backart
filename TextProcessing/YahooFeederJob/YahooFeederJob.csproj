@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsServiceFabricServiceProject>True</IsServiceFabricServiceProject>
+    <ServerGarbageCollection>True</ServerGarbageCollection>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>True</SelfContained>
+    <UpdateServiceFabricManifestEnabled>True</UpdateServiceFabricManifestEnabled>
+    <ServicePackagePath>PackageRoot</ServicePackagePath>
+    <ServicePackagePrefix>$(MSBuildProjectName)</ServicePackagePrefix>
+    <FabActUtilWorkingDir>$(BaseIntermediateOutputPath)\FabActUtilTemp</FabActUtilWorkingDir>
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.7.1.1" />
+    <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="7.1.2175" />
+    <PackageReference Include="MimeKit" Version="4.7.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\..\NER\NER.csproj" />
+    <ProjectReference Include="..\YahooFeederJob.Interfaces\YahooFeederJob.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

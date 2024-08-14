@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ApplicationManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ApplicationTypeName="TextProcessingType" ApplicationTypeVersion="1.0.0 (2024-08-14 16.49.09Z)" xmlns="http://schemas.microsoft.com/2011/01/fabric" ManifestId="1862b2e7-02c9-4fee-bc87-2164f95d2da6">
+  <Parameters>
+    <Parameter Name="WebApi_ASPNETCORE_ENVIRONMENT" DefaultValue="" />
+    <Parameter Name="WebApi_Secret" DefaultValue="" />
+    <Parameter Name="WebApi_ConnectionString" DefaultValue="" />
+    <Parameter Name="WebApi_SengridKey" DefaultValue="" />
+    <Parameter Name="feeder_y_folders" DefaultValue="" />
+    <Parameter Name="feeder_y_from" DefaultValue="" />
+  </Parameters>
+  <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
+       should match the Name and Version attributes of the ServiceManifest element defined in the 
+       ServiceManifest.xml file. -->
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="YahooFeederJobPkg" ServiceManifestVersion="1.0.0 (2024-08-14 16.49.09Z)" />
+    <EnvironmentOverrides CodePackageRef="code">
+      <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
+      <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
+    </EnvironmentOverrides>
+  </ServiceManifestImport>
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="WebApiPkg" ServiceManifestVersion="1.0.0 (2024-08-14 16.49.09Z)" />
+    <ConfigOverrides />
+    <EnvironmentOverrides CodePackageRef="code">
+      <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value="[WebApi_ASPNETCORE_ENVIRONMENT]" />
+      <EnvironmentVariable Name="Secret" Value="[WebApi_Secret]" />
+      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
+      <EnvironmentVariable Name="SendGridKey" Value="[WebApi_SengridKey]" />
+    </EnvironmentOverrides>
+  </ServiceManifestImport>
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="AddressExtractorPkg" ServiceManifestVersion="1.0.0 (2024-08-14 16.49.09Z)" />
+    <ConfigOverrides />
+  </ServiceManifestImport>
+</ApplicationManifest>

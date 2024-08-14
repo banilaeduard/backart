@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsServiceFabricServiceProject>True</IsServiceFabricServiceProject>
+    <ServerGarbageCollection>True</ServerGarbageCollection>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>True</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="7.1.2175" />
+    <PackageReference Include="Microsoft.ServiceFabric.AspNetCore.Kestrel" Version="7.1.2175" />
+    <PackageReference Include="SendGrid" Version="9.29.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
+    <ProjectReference Include="..\YahooFeederJob.Interfaces\YahooFeederJob.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

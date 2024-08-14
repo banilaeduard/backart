@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/TextProcessing" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <Parameters>
+    <Parameter Name="WebApi_ASPNETCORE_ENVIRONMENT" Value="Development" />
+    <Parameter Name="WebApi_Secret" Value="aehfdriojuas432qG.wE3CoDUtS02eQjvgt7k0Kw.DGHKFKrq5_-zNPd9TFtllrHKJda-CAQrZ-ECjjsTJeo8912@" />
+    <Parameter Name="WebApi_ConnectionString" Value="Server=localhost;Port=3308;Database=backart;Uid=root;Pwd=123EWQasd!@#;" />
+    <Parameter Name="WebApi_SengridKey" Value="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" />
+    <Parameter Name="feeder_y_folders" Value="Inbox" />
+    <Parameter Name="feeder_y_from" Value="dedeman.ro" />
+  </Parameters>
+</Application>
