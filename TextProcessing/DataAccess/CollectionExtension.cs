@@ -7,7 +7,7 @@ namespace DataAccess
 {
     public static class CollectionExtension
     {
-        private static void configureConnectionString(string defaultConnection, DbContextOptionsBuilder options)
+        internal static void configureConnectionString(string defaultConnection, DbContextOptionsBuilder options)
         {
             options.UseMySql(
                 defaultConnection,

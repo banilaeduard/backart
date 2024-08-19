@@ -109,7 +109,7 @@ namespace YahooFeederJob
                             IList<UniqueId> uids;
 
                             var latestProcessedDate = await this.StateManager.TryGetStateAsync<DateTime>(key, cancellationToken);
-                            DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-100);
+                            DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-10);
 
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
@@ -129,7 +129,7 @@ namespace YahooFeederJob
 
                                 var addresses = await serviceProxy.CreateServiceProxy<IAddressExtractor>(new Uri("fabric:/TextProcessing/AddressExtractor")).Parse(body);
 
-                                SaveDataToDb(addresses, message, uid, from, body);
+                                SaveDataToDb(addresses, message, uid, from, body.Trim());
                             }
                         }
                         catch (Exception ex)
@@ -160,7 +160,7 @@ namespace YahooFeederJob
                     {
                         CreatedDate = message.Date.Date,
                         DataKey = dataKey,
-                        NrComanda = string.Join(";", addresses),
+                        NrComanda = dataKey.locationCode,
                         TenantId = "cubik",
                         Status = nrComanda.Match(body).Value,
                         Tickets = new() {
