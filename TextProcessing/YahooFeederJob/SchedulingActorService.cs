@@ -8,8 +8,8 @@ namespace YahooFeederJob
 {
     internal class SchedulingActorService<T> : ActorService where T: IActor
     {
-        public SchedulingActorService(StatefulServiceContext context, ActorTypeInformation typeInfo)
-        : base(context, typeInfo)
+        public SchedulingActorService(StatefulServiceContext context, ActorTypeInformation typeInfo, Func<ActorService, ActorId, ActorBase> actorFactory)
+        : base(context, typeInfo, actorFactory)
         { }
 
         protected async override Task RunAsync(CancellationToken cancellationToken)

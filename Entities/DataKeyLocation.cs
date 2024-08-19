@@ -1,4 +1,4 @@
-﻿namespace DataAccess.Entities
+﻿namespace Entities
 {
     using System.ComponentModel.DataAnnotations;
 

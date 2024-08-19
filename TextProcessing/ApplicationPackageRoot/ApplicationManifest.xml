@@ -16,6 +16,7 @@
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
       <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
+      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>

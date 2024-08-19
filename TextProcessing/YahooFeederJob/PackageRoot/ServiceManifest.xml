@@ -24,6 +24,7 @@
     <EnvironmentVariables>
       <EnvironmentVariable Name="y_folders" Value="" />
       <EnvironmentVariable Name="y_from" Value="" />
+      <EnvironmentVariable Name="ConnectionString" Value="" />
     </EnvironmentVariables>
   </CodePackage>
   <ConfigPackage Name="Config" Version="1.0.0" />

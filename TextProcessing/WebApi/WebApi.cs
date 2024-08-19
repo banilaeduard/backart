@@ -13,9 +13,6 @@ using System.Text;
 using WebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.ServiceFabric.Actors.Client;
-using Microsoft.ServiceFabric.Actors;
-using YahooFeederJob.Interfaces;
 
 namespace WebApi
 {

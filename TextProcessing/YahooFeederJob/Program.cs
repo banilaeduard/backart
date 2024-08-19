@@ -1,5 +1,7 @@
+using DataAccess;
+using DataAccess.Context;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.ServiceFabric.Actors.Runtime;
-using YahooFeederJob.Interfaces;
 
 namespace YahooFeederJob
 {
@@ -17,12 +19,17 @@ namespace YahooFeederJob
                 // are automatically populated when you build this project.
                 // For more information, see https://aka.ms/servicefabricactorsplatform
 
-/*                ActorRuntime.RegisterActorAsync<YahooFeederJob> (
-                   (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
-*/
-
+                /*                ActorRuntime.RegisterActorAsync<YahooFeederJob> (
+                                   (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
+                */
+                
+                var complaintOptions = CollectionExtension.GetOptions<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"));
+                
                 ActorRuntime.RegisterActorAsync<YahooFeederJob>(
-                                   (context, actorType) => new SchedulingActorService<YahooFeederJob>(context, actorType)).GetAwaiter().GetResult();
+                                   (context, actorType) => new SchedulingActorService<YahooFeederJob>(context, actorType, (a, i) => new YahooFeederJob(a, i, new ComplaintSeriesDbContext(
+                                       complaintOptions.Options,
+                                       new NoFilterBaseContext()
+                                       )))).GetAwaiter().GetResult();
 
                 Thread.Sleep(Timeout.Infinite);
             }

@@ -1,6 +1,5 @@
 ﻿using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -15,6 +14,13 @@ namespace DataAccess
                 ServerVersion.AutoDetect(defaultConnection),
                 b => b.MigrationsAssembly("DataAccess").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
             return;
+        }
+
+        public static DbContextOptionsBuilder<T> GetOptions<T>(string defaultConnection) where T : DbContext
+        {
+            DbContextOptionsBuilder<T> opts = new();
+            configureConnectionString(defaultConnection, opts);
+            return opts;
         }
 
         public static IServiceCollection configureDataAccess(this IServiceCollection services, string defaultConnection)

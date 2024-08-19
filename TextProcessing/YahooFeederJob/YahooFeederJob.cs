@@ -1,3 +1,4 @@
+using DataAccess.Context;
 using Entities.Remoting.Jobs;
 using MailKit;
 using MailKit.Net.Imap;
@@ -25,16 +26,19 @@ namespace YahooFeederJob
     internal class YahooFeederJob : Actor, IYahooFeederJob, IRemindable
     {
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
+        private static Regex nrComanda = new Regex(@"^\d{10}$");
         private ServiceProxyFactory serviceProxy;
+        private ComplaintSeriesDbContext complaintSeriesDbContext;
 
         /// <summary>
         /// Initializes a new instance of YahooFeederJob
         /// </summary>
         /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
         /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        public YahooFeederJob(ActorService actorService, ActorId actorId)
+        public YahooFeederJob(ActorService actorService, ActorId actorId, ComplaintSeriesDbContext complaintSeriesDbContext)
             : base(actorService, actorId)
         {
+            this.complaintSeriesDbContext = complaintSeriesDbContext;
         }
 
         async Task IRemindable.ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
@@ -88,7 +92,6 @@ namespace YahooFeederJob
             var cfg = ActorService.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
             var user = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value;
             var pwd = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value;
-
             using (ImapClient client = new ImapClient())
             {
                 await client.ConnectAsync(
@@ -96,7 +99,6 @@ namespace YahooFeederJob
                     993,
                     true, cancellationToken); //For SSL
                 await client.AuthenticateAsync(user, pwd, cancellationToken);
-
                 foreach (var folder in GetFolders(client, settings.Folders, cancellationToken))
                 {
                     foreach (var from in settings.From)
@@ -107,7 +109,7 @@ namespace YahooFeederJob
                             IList<UniqueId> uids;
 
                             var latestProcessedDate = await this.StateManager.TryGetStateAsync<DateTime>(key, cancellationToken);
-                            DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-10);
+                            DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-100);
 
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
@@ -126,6 +128,8 @@ namespace YahooFeederJob
                                 var body = getBody(message);
 
                                 var addresses = await serviceProxy.CreateServiceProxy<IAddressExtractor>(new Uri("fabric:/TextProcessing/AddressExtractor")).Parse(body);
+
+                                SaveDataToDb(addresses, message, uid, from, body);
                             }
                         }
                         catch (Exception ex)
@@ -139,6 +143,41 @@ namespace YahooFeederJob
                     }
                 }
                 client.Disconnect(true, cancellationToken);
+            }
+        }
+
+        async void SaveDataToDb(string[] addresses, MimeMessage message, UniqueId uid, string from, string body)
+        {
+            if (this.complaintSeriesDbContext.Ticket.Where(t => t.CodeValue == uid.ToString()).FirstOrDefault() != null) return;
+
+            var dataKey = new DataAccess.Entities.DataKeyLocation()
+            {
+                locationCode = addresses.Length > 0 ? addresses[0] : message.From.FirstOrDefault()!.Name,
+                name = string.Format("{0}@{1}", message.From.FirstOrDefault()!.Name, from),
+            };
+            this.complaintSeriesDbContext.Complaints.Add(
+                    new DataAccess.Entities.ComplaintSeries()
+                    {
+                        CreatedDate = message.Date.Date,
+                        DataKey = dataKey,
+                        NrComanda = string.Join(";", addresses),
+                        TenantId = "cubik",
+                        Status = nrComanda.Match(body).Value,
+                        Tickets = new() {
+                                                new DataAccess.Entities.Ticket()
+                                                {
+                                                    CodeValue = uid.ToString(),
+                                                    Description = body
+                                                }
+                        }
+                    }
+                );
+            try
+            {
+                await this.complaintSeriesDbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
             }
         }
 

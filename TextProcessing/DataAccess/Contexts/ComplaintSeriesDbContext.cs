@@ -14,6 +14,7 @@ namespace DataAccess.Context
         }
         public DbSet<ComplaintSeries> Complaints { get; set; }
         public DbSet<Ticket> Ticket { get; set; }
+        private DbSet<DataKeyLocation> locationKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,6 +64,15 @@ namespace DataAccess.Context
                 if (entityEntry.State == EntityState.Modified)
                 {
                     entityEntry.Property("CodeValue").IsModified = false;
+                }
+            }
+            else if (entityEntry.Entity is ComplaintSeries series)
+            {
+                var existingLocation = locationKeys.Where(t => t.name == series.DataKey.name).FirstOrDefault();
+                if (existingLocation != null)
+                {
+                    this.Entry(series.DataKey).State = EntityState.Detached;
+                    series.DataKeyId = existingLocation.Id;
                 }
             }
         }

@@ -26,7 +26,7 @@ namespace DataAccess
                 {
                     // we ensure databases are created and up to date
                     var appIdentityDbContex = provider.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
-                    if(!appIdentityDbContex.Database.EnsureCreated()) return;
+                    //if(!appIdentityDbContex.Database.EnsureCreated()) return;
                     //var appIden = appIdentityDbContex.Database.GenerateCreateScript();
 
                     var codeDbContex = provider.ServiceProvider.GetRequiredService<CodeDbContext>();
