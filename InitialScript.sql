@@ -289,3 +289,15 @@ ADD UNIQUE INDEX `Id_UNIQUE` (`Id` ASC) VISIBLE;
 
 ALTER TABLE `backart`.`jobstatus` 
 ADD COLUMN `CorelationId` VARCHAR(45) NULL AFTER `TenantId`;
+
+CREATE TABLE `backart`.`mailsourceconfigs` (
+  `Id` INT NOT NULL,
+  `From` VARCHAR(455) NOT NULL,
+  `Folders` VARCHAR(455) NOT NULL,
+  `User` VARCHAR(45) NOT NULL,
+  `Password` VARCHAR(45) NOT NULL,
+  `DaysBefore` INT NOT NULL,
+  PRIMARY KEY (`Id`));
+  
+ALTER TABLE `backart`.`mailsourceconfigs` 
+CHANGE COLUMN `Id` `Id` INT NOT NULL AUTO_INCREMENT ;

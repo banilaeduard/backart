@@ -6,7 +6,7 @@ using YahooFeederJob.Interfaces;
 
 namespace YahooFeederJob
 {
-    internal class SchedulingActorService<T> : ActorService where T: IActor
+    internal class SchedulingActorService<T> : ActorService where T : IActor
     {
         public SchedulingActorService(StatefulServiceContext context, ActorTypeInformation typeInfo, Func<ActorService, ActorId, ActorBase> actorFactory)
         : base(context, typeInfo, actorFactory)
@@ -15,12 +15,15 @@ namespace YahooFeederJob
         protected async override Task RunAsync(CancellationToken cancellationToken)
         {
             await base.RunAsync(cancellationToken);
-
+            var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
             if (typeof(IYahooFeederJob).IsAssignableFrom(typeof(T)))
                 await ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), "").SetOptions(new MailSettings()
                 {
                     Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
-                    From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries)
+                    From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
+                    DaysBefore = int.Parse(cfg.Settings.Sections["Yahoo"].Parameters["days_before"].Value),
+                    Password = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value,
+                    User = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value
                 });
         }
     }

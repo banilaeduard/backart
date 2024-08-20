@@ -12,6 +12,7 @@ namespace DataAccess.Context
         }
 
         public DbSet<JobStatusLog> JobStatus { get; set; }
+        public DbSet<MailSourceConfig> MailSourceConfigs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -13,6 +13,7 @@ using System.Text;
 using WebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using YahooFeederJob.Interfaces;
 
 namespace WebApi
 {
@@ -57,7 +58,7 @@ namespace WebApi
                                         int port = serviceContext.CodePackageActivationContext.GetEndpoint("ServiceEndpoint").Port;
                                         opt.Listen(IPAddress.IPv6Any, port, listenOptions =>
                                         {
-                                            listenOptions.UseHttps(GetCertificateFromStore());
+                                            listenOptions.UseHttps(GetCertificateFromStore()!);
                                         });
                                     })
                                     .UseContentRoot(Directory.GetCurrentDirectory())
@@ -102,6 +103,15 @@ namespace WebApi
 
             services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"));
 
+            var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
+            services.AddSingleton(new MailSettings()
+            {
+                Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
+                From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
+                DaysBefore = int.Parse(cfg.Settings.Sections["Yahoo"].Parameters["days_before"].Value),
+                Password = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value,
+                User = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value
+            });
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<EmailSender, EmailSender>();
 

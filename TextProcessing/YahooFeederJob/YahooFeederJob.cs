@@ -5,6 +5,7 @@ using Entities.Remoting.Jobs;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
@@ -45,9 +46,29 @@ namespace YahooFeederJob
         {
             try
             {
-                var mailSettings = await StateManager.GetOrAddStateAsync("settings", new MailSettings() { Folders = ["Inbox"], From = ["dedeman.ro"] });
+                MailSettings settings;
+
+                if (await StateManager.ContainsStateAsync("settings"))
+                {
+                    settings = await StateManager.GetStateAsync<MailSettings>("settings");
+                }
+                else
+                {
+                    var cfg = ActorService.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
+                    settings = new MailSettings()
+                    {
+                        Folders = ["Inbox"],
+                        From = ["dedeman.ro"],
+                        DaysBefore = int.Parse(cfg.Settings.Sections["Yahoo"].Parameters["days_before"].Value),
+                        Password = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value,
+                        User = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value
+                    };
+                    await StateManager.SetStateAsync("settings", settings);
+                }
+
+
                 ActorEventSource.Current.ActorMessage(this, "Reminder executed {0}--{1}.", reminderName, DateTime.UtcNow);
-                await this.ReadMails(mailSettings, CancellationToken.None);
+                await this.ReadMails(settings, CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -100,10 +121,6 @@ namespace YahooFeederJob
 
         async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
         {
-            var cfg = ActorService.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
-            var user = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value;
-            var pwd = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value;
-
             var complaintSeriesDbContext = DbContextFactory.GetContext<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
             var jobStatusContext = DbContextFactory.GetContext<JobStatusContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
 
@@ -114,8 +131,8 @@ namespace YahooFeederJob
                     "imap.mail.yahoo.com",
                     993,
                     true, cancellationToken); //For SSL
-                await client.AuthenticateAsync(user, pwd, cancellationToken);
-                var folders = GetFolders(client, settings.Folders, cancellationToken);
+                await client.AuthenticateAsync(settings.User, settings.Password, cancellationToken);
+
                 foreach (var folder in GetFolders(client, settings.Folders, cancellationToken))
                 {
                     foreach (var from in settings.From)
@@ -126,7 +143,7 @@ namespace YahooFeederJob
                             IList<UniqueId> uids;
 
                             var latestProcessedDate = await this.StateManager.TryGetStateAsync<DateTime>(key, cancellationToken);
-                            DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-10);
+                            DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-settings.DaysBefore);
 
                             jobStatusContext.JobStatus.Add(new JobStatusLog()
                             {
@@ -176,7 +193,7 @@ namespace YahooFeederJob
                                             DataKey = dataKey,
                                             NrComanda = dataKey.locationCode,
                                             TenantId = "cubik",
-                                            Status = nrComanda.Match(body).Value,
+                                            Status = message.Subject,
                                             Tickets = new() {
                                                 new Ticket()
                                                 {

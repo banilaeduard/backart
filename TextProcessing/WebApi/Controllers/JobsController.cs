@@ -9,11 +9,14 @@ namespace WebApi.Controllers
     public class JobsController : WebApiController2
     {
         private JobStatusContext jobStatusContext;
+        private MailSettings mailSettings;
         public JobsController(
             ILogger<JobsController> logger,
-            JobStatusContext jobStatusContext) : base(logger)
+            JobStatusContext jobStatusContext,
+            MailSettings settings) : base(logger)
         {
             this.jobStatusContext = jobStatusContext;
+            this.mailSettings = settings;
         }
 
         [HttpGet()]
@@ -21,8 +24,12 @@ namespace WebApi.Controllers
         {
             try
             {
-                return Ok(jobStatusContext.JobStatus.Where(t => t.CreatedDate > DateTime.Now.AddDays(-2)).Take(1000).ToList()
-                    .GroupBy(t => t.CorelationId).OrderByDescending(t => t.First().CreatedDate).SelectMany(t => t.ToList())
+                return Ok(
+                    jobStatusContext.JobStatus
+                    .Where(t => t.CreatedDate > DateTime.Now.AddDays(-2))
+                    .Take(1000)
+                    .ToList()
+                    .GroupBy(t => t.CorelationId).OrderByDescending(t => t.First().CreatedDate)
                     );
             }
             catch (Exception ex)
@@ -37,11 +44,7 @@ namespace WebApi.Controllers
         {
             try
             {
-                await ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), "").ReadMails(new MailSettings()
-                {
-                    Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
-                    From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries)
-                }, CancellationToken.None);
+                await ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), "").ReadMails(mailSettings, CancellationToken.None);
                 return Ok("Finished");
             }
             catch (Exception ex)
