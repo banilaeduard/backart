@@ -1,5 +1,4 @@
-﻿using DataAccess.Context;
-using DataAccess.Entities;
+﻿using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
@@ -25,9 +24,11 @@ namespace DataAccess.Context
 
         protected override void BeforeSave(EntityEntry entityEntry, string correlationId)
         {
-            if (entityEntry.Entity is JobStatusLog jobStatus)
+            if (entityEntry.State == EntityState.Added && entityEntry.Entity is JobStatusLog jobStatus)
             {
-                jobStatus.CorelationId = correlationId;
+                {
+                    jobStatus.CorelationId = correlationId;
+                }
             }
         }
     }

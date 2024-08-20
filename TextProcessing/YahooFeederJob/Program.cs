@@ -1,5 +1,3 @@
-using DataAccess;
-using DataAccess.Context;
 using Microsoft.ServiceFabric.Actors.Runtime;
 
 namespace YahooFeederJob
@@ -21,12 +19,10 @@ namespace YahooFeederJob
                 /*                ActorRuntime.RegisterActorAsync<YahooFeederJob> (
                                    (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
                 */
-                var complaints = DbContextFactory.GetContext<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
-                var jobStatus = DbContextFactory.GetContext<JobStatusContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
 
                 ActorRuntime.RegisterActorAsync<YahooFeederJob>(
                                    (context, actorType) => new SchedulingActorService<YahooFeederJob>(context, actorType, (a, i) =>
-                                   new YahooFeederJob(a, i, complaints, jobStatus))).GetAwaiter().GetResult();
+                                   new YahooFeederJob(a, i))).GetAwaiter().GetResult();
 
                 Thread.Sleep(Timeout.Infinite);
             }
