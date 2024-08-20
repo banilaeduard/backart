@@ -8,10 +8,10 @@
         public int Id { get; set; }
         public string CodeValue { get; set; }
         public string Description { get; set; }
-        public bool hasAttachments { get;set;}
+        public bool hasAttachments { get; set; }
         public List<Attachment> Attachments { get; set; }
-        public List<Attachment> ToAddAttachment { get; set; }
-        public List<Attachment> ToDeleteAttachment { get; set; }
+        public List<Attachment>? ToAddAttachment { get; set; }
+        public List<Attachment>? ToDeleteAttachment { get; set; }
         public List<CodeLink> CodeLinks { get; set; }
         public DateTime Created { get; set; }
         public static TicketModel from(Ticket dbTicket)
@@ -38,6 +38,17 @@
                 CodeLinks = this.CodeLinks,
                 Attachments = this.Attachments
             };
+        }
+
+        public Ticket toDbModel(Ticket ticket)
+        {
+
+            ticket.Id = this.Id;
+            ticket.CodeValue = this.CodeValue;
+            ticket.Description = this.Description;
+            ticket.CodeLinks = this.CodeLinks;
+            ticket.Attachments = this.Attachments;
+            return ticket;
         }
     }
 }

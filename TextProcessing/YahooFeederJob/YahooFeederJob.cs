@@ -5,7 +5,6 @@ using Entities.Remoting.Jobs;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
@@ -186,6 +185,9 @@ namespace YahooFeederJob
                                     locationCode = addresses.Length > 0 ? addresses[0] : message.From.FirstOrDefault()!.Name,
                                     name = string.Format("{0}@{1}", message.From.FirstOrDefault()!.Name, from),
                                 };
+
+                                dataKey = complaintSeriesDbContext.DataKeyLocation.Where(t => t.name == dataKey.name).FirstOrDefault() ?? dataKey;
+
                                 complaintSeriesDbContext.Complaints.Add(
                                         new ComplaintSeries()
                                         {

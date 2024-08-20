@@ -32,6 +32,10 @@ namespace WebApi.Controllers
                         .OrderByDescending(t => t.CreatedDate)
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
+                        .Include(t => t.Tickets)
+                        .ThenInclude(t => t.Attachments)
+                        .Include(t => t.Tickets)
+                        .ThenInclude(t => t.CodeLinks)
                         .Select(t => ComplaintSeriesModel.from(t));
 
             return Ok(new
@@ -41,11 +45,11 @@ namespace WebApi.Controllers
             });
         }
 
-        [HttpPost("delete")]
-        public async Task<IActionResult> Delete(ComplaintSeriesModel complaint)
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            var dbModel = complaint.toDbModel();
-            complaintSeriesDbContext.Remove(dbModel);
+            var item = complaintSeriesDbContext.Complaints.Where(t => t.Id == id).First();
+            complaintSeriesDbContext.Remove(item);
             await complaintSeriesDbContext.SaveChangesAsync();
             return Ok();
         }
@@ -62,13 +66,18 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> SaveComplaint(ComplaintSeriesModel complaint)
         {
-            var dbModel = complaint.toDbModel();
+            ComplaintSeries dbModel;
 
             if (complaint.Id < 1)
+            {
+                dbModel = complaint.toDbModel();
                 complaintSeriesDbContext.Complaints.Add(dbModel);
+            }
             else
-                complaintSeriesDbContext.Complaints.Update(dbModel);
-
+            {
+                dbModel = complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)!;
+                complaint.toDbModel(dbModel);
+            }
 
             var ticket = complaint.Tickets[0];
 
@@ -96,9 +105,7 @@ namespace WebApi.Controllers
 
             await complaintSeriesDbContext.SaveChangesAsync();
 
-            return Ok(ComplaintSeriesModel.from(
-                complaintSeriesDbContext.Find<ComplaintSeries>(dbModel.Id)!)
-                );
+            return Ok();
         }
     }
 }
