@@ -27,6 +27,8 @@
       <EnvironmentVariable Name="Secret" Value="[WebApi_Secret]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
       <EnvironmentVariable Name="SendGridKey" Value="[WebApi_SengridKey]" />
+      <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
+      <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>

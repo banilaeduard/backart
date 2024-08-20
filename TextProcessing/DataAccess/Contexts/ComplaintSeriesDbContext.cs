@@ -50,7 +50,7 @@ namespace DataAccess.Context
             base.OnModelCreating(modelBuilder);
         }
 
-        protected override void BeforeSave(EntityEntry entityEntry)
+        protected override void BeforeSave(EntityEntry entityEntry, string correlationId)
         {
             if (entityEntry.Entity is Ticket ticket)
             {

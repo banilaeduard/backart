@@ -13,7 +13,7 @@ namespace DataAccess.Context
         public DbSet<CodeLink> Codes { get; set; }
         public DbSet<CodeAttribute> CodeAttribute { get; set; }
 
-        protected override void BeforeSave(EntityEntry entityEntry)
+        protected override void BeforeSave(EntityEntry entityEntry, string correlationId)
         {
             // no op
         }

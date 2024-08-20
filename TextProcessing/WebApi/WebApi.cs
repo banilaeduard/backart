@@ -146,9 +146,9 @@ namespace WebApi
         /// Finds the ASP .NET Core HTTPS development certificate in development environment. Update this method to use the appropriate certificate for production environment.
         /// </summary>
         /// <returns>Returns the ASP .NET Core HTTPS development certificate</returns>
-        private static X509Certificate2 GetCertificateFromStore()
+        private static X509Certificate2? GetCertificateFromStore()
         {
-            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")!;
             if (string.Equals(aspNetCoreEnvironment, "Development", StringComparison.OrdinalIgnoreCase))
             {
                 const string aspNetHttpsOid = "1.3.6.1.4.1.311.84.1.1";

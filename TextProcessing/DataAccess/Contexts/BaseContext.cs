@@ -106,9 +106,10 @@ namespace DataAccess.Context
 
         private void addDataContext(ChangeTracker ChangeTracker)
         {
+            var correlationId = Guid.NewGuid().ToString();
             foreach (var entityEntry in ChangeTracker.Entries().ToList())
             {
-                BeforeSave(entityEntry);
+                BeforeSave(entityEntry, correlationId);
                 if (!baseContextAccesor.disableFiltering)
                 {
                     entityEntry.handleCreatedUpdated();
@@ -119,6 +120,6 @@ namespace DataAccess.Context
             }
         }
 
-        protected abstract void BeforeSave(EntityEntry entityEntry);
+        protected abstract void BeforeSave(EntityEntry entityEntry, string correlationId);
     }
 }

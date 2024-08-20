@@ -23,6 +23,8 @@
       <EnvironmentVariable Name="Secret" Value="" />
       <EnvironmentVariable Name="ConnectionString" Value=""/>
       <EnvironmentVariable Name="SendGridKey" Value=""/>
+      <EnvironmentVariable Name="y_folders" Value="" />
+      <EnvironmentVariable Name="y_from" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 

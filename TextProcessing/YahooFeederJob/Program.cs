@@ -21,15 +21,12 @@ namespace YahooFeederJob
                 /*                ActorRuntime.RegisterActorAsync<YahooFeederJob> (
                                    (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
                 */
-
-                var complaintOptions = CollectionExtension.GetOptions<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"));
+                var complaints = DbContextFactory.GetContext<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
+                var jobStatus = DbContextFactory.GetContext<JobStatusContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
 
                 ActorRuntime.RegisterActorAsync<YahooFeederJob>(
                                    (context, actorType) => new SchedulingActorService<YahooFeederJob>(context, actorType, (a, i) =>
-                                   new YahooFeederJob(a, i,
-                                    DbContextFactory.GetContext<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext())
-                                   )
-                                   )).GetAwaiter().GetResult();
+                                   new YahooFeederJob(a, i, complaints, jobStatus))).GetAwaiter().GetResult();
 
                 Thread.Sleep(Timeout.Infinite);
             }

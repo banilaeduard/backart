@@ -1,4 +1,5 @@
 using DataAccess.Context;
+using DataAccess.Entities;
 using Entities.Remoting.Jobs;
 using MailKit;
 using MailKit.Net.Imap;
@@ -29,23 +30,32 @@ namespace YahooFeederJob
         private static Regex nrComanda = new Regex(@"^\d{10}$");
         private ServiceProxyFactory serviceProxy;
         private ComplaintSeriesDbContext complaintSeriesDbContext;
+        private JobStatusContext jobStatusContext;
 
         /// <summary>
         /// Initializes a new instance of YahooFeederJob
         /// </summary>
         /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
         /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        public YahooFeederJob(ActorService actorService, ActorId actorId, ComplaintSeriesDbContext complaintSeriesDbContext)
+        public YahooFeederJob(ActorService actorService, ActorId actorId, ComplaintSeriesDbContext complaintSeriesDbContext, JobStatusContext jobStatusContext)
             : base(actorService, actorId)
         {
             this.complaintSeriesDbContext = complaintSeriesDbContext;
+            this.jobStatusContext = jobStatusContext;
         }
 
         async Task IRemindable.ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
-            var mailSettings = await StateManager.GetOrAddStateAsync<MailSettings>("settings", new MailSettings() { Folders = ["Inbox"], From = ["dedeman.ro"] });
-            ActorEventSource.Current.ActorMessage(this, "Reminder executed {0}--{1}.", reminderName, DateTime.UtcNow);
-            await ReadDedMails(mailSettings, CancellationToken.None);
+            try
+            {
+                var mailSettings = await StateManager.GetOrAddStateAsync("settings", new MailSettings() { Folders = ["Inbox"], From = ["dedeman.ro"] });
+                ActorEventSource.Current.ActorMessage(this, "Reminder executed {0}--{1}.", reminderName, DateTime.UtcNow);
+                await this.ReadMails(mailSettings, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                ActorEventSource.Current.ActorMessage(this, "Job error: {0}", ex);
+            }
         }
 
         /// <summary>
@@ -62,7 +72,7 @@ namespace YahooFeederJob
             {
                 return new FabricTransportServiceRemotingClientFactory();
             });
-            var reminder = await this.RegisterReminderAsync("WORKWORK", BitConverter.GetBytes(100), TimeSpan.FromSeconds(0), TimeSpan.FromHours(3));
+            var reminder = await this.RegisterReminderAsync("WORKWORK", BitConverter.GetBytes(100), TimeSpan.FromSeconds(60), TimeSpan.FromHours(3));
         }
 
         string getKey(IMailFolder folder, string from)
@@ -74,7 +84,6 @@ namespace YahooFeederJob
         {
             var personal = client.GetFolder(client.PersonalNamespaces[0]);
 
-            yield return client.Inbox;
             foreach (var folder in folders)
             {
                 yield return personal.GetSubfolder(folder, cancellationToken);
@@ -87,7 +96,12 @@ namespace YahooFeederJob
                                                     HtmlStripper.StripHtml(regexHtml.Replace(message.HtmlBody, " ")) : message.TextBody.Trim() ?? "";
         }
 
-        async Task ReadDedMails(MailSettings settings, CancellationToken cancellationToken)
+        async Task IYahooFeederJob.ReadMails(MailSettings settings, CancellationToken cancellationToken)
+        {
+            await this.ReadMails(settings, cancellationToken);
+        }
+
+        async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
         {
             var cfg = ActorService.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
             var user = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value;
@@ -111,6 +125,13 @@ namespace YahooFeederJob
                             var latestProcessedDate = await this.StateManager.TryGetStateAsync<DateTime>(key, cancellationToken);
                             DateTime fromDate = latestProcessedDate.HasValue ? latestProcessedDate.Value : DateTime.Now.AddDays(-10);
 
+                            this.jobStatusContext.JobStatus.Add(new JobStatusLog()
+                            {
+                                TenantId = "cubik",
+                                Message = string.Format("Started Job from date {0} at {1}", fromDate, DateTime.Now),
+                                CreatedDate = DateTime.Now,
+                            });
+
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
                             uids = folder.Search(
@@ -123,6 +144,17 @@ namespace YahooFeederJob
 
                             foreach (var uid in uids)
                             {
+                                if (this.complaintSeriesDbContext.Ticket.Where(t => t.CodeValue == uid.ToString()).FirstOrDefault() != null)
+                                {
+                                    this.jobStatusContext.JobStatus.Add(new JobStatusLog()
+                                    {
+                                        TenantId = "cubik",
+                                        Message = string.Format("Skipping item {0}", uid),
+                                        CreatedDate = DateTime.Now,
+                                    });
+                                    continue;
+                                }
+
                                 var message = folder.GetMessage(uid, cancellationToken);
 
                                 var body = getBody(message);
@@ -134,11 +166,24 @@ namespace YahooFeederJob
                         }
                         catch (Exception ex)
                         {
-                            var m = ex.Message;
+                            this.jobStatusContext.JobStatus.Add(new JobStatusLog()
+                            {
+                                TenantId = "cubik",
+                                Message = string.Format("Job terminated in error: {0}", ex),
+                                CreatedDate = DateTime.Now,
+                            });
                         }
                         finally
                         {
                             folder.Close(cancellationToken: cancellationToken);
+                            this.jobStatusContext.JobStatus.Add(new JobStatusLog()
+                            {
+                                TenantId = "cubik",
+                                Message = string.Format("Ending Job from date {0}", DateTime.Now),
+                                CreatedDate = DateTime.Now,
+                            });
+
+                            await this.jobStatusContext.SaveChangesAsync(cancellationToken: cancellationToken);
                         }
                     }
                 }
@@ -148,15 +193,13 @@ namespace YahooFeederJob
 
         async void SaveDataToDb(string[] addresses, MimeMessage message, UniqueId uid, string from, string body)
         {
-            if (this.complaintSeriesDbContext.Ticket.Where(t => t.CodeValue == uid.ToString()).FirstOrDefault() != null) return;
-
-            var dataKey = new DataAccess.Entities.DataKeyLocation()
+            var dataKey = new DataKeyLocation()
             {
                 locationCode = addresses.Length > 0 ? addresses[0] : message.From.FirstOrDefault()!.Name,
                 name = string.Format("{0}@{1}", message.From.FirstOrDefault()!.Name, from),
             };
             this.complaintSeriesDbContext.Complaints.Add(
-                    new DataAccess.Entities.ComplaintSeries()
+                    new ComplaintSeries()
                     {
                         CreatedDate = message.Date.Date,
                         DataKey = dataKey,
@@ -164,7 +207,7 @@ namespace YahooFeederJob
                         TenantId = "cubik",
                         Status = nrComanda.Match(body).Value,
                         Tickets = new() {
-                                                new DataAccess.Entities.Ticket()
+                                                new Ticket()
                                                 {
                                                     CodeValue = uid.ToString(),
                                                     Description = body
@@ -178,6 +221,12 @@ namespace YahooFeederJob
             }
             catch (Exception ex)
             {
+                this.jobStatusContext.JobStatus.Add(new JobStatusLog()
+                {
+                    TenantId = "cubik",
+                    Message = string.Format("Message {0} terminated in error: {1}", uid, ex),
+                    CreatedDate = DateTime.Now,
+                });
             }
         }
 

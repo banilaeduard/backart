@@ -275,3 +275,17 @@ CREATE TABLE `Filters` (
 ) CHARACTER SET=utf8mb4;
 
 
+CREATE TABLE `backart`.`jobstatus` (
+  `Id` INT NOT NULL,
+  `Message` VARCHAR(250) NOT NULL,
+  `CreatedDate` DATETIME NOT NULL,
+  `UpdatedDate` DATETIME NOT NULL,
+  `TenantId` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`Id`));
+
+ALTER TABLE `backart`.`jobstatus` 
+CHANGE COLUMN `Id` `Id` INT UNSIGNED NOT NULL AUTO_INCREMENT ,
+ADD UNIQUE INDEX `Id_UNIQUE` (`Id` ASC) VISIBLE;
+
+ALTER TABLE `backart`.`jobstatus` 
+ADD COLUMN `CorelationId` VARCHAR(45) NULL AFTER `TenantId`;

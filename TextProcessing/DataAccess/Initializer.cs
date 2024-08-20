@@ -35,9 +35,6 @@ namespace DataAccess
                     var complaintSeriesDbContext = provider.ServiceProvider.GetRequiredService<ComplaintSeriesDbContext>();
                     //var complaintdb = complaintSeriesDbContext.Database.GenerateCreateScript();
 
-                    var filterDbContext = provider.ServiceProvider.GetRequiredService<FilterDbContext>();
-                    //var filterdb = filterDbContext.Database.GenerateCreateScript();
-
                     // we ensure roles are created
                     var roleManager = provider.ServiceProvider.GetRequiredService<RoleManager<AppIdentityRole>>();
                     AppIdentityRole role = null;
@@ -95,60 +92,6 @@ namespace DataAccess
                         {
                             throw new System.Exception("admin nu a putut fi creat " + result.Errors.ToString());
                         }
-                    }
-
-                    filterDbContext = new FilterDbContext(provider.ServiceProvider.GetRequiredService<DbContextOptions<FilterDbContext>>(),
-                                                            provider.ServiceProvider.GetRequiredService<NoFilterBaseContext>());
-
-                    var filters = new string[] { "All", "Comenzi", "Adresa", "HasAttachments" };
-                    var dbFilters = filterDbContext.Filters.Where(t => filters.Contains(t.Name)).Select(t => t.Name);
-                    var except = filters.Except(dbFilters);
-                    foreach (var missing in except)
-                    {
-                        switch (missing)
-                        {
-                            case "All":
-                                filterDbContext.Filters.Add(new Filter()
-                                {
-                                    Name = "All",
-                                    Query = "*:*",
-                                    TenantId = "cubik",
-                                    CreatedDate = DateTime.Now,
-                                    UpdatedDate = DateTime.Now,
-                                }); break;
-                            case "Comenzi":
-                                filterDbContext.Filters.Add(new Filter()
-                                {
-                                    Name = "Comenzi",
-                                    Query = "comanda:*",
-                                    TenantId = "cubik",
-                                    CreatedDate = DateTime.Now,
-                                    UpdatedDate = DateTime.Now,
-                                }); break;
-                            case "Adresa":
-                                filterDbContext.Filters.Add(new Filter()
-                                {
-                                    Name = "Adresa",
-                                    Query = "adresa:*",
-                                    TenantId = "cubik",
-                                    CreatedDate = DateTime.Now,
-                                    UpdatedDate = DateTime.Now,
-                                }); break;
-                            case "HasAttachments":
-                                filterDbContext.Filters.Add(new Filter()
-                                {
-                                    Name = "HasAttachments",
-                                    Query = "hasattachments:true",
-                                    TenantId = "cubik",
-                                    CreatedDate = DateTime.Now,
-                                    UpdatedDate = DateTime.Now,
-                                }); break;
-                        }
-                    }
-
-                    if (except?.Count() > 0)
-                    {
-                        await filterDbContext.SaveChangesAsync();
                     }
 
                     codeDbContex = new CodeDbContext(provider.ServiceProvider.GetRequiredService<DbContextOptions<CodeDbContext>>(),

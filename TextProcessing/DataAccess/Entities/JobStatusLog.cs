@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DataAccess.Entities
 {
-    internal class JobStatusLog : IBaseEntity, ITenant
+    public class JobStatusLog : IBaseEntity, ITenant
     {
         [Key]
         public int Id { get; set; }
@@ -11,5 +11,6 @@ namespace DataAccess.Entities
         public DateTime CreatedDate { get; set; }
         public DateTime UpdatedDate { get; set; }
         public string TenantId { get; set; }
+        public string CorelationId { get; set; }
     }
 }

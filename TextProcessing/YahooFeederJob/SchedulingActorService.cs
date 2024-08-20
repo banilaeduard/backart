@@ -15,7 +15,6 @@ namespace YahooFeederJob
         protected async override Task RunAsync(CancellationToken cancellationToken)
         {
             await base.RunAsync(cancellationToken);
-            var t = typeof(T);
 
             if (typeof(IYahooFeederJob).IsAssignableFrom(typeof(T)))
                 await ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), "").SetOptions(new MailSettings()

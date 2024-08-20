@@ -12,5 +12,7 @@ namespace YahooFeederJob.Interfaces
     public interface IYahooFeederJob : IActor
     {
         Task SetOptions(MailSettings settings);
+
+        Task ReadMails(MailSettings settings, CancellationToken cancellationToken);
     }
 }
