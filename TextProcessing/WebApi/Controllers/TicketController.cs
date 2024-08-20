@@ -26,28 +26,18 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("{page}/{pageSize}")]
-        public IActionResult GetAll(int page, int pageSize, [FromQuery] int[] documentIds)
+        public IActionResult GetAll(int page, int pageSize)
         {
-            if(documentIds?.Length > 0)
-            {
-                return Ok(new
-                {
-                    count = complaintSeriesDbContext.Complaints.Count(),
-                    complaints = complaintSeriesDbContext.Complaints
-                                                        .Where(complaint => documentIds.Contains(complaint.Id))
-                                                        .Select(t => ComplaintSeriesModel.from(t, null))
-                });
-            }
-
             var complaints = complaintSeriesDbContext.Complaints
                         .OrderByDescending(t => t.CreatedDate)
                         .Skip((page - 1) * pageSize)
-                        .Take(pageSize);
+                        .Take(pageSize)
+                        .Select(t => ComplaintSeriesModel.from(t));
 
             return Ok(new
             {
                 count = complaintSeriesDbContext.Complaints.Count(),
-                complaints = complaints.Select(t => ComplaintSeriesModel.from(t, null))
+                complaints
             });
         }
 
@@ -63,10 +53,10 @@ namespace WebApi.Controllers
         [HttpPost("status/{status}")]
         public async Task<IActionResult> UpdateStatus(ComplaintSeriesModel complaint, string status)
         {
-            var dbModel = complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id);
+            var dbModel = complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)!;
             dbModel.Status = status;
             await complaintSeriesDbContext.SaveChangesAsync();
-            return Ok(ComplaintSeriesModel.from(complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id), null));
+            return Ok(ComplaintSeriesModel.from(complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)!));
         }
 
         [HttpPost]
@@ -107,7 +97,7 @@ namespace WebApi.Controllers
             await complaintSeriesDbContext.SaveChangesAsync();
 
             return Ok(ComplaintSeriesModel.from(
-                complaintSeriesDbContext.Find<ComplaintSeries>(dbModel.Id), null)
+                complaintSeriesDbContext.Find<ComplaintSeries>(dbModel.Id)!)
                 );
         }
     }

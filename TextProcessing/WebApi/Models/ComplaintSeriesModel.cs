@@ -12,16 +12,19 @@
         public List<TicketModel> Tickets { get; set; }
         public string NrComanda { get; set; }
 
-        public DateTime Created;
+        public DateTime Created { get; set; }
+
+        public string DataKey { get; set; }
 
         [JsonConstructor]
         private ComplaintSeriesModel() { }
-        private ComplaintSeriesModel(ComplaintSeries complaint, List<Dictionary<string, object>> tags)
+        private ComplaintSeriesModel(ComplaintSeries complaint)
         {
             Id = complaint.Id;
-            Tickets = complaint.Tickets.Select(t => TicketModel.from(t, tags?.Find(solrDoc => Convert.ToInt32(solrDoc["id"]) == t.Id))).ToList();
+            Tickets = complaint.Tickets.Select(t => TicketModel.from(t)).ToList();
             Created = complaint.CreatedDate;
             NrComanda = complaint.NrComanda;
+            DataKey = string.Format("{0} - {1}", complaint.DataKey.name, complaint.DataKey.locationCode);
         }
 
         public ComplaintSeries toDbModel()
@@ -34,9 +37,9 @@
             };
         }
 
-        public static ComplaintSeriesModel from(ComplaintSeries dbModel, List<Dictionary<string, object>> tags)
+        public static ComplaintSeriesModel from(ComplaintSeries dbModel)
         {
-            return new ComplaintSeriesModel(dbModel, tags);
+            return new ComplaintSeriesModel(dbModel);
         }
     }
 }

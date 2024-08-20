@@ -14,7 +14,7 @@
         public List<Attachment> ToDeleteAttachment { get; set; }
         public List<CodeLink> CodeLinks { get; set; }
         public DateTime Created { get; set; }
-        public static TicketModel from(Ticket dbTicket, Dictionary<string, object> tags)
+        public static TicketModel from(Ticket dbTicket)
         {
             return new TicketModel()
             {
