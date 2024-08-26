@@ -150,7 +150,6 @@ function Read-PublishProfile
         [String]
         $PublishProfileFile
     )
-
     $publishProfileXml = [Xml] (Get-Content $PublishProfileFile -Encoding UTF8)
     $publishProfile = @{}
 
@@ -179,7 +178,7 @@ $LocalFolder = (Split-Path $MyInvocation.MyCommand.Path)
 
 if (!$PublishProfileFile)
 {
-    $PublishProfileFile = "$LocalFolder\..\PublishProfiles\Local.xml"
+    $PublishProfileFile = "$LocalFolder\..\PublishProfiles\Cloud.xml"
 }
 
 if (!$ApplicationPackagePath)
@@ -193,7 +192,7 @@ $publishProfile = Read-PublishProfile $PublishProfileFile
 
 if (-not $UseExistingClusterConnection)
 {
-    $ClusterConnectionParameters = $publishProfile.ClusterConnectionParameters
+    $clusterConnection = $publishProfile.ClusterConnectionParameters
     if ($SecurityToken)
     {
         $ClusterConnectionParameters["SecurityToken"] = $SecurityToken
@@ -201,7 +200,8 @@ if (-not $UseExistingClusterConnection)
 
     try
     {
-        [void](Connect-ServiceFabricCluster @ClusterConnectionParameters)
+        [void](Connect-ServiceFabricCluster @clusterConnection)
+        $global:clusterConnection = $clusterConnection
     }
     catch [System.Fabric.FabricObjectClosedException]
     {

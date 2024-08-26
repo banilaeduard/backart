@@ -32,10 +32,12 @@ namespace WebApi
         /// <returns>The collection of listeners.</returns>
         protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
         {
-            return new ServiceInstanceListener[]
-            {
+            var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")!;
+            var endpoint = aspNetCoreEnvironment.Equals("Development") ? "ServiceEndpoint" : "EndpointHttps";
+            return [
                 new ServiceInstanceListener(serviceContext =>
-                    new KestrelCommunicationListener(serviceContext, "ServiceEndpoint", (url, listener) =>
+                    new KestrelCommunicationListener(serviceContext,endpoint,
+                    (url, listener) =>
                     {
                         ServiceEventSource.Current.ServiceMessage(serviceContext, $"Starting Kestrel on {url}");
 
@@ -55,7 +57,7 @@ namespace WebApi
                         builder.WebHost
                                     .UseKestrel(opt =>
                                     {
-                                        int port = serviceContext.CodePackageActivationContext.GetEndpoint("ServiceEndpoint").Port;
+                                        int port = serviceContext.CodePackageActivationContext.GetEndpoint(endpoint).Port;
                                         opt.Listen(IPAddress.IPv6Any, port, listenOptions =>
                                         {
                                             listenOptions.UseHttps(GetCertificateFromStore()!);
@@ -89,8 +91,8 @@ namespace WebApi
                             .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                         return app;
-                    }))
-            };
+                    }), "bart")
+            ];
         }
 
         public void ConfigureServices(IServiceCollection services)
@@ -108,9 +110,9 @@ namespace WebApi
             {
                 Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
                 From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
-                DaysBefore = int.Parse(cfg.Settings.Sections["Yahoo"].Parameters["days_before"].Value),
-                Password = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value,
-                User = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value
+                DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
+                Password = Environment.GetEnvironmentVariable("Password")!,
+                User = Environment.GetEnvironmentVariable("User")!
             });
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<EmailSender, EmailSender>();
@@ -174,7 +176,23 @@ namespace WebApi
             }
             else
             {
-                throw new NotImplementedException("GetCertificateFromStore should be updated to retrieve the certificate for non Development environment");
+                return GetCertificateFromStore2();
+            }
+        }
+
+        private static X509Certificate2 GetCertificateFromStore2()
+        {
+            var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+            try
+            {
+                store.Open(OpenFlags.ReadOnly);
+                var certCollection = store.Certificates;
+                var currentCerts = certCollection.Find(X509FindType.FindBySubjectDistinguishedName, "CN=bartazeu.eastus.cloudapp.azure.com", false);
+                return currentCerts.Count == 0 ? null : currentCerts[0];
+            }
+            finally
+            {
+                store.Close();
             }
         }
     }

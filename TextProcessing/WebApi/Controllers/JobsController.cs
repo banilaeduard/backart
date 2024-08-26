@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Client;
+using System.Fabric;
 using YahooFeederJob.Interfaces;
 
 namespace WebApi.Controllers
@@ -10,13 +11,17 @@ namespace WebApi.Controllers
     {
         private JobStatusContext jobStatusContext;
         private MailSettings mailSettings;
+        private StatelessServiceContext context;
+
         public JobsController(
             ILogger<JobsController> logger,
-            JobStatusContext jobStatusContext,
+            JobStatusContext jobStatusContext, 
+            StatelessServiceContext context,
             MailSettings settings) : base(logger)
         {
             this.jobStatusContext = jobStatusContext;
             this.mailSettings = settings;
+            this.context = context;
         }
 
         [HttpGet()]
@@ -49,8 +54,10 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
+
+                ServiceEventSource.Current.ServiceMessage(this.context, ex.Message);
                 Console.WriteLine(ex.Message);
-                return NotFound();
+                return Ok(ex.Message);
             }
         }
     }

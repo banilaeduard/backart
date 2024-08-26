@@ -25,6 +25,9 @@
       <EnvironmentVariable Name="y_folders" Value="" />
       <EnvironmentVariable Name="y_from" Value="" />
       <EnvironmentVariable Name="ConnectionString" Value="" />
+      <EnvironmentVariable Name="days_before" Value="" />
+      <EnvironmentVariable Name="User" Value="" />
+      <EnvironmentVariable Name="Password" Value="" />
     </EnvironmentVariables>
   </CodePackage>
   <ConfigPackage Name="Config" Version="1.0.0" />

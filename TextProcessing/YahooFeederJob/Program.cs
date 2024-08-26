@@ -21,7 +21,7 @@ namespace YahooFeederJob
                 */
 
                 ActorRuntime.RegisterActorAsync<YahooFeederJob>(
-                                   (context, actorType) => new SchedulingActorService<YahooFeederJob>(context, actorType, (a, i) =>
+                                   (context, actorType) => new YahooFeederJobActorService<YahooFeederJob>(context, actorType, (a, i) =>
                                    new YahooFeederJob(a, i))).GetAwaiter().GetResult();
 
                 Thread.Sleep(Timeout.Infinite);

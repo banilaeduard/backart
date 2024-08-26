@@ -25,6 +25,9 @@
       <EnvironmentVariable Name="SendGridKey" Value=""/>
       <EnvironmentVariable Name="y_folders" Value="" />
       <EnvironmentVariable Name="y_from" Value="" />
+      <EnvironmentVariable Name="days_before" Value="" />
+      <EnvironmentVariable Name="User" Value="" />
+      <EnvironmentVariable Name="Password" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 
@@ -37,7 +40,8 @@
       <!-- This endpoint is used by the communication listener to obtain the port on which to 
            listen. Please note that if your service is partitioned, this port is shared with 
            replicas of different partitions that are placed in your code. -->
-      <Endpoint Protocol="https" Name="ServiceEndpoint" Type="Input" Port="8694" />
+      <Endpoint Protocol="https" Name="ServiceEndpoint" Type="Input" Port="8694"/>
+      <Endpoint Protocol="https" Name="EndpointHttps" Type="Input" Port="8694" />
     </Endpoints>
   </Resources>
 </ServiceManifest>

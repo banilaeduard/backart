@@ -23,7 +23,7 @@ namespace AddressExtractor
             : base(context)
         { }
 
-        public Task<string[]> Parse(string body)
+        Task<string[]> IAddressExtractor.Parse(string body)
         {
             if (string.IsNullOrWhiteSpace(body)) return Task.FromResult(new string[0]);
 
@@ -57,7 +57,7 @@ namespace AddressExtractor
                         nearAddress = lastAddressIndex != -1
                             && (i - lastAddressIndex + offsetAddressIndex) < 3;
 
-                        if (!nearAddress 
+                        if (!nearAddress
                             || string.Equals(word, "tel", comparisonType: StringComparison.InvariantCultureIgnoreCase)
                               || string.Equals(word, "telefon", comparisonType: StringComparison.InvariantCultureIgnoreCase)
                                 || string.Equals(word, "telephone", comparisonType: StringComparison.InvariantCultureIgnoreCase)

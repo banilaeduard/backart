@@ -7,6 +7,9 @@
     <Parameter Name="WebApi_SengridKey" DefaultValue="" />
     <Parameter Name="feeder_y_folders" DefaultValue="" />
     <Parameter Name="feeder_y_from" DefaultValue="" />
+    <Parameter Name="feeder_days_before" DefaultValue="" />
+    <Parameter Name="feeder_User" DefaultValue="" />
+    <Parameter Name="feeder_Password" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -16,6 +19,9 @@
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
       <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
+      <EnvironmentVariable Name="days_before" Value="[feeder_days_before]" />
+      <EnvironmentVariable Name="User" Value="[feeder_User]" />
+      <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
@@ -29,6 +35,9 @@
       <EnvironmentVariable Name="SendGridKey" Value="[WebApi_SengridKey]" />
       <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
       <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
+      <EnvironmentVariable Name="days_before" Value="[feeder_days_before]" />
+      <EnvironmentVariable Name="User" Value="[feeder_User]" />
+      <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>
