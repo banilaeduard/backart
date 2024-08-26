@@ -31,6 +31,7 @@ namespace YahooFeederJob
             catch (Exception ex)
             {
                 ActorEventSource.Current.ActorHostInitializationFailed(string.Format("Service failed. {0}", ex));
+                throw ex;
             }
         }
     }
