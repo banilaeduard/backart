@@ -23,10 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Entities\Entities.csproj" />
-    <ProjectReference Include="..\..\NER\NER.csproj" />
-    <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
-    <ProjectReference Include="..\YahooFeederJob.Interfaces\YahooFeederJob.Interfaces.csproj" />
+    <ProjectReference Include="..\..\DataAccess\DataAccess.csproj" />
+    <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
+    <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
+    <ProjectReference Include="..\V2_1.Interfaces\V2_1.Interfaces.csproj" />
   </ItemGroup>
 
 </Project>

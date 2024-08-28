@@ -1,8 +1,7 @@
 using DataAccess;
 using DataAccess.Context;
 using DataAccess.Entities;
-using Entities.Remoting;
-using Entities.Remoting.Jobs;
+using MailExtrasExtractor;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
@@ -12,9 +11,9 @@ using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using MimeKit;
-using NER;
 using System.Data;
 using System.Text.RegularExpressions;
+using Tokenizer;
 using YahooFeederJob.Interfaces;
 
 namespace YahooFeederJob
@@ -31,7 +30,8 @@ namespace YahooFeederJob
     internal class YahooFeederJob : Actor, IYahooFeederJob, IRemindable
     {
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
-        private static Regex nrComdanda = new Regex(@"4\d{9}");
+        private static readonly TokenizerService tokService = new();
+
         private ServiceProxyFactory serviceProxy;
 
         /// <summary>
@@ -110,10 +110,10 @@ namespace YahooFeederJob
             }
         }
 
-        string getBody(MimeMessage message)
+        async Task<string> getBody(MimeMessage message)
         {
             return !string.IsNullOrWhiteSpace(message.HtmlBody) ?
-                                                    HtmlStripper.StripHtml(regexHtml.Replace(message.HtmlBody, " ")) : message.TextBody.Trim() ?? "";
+                                                    await tokService.HtmlStrip(regexHtml.Replace(message.HtmlBody, " ")) : message.TextBody.Trim() ?? "";
         }
 
         async Task IYahooFeederJob.ReadMails(MailSettings settings, CancellationToken cancellationToken)
@@ -178,9 +178,9 @@ namespace YahooFeederJob
 
                                 var message = folder.GetMessage(uid, cancellationToken);
 
-                                var body = getBody(message);
+                                var body = await getBody(message);
 
-                                var extras = await serviceProxy.CreateServiceProxy<IAddressExtractor>(new Uri("fabric:/TextProcessing/AddressExtractor")).Parse(body);
+                                var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractor")).Parse(body);
 
                                 var complaint = AddComplaint(message, extras, from, uid, complaintSeriesDbContext);
                                 await SaveAttachments(message, complaint.Tickets[0], complaintSeriesDbContext);

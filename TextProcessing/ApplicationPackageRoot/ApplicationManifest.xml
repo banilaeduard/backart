@@ -15,6 +15,10 @@
        should match the Name and Version attributes of the ServiceManifest element defined in the 
        ServiceManifest.xml file. -->
   <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="MailExtrasExtractorPkg" ServiceManifestVersion="1.0.0" />
+    <ConfigOverrides />
+  </ServiceManifestImport>
+  <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="YahooFeederJobPkg" ServiceManifestVersion="1.0.0" />
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
@@ -39,9 +43,5 @@
       <EnvironmentVariable Name="User" Value="[feeder_User]" />
       <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
     </EnvironmentOverrides>
-  </ServiceManifestImport>
-  <ServiceManifestImport>
-    <ServiceManifestRef ServiceManifestName="AddressExtractorPkg" ServiceManifestVersion="1.0.0" />
-    <ConfigOverrides />
   </ServiceManifestImport>
 </ApplicationManifest>
