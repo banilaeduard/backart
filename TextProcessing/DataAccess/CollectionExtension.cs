@@ -9,11 +9,11 @@ namespace DataAccess
     {
         internal static void configureConnectionString(string defaultConnection, DbContextOptionsBuilder options)
         {
-/*            options.UseMySql(
+            options.UseMySql(
                 defaultConnection,
                 ServerVersion.AutoDetect(defaultConnection),
-                b => b.MigrationsAssembly("DataAccess").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));*/
-            options.UseInMemoryDatabase("backart");
+                b => b.MigrationsAssembly("DataAccess").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+            //options.UseInMemoryDatabase("backart");
             return;
         }
 

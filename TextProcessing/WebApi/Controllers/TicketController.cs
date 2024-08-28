@@ -59,8 +59,9 @@ namespace WebApi.Controllers
         {
             var dbModel = complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)!;
             dbModel.Status = status;
+            complaint.Status = status;
             await complaintSeriesDbContext.SaveChangesAsync();
-            return Ok(ComplaintSeriesModel.from(complaintSeriesDbContext.Find<ComplaintSeries>(complaint.Id)!));
+            return Ok(complaint);
         }
 
         [HttpPost]

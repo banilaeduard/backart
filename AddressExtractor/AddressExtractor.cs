@@ -1,4 +1,7 @@
 using System.Fabric;
+using System.Text;
+using System.Text.RegularExpressions;
+using Entities.Remoting;
 using Entities.Remoting.Jobs;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
@@ -12,6 +15,7 @@ namespace AddressExtractor
     /// </summary>
     internal sealed class AddressExtractor : StatelessService, IAddressExtractor
     {
+        private static Regex nrComdanda = new Regex(@"4\d{9}");
         private static readonly string[] punctuation = { ".", ":", "!", ",", "-" };
         private static readonly string[] address = { "jud", "judet", "com", "comuna", "municipiul", "mun",
                                                                     "str", "strada", "oras", "soseaua", "valea",
@@ -23,13 +27,15 @@ namespace AddressExtractor
             : base(context)
         { }
 
-        Task<string[]> IAddressExtractor.Parse(string body)
+        Task<Extras> IAddressExtractor.Parse(string body)
         {
-            if (string.IsNullOrWhiteSpace(body)) return Task.FromResult(new string[0]);
+            if (string.IsNullOrWhiteSpace(body)) return Task.FromResult(new Extras());
 
             SentenceTokenizer sentTok = new();
             WordTokenizer wordTok = new();
             HashSet<string> addressEntry = new();
+            string nrComanda = String.Empty;
+            StringBuilder bodyResult = new();
 
             try
             {
@@ -48,7 +54,22 @@ namespace AddressExtractor
 
                 foreach (var sent in sentTok.DetectSentences(body))
                 {
+                    var match = nrComdanda.Match(sent);
+                    if (match.Success)
+                    {
+                        for (int i = 0; i < match.Groups.Count; i++)
+                        {
+                            nrComanda += match.Groups[i].Value + " ";
+                        }
+                    }
+                    
                     var words = wordTok.Tokenize(sent);
+
+                    foreach (var item in words)
+                    {
+                        bodyResult.Append(item + " ");
+                    }
+                    bodyResult.AppendLine();
 
                     var descLine = string.Empty;
                     for (int i = 0; i < words.Length; i++)
@@ -151,7 +172,12 @@ namespace AddressExtractor
             {
                 ServiceEventSource.Current.ServiceMessage(this.Context, "Error-{0}", ex.Message);
             }
-            return Task.FromResult(addressEntry.ToArray());
+            return Task.FromResult(new Extras()
+            {
+                Addreses = addressEntry.ToArray(),
+                NumarComanda = nrComanda,
+                BodyResult = bodyResult.ToString().Trim(),
+            });
         }
 
         /// <summary>

@@ -1,16 +1,19 @@
 using DataAccess;
 using DataAccess.Context;
 using DataAccess.Entities;
+using Entities.Remoting;
 using Entities.Remoting.Jobs;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using MimeKit;
 using NER;
+using System.Data;
 using System.Text.RegularExpressions;
 using YahooFeederJob.Interfaces;
 
@@ -28,7 +31,7 @@ namespace YahooFeederJob
     internal class YahooFeederJob : Actor, IYahooFeederJob, IRemindable
     {
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
-        private static Regex nrComanda = new Regex(@"^\d{10}$");
+        private static Regex nrComdanda = new Regex(@"4\d{9}");
         private ServiceProxyFactory serviceProxy;
 
         /// <summary>
@@ -123,7 +126,6 @@ namespace YahooFeederJob
             var complaintSeriesDbContext = DbContextFactory.GetContext<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
             var jobStatusContext = DbContextFactory.GetContext<JobStatusContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
 
-
             using (ImapClient client = new ImapClient())
             {
                 await client.ConnectAsync(
@@ -178,33 +180,11 @@ namespace YahooFeederJob
 
                                 var body = getBody(message);
 
-                                var addresses = await serviceProxy.CreateServiceProxy<IAddressExtractor>(new Uri("fabric:/TextProcessing/AddressExtractor")).Parse(body);
+                                var extras = await serviceProxy.CreateServiceProxy<IAddressExtractor>(new Uri("fabric:/TextProcessing/AddressExtractor")).Parse(body);
 
-                                var dataKey = new DataKeyLocation()
-                                {
-                                    locationCode = addresses.Length > 0 ? addresses[0] : message.From.FirstOrDefault()!.Name,
-                                    name = string.Format("{0}@{1}", message.From.FirstOrDefault()!.Name, from),
-                                };
+                                var complaint = AddComplaint(message, extras, from, uid, complaintSeriesDbContext);
+                                await SaveAttachments(message, complaint.Tickets[0], complaintSeriesDbContext);
 
-                                dataKey = complaintSeriesDbContext.DataKeyLocation.Where(t => t.name == dataKey.name).FirstOrDefault() ?? dataKey;
-
-                                complaintSeriesDbContext.Complaints.Add(
-                                        new ComplaintSeries()
-                                        {
-                                            CreatedDate = message.Date.Date,
-                                            DataKey = dataKey,
-                                            NrComanda = dataKey.locationCode,
-                                            TenantId = "cubik",
-                                            Status = message.Subject,
-                                            Tickets = new() {
-                                                new Ticket()
-                                                {
-                                                    CodeValue = uid.ToString(),
-                                                    Description = body.Trim()
-                                                }
-                                            }
-                                        }
-                                    );
                                 try
                                 {
                                     await complaintSeriesDbContext.SaveChangesAsync();
@@ -243,6 +223,67 @@ namespace YahooFeederJob
                     }
                 }
                 client.Disconnect(true, cancellationToken);
+            }
+        }
+
+        private ComplaintSeries AddComplaint(MimeMessage message, Extras extras, string from, UniqueId uid, ComplaintSeriesDbContext complaintSeriesDbContext)
+        {
+            var dataKey = new DataKeyLocation()
+            {
+                locationCode = extras.Addreses.Length > 0 ? extras.Addreses[0] : message.From.FirstOrDefault()!.Name,
+                name = string.Format("{0}@{1}", message.From.FirstOrDefault()!.Name, from),
+            };
+
+            dataKey = complaintSeriesDbContext.DataKeyLocation.Where(t => t.name == dataKey.name).FirstOrDefault() ?? dataKey;
+
+            return complaintSeriesDbContext.Complaints.Add(
+                                        new ComplaintSeries()
+                                        {
+                                            CreatedDate = message.Date.Date,
+                                            DataKey = dataKey,
+                                            NrComanda = extras.NumarComanda,
+                                            TenantId = "cubik",
+                                            Status = message.Subject,
+                                            Tickets = [
+                                                new Ticket()
+                                                {
+                                                    CodeValue = uid.ToString(),
+                                                    Description = extras.BodyResult
+                                                }
+                                            ]
+                                        }
+                                    ).Entity;
+        }
+
+        private async Task SaveAttachments(MimeMessage message, Ticket ticket, ComplaintSeriesDbContext complaintSeriesDbContext)
+        {
+            if (message.Attachments?.Count() > 0)
+            {
+                foreach (var attachment in message.Attachments)
+                {
+                    using (var stream = new MemoryStream())
+                    {
+                        if (attachment is MessagePart)
+                        {
+                            var part = (MessagePart)attachment;
+                            await part.Message.WriteToAsync(stream);
+                        }
+                        else
+                        {
+                            var part = (MimePart)attachment;
+                            await part.Content.DecodeToAsync(stream);
+                        }
+                        var img = new Attachment()
+                        {
+                            Data = string.Format("data:{0};base64,{1}", attachment.ContentType.MimeType, Convert.ToBase64String(stream.ToArray())),
+                            Ticket = ticket,
+                            CreatedDate = new DateTime(message.Date.Ticks),
+                            UpdatedDate = new DateTime(message.ResentDate.Ticks),
+                            ContentType = attachment.ContentType.MimeType,
+                        };
+                        complaintSeriesDbContext.Entry(img).State = EntityState.Added;
+                    }
+                }
             }
         }
 

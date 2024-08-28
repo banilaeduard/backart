@@ -6,6 +6,6 @@ namespace Entities.Remoting.Jobs
 {
     public interface IAddressExtractor : IService
     {
-        Task<string[]> Parse(string body);
+        Task<Extras> Parse(string body);
     }
 }

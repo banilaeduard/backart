@@ -11,7 +11,7 @@ namespace NER
 
         public string[] DetectSentences(string textBody)
         {
-            if (string.IsNullOrWhiteSpace(textBody)) return new string[0];
+            if (string.IsNullOrWhiteSpace(textBody)) return System.Array.Empty<string>();
             return PragmaticSegmenterNet.Segmenter.Segment(textBody).ToArray();
         }
     }
