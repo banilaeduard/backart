@@ -40,7 +40,7 @@
     <ProjectReference Include="WebApi\WebApi.csproj">
       <ServiceLaunchUrl>https://localhost:{ServicePort}/swagger</ServiceLaunchUrl>
     </ProjectReference>
-    <ProjectReference Include="YahooFeederJob\YahooFeederJob.csproj" />
+    <ProjectReference Include="YahooTFeeder\YahooTFeeder.csproj" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
   <PropertyGroup>

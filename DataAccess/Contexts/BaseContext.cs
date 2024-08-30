@@ -1,9 +1,7 @@
 ﻿using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -125,7 +123,6 @@ namespace DataAccess.Context
                 if (!baseContextAccesor.disableFiltering)
                 {
                     entityEntry.handleCreatedUpdated();
-                    entityEntry.handleIsDeleted();
                     entityEntry.handleDataKey(baseContextAccesor);
                     entityEntry.handleTennant(baseContextAccesor.TenantId);
                 }

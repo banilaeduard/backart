@@ -1,3 +1,5 @@
+using System.Fabric;
+using System.Text.RegularExpressions;
 using DataAccess;
 using DataAccess.Context;
 using DataAccess.Entities;
@@ -6,94 +8,83 @@ using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.ServiceFabric.Actors;
-using Microsoft.ServiceFabric.Actors.Runtime;
+using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
+using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
-using System.Data;
-using System.Text.RegularExpressions;
 using Tokenizer;
-using YahooFeederJob.Interfaces;
+using YahooFeeder;
+using UniqueId = MailKit.UniqueId;
 
-namespace YahooFeederJob
+namespace YahooTFeeder
 {
-    /// <remarks>
-    /// This class represents an actor.
-    /// Every ActorID maps to an instance of this class.
-    /// The StatePersistence attribute determines persistence and replication of actor state:
-    ///  - Persisted: State is written to disk and replicated.
-    ///  - Volatile: State is kept in memory only and replicated.
-    ///  - None: State is kept in memory only and not replicated.
-    /// </remarks>
-    [StatePersistence(StatePersistence.None)]
-    internal class YahooFeederJob : Actor, IYahooFeederJob, IRemindable
+    /// <summary>
+    /// An instance of this class is created for each service instance by the Service Fabric runtime.
+    /// </summary>
+    internal sealed class YahooTFeeder : StatelessService, IYahooFeeder
     {
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
         private static readonly TokenizerService tokService = new();
-
         private ServiceProxyFactory serviceProxy;
-
-        /// <summary>
-        /// Initializes a new instance of YahooFeederJob
-        /// </summary>
-        /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
-        /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        public YahooFeederJob(ActorService actorService, ActorId actorId)
-            : base(actorService, actorId)
+        public YahooTFeeder(StatelessServiceContext context)
+            : base(context)
         {
-        }
-
-        async Task IRemindable.ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
-        {
-            try
-            {
-                MailSettings settings;
-
-                if (await StateManager.ContainsStateAsync("settings"))
-                {
-                    settings = await StateManager.GetStateAsync<MailSettings>("settings");
-                }
-                else
-                {
-                    var cfg = ActorService.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
-                    settings = new MailSettings()
-                    {
-                        Folders = ["Inbox"],
-                        From = ["dedeman.ro"],
-                        DaysBefore = int.Parse(cfg.Settings.Sections["Yahoo"].Parameters["days_before"].Value),
-                        Password = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value,
-                        User = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value
-                    };
-                    await StateManager.SetStateAsync("settings", settings);
-                }
-
-
-                ActorEventSource.Current.ActorMessage(this, "Reminder executed {0}--{1}.", reminderName, DateTime.UtcNow);
-                await this.ReadMails(settings, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                ActorEventSource.Current.ActorMessage(this, "Job error: {0}", ex);
-            }
-        }
-
-        /// <summary>
-        /// This method is called whenever an actor is activated.
-        /// An actor is activated the first time any of its methods are invoked.
-        /// </summary>
-        protected override async Task OnActivateAsync()
-        {
-            await base.OnActivateAsync();
-
-            ActorEventSource.Current.ActorMessage(this, "Actor activated.");
-
-            var serviceProxy = new ServiceProxyFactory((c) =>
+            serviceProxy = new ServiceProxyFactory((c) =>
             {
                 return new FabricTransportServiceRemotingClientFactory();
             });
+        }
 
-            var reminder = await this.RegisterReminderAsync("WORKWORK", BitConverter.GetBytes(100), TimeSpan.FromSeconds(60), TimeSpan.FromHours(3));
+        /// <summary>
+        /// Optional override to create listeners (e.g., TCP, HTTP) for this service replica to handle client or user requests.
+        /// </summary>
+        /// <returns>A collection of listeners.</returns>
+        protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
+        {
+            return [
+                new ServiceInstanceListener(
+                    (context) => new FabricTransportServiceRemotingListener(context, this), "ServiceEndpointV2")
+                ];
+        }
+
+
+        public async Task Get()
+        {
+            await ReadMails(new MailSettings()
+            {
+                Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
+                From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
+                DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
+                Password = Environment.GetEnvironmentVariable("Password")!,
+                User = Environment.GetEnvironmentVariable("User")!
+            }, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// This is the main entry point for your service instance.
+        /// </summary>
+        /// <param name="cancellationToken">Canceled when Service Fabric needs to shut down this service instance.</param>
+        protected override async Task RunAsync(CancellationToken cancellationToken)
+        {
+            // TODO: Replace the following sample code with your own logic 
+            //       or remove this RunAsync override if it's not needed in your service.
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await ReadMails(new MailSettings()
+                {
+                    Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
+                    From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
+                    DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
+                    Password = Environment.GetEnvironmentVariable("Password")!,
+                    User = Environment.GetEnvironmentVariable("User")!
+                }, cancellationToken);
+
+                await Task.Delay(TimeSpan.FromHours(3));
+            }
         }
 
         IEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, CancellationToken cancellationToken)
@@ -110,11 +101,6 @@ namespace YahooFeederJob
         {
             return !string.IsNullOrWhiteSpace(message.HtmlBody) ?
                                                     await tokService.HtmlStrip(regexHtml.Replace(message.HtmlBody, " ")) : message.TextBody.Trim() ?? "";
-        }
-
-        async Task IYahooFeederJob.ReadMails(MailSettings settings, CancellationToken cancellationToken)
-        {
-            await this.ReadMails(settings, cancellationToken);
         }
 
         async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
@@ -142,7 +128,7 @@ namespace YahooFeederJob
                     {
                         try
                         {
-                            IList<UniqueId> uids;
+                            IList<MailKit.UniqueId> uids;
                             DateTime fromDate = DateTime.Now.AddDays(-settings.DaysBefore);
 
                             jobStatusContext.JobStatus.Add(new JobStatusLog()
@@ -270,7 +256,7 @@ namespace YahooFeederJob
                             var part = (MimePart)attachment;
                             await part.Content.DecodeToAsync(stream);
                         }
-                        var img = new Attachment()
+                        var img = new DataAccess.Entities.Attachment()
                         {
                             Data = string.Format("data:{0};base64,{1}", attachment.ContentType.MimeType, Convert.ToBase64String(stream.ToArray())),
                             Ticket = ticket,
@@ -282,11 +268,6 @@ namespace YahooFeederJob
                     }
                 }
             }
-        }
-
-        async Task IYahooFeederJob.SetOptions(MailSettings settings)
-        {
-            await StateManager.SetStateAsync("settings", settings);
         }
     }
 }

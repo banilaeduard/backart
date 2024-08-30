@@ -172,7 +172,7 @@ CREATE TABLE CodeAttributeSnapshot (
     Id varchar(max) NULL,
     DisplayValue varchar(max) NULL,
     TenantId varchar(max) NULL,
-    CONSTRAINT Id PRIMARY KEY (Tag, InnerValue)
+    CONSTRAINT Idxx PRIMARY KEY (Tag, InnerValue)
 );
 
 

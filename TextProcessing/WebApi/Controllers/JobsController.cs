@@ -1,9 +1,9 @@
 ﻿using DataAccess.Context;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.ServiceFabric.Actors;
-using Microsoft.ServiceFabric.Actors.Client;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using System.Fabric;
-using YahooFeederJob.Interfaces;
+using YahooFeeder;
 
 namespace WebApi.Controllers
 {
@@ -12,10 +12,14 @@ namespace WebApi.Controllers
         private JobStatusContext jobStatusContext;
         private MailSettings mailSettings;
         private StatelessServiceContext context;
+        private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
+        {
+            return new FabricTransportServiceRemotingClientFactory();
+        });
 
         public JobsController(
             ILogger<JobsController> logger,
-            JobStatusContext jobStatusContext, 
+            JobStatusContext jobStatusContext,
             StatelessServiceContext context,
             MailSettings settings) : base(logger)
         {
@@ -49,8 +53,8 @@ namespace WebApi.Controllers
         {
             try
             {
-                await ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), "").ReadMails(mailSettings, CancellationToken.None);
-                return Ok("Finished");
+                await serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeeder")).Get();
+                return Ok();
             }
             catch (Exception ex)
             {

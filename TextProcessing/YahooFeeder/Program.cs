@@ -1,8 +1,11 @@
-using Microsoft.Diagnostics.EventFlow.ServiceFabric;
-using Microsoft.ServiceFabric.Services.Runtime;
+﻿using Microsoft.ServiceFabric.Services.Runtime;
+using System;
 using System.Diagnostics;
+using System.Fabric;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace WebApi
+namespace YahooFeeder
 {
     internal static class Program
     {
@@ -17,15 +20,14 @@ namespace WebApi
                 // Registering a service maps a service type name to a .NET type.
                 // When Service Fabric creates an instance of this service type,
                 // an instance of the class is created in this host process.
-                using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-YahooFeederJob-DiagnosticsPipeline"))
-                {
-                    ServiceRuntime.RegisterServiceAsync("WebApiType",
-                    context => new WebApi(context)).GetAwaiter().GetResult();
 
-                    ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(WebApi).Name);
-                    // Prevents this host process from terminating so services keeps running. 
-                    Thread.Sleep(Timeout.Infinite);
-                }
+                ServiceRuntime.RegisterServiceAsync("YahooFeederType",
+                    context => new YahooFeeder(context)).GetAwaiter().GetResult();
+
+                ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(YahooFeeder).Name);
+
+                // Prevents this host process from terminating so services keep running.
+                Thread.Sleep(Timeout.Infinite);
             }
             catch (Exception e)
             {

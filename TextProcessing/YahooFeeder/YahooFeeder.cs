@@ -1,99 +1,63 @@
-using DataAccess;
-using DataAccess.Context;
-using DataAccess.Entities;
-using MailExtrasExtractor;
-using MailKit;
-using MailKit.Net.Imap;
-using MailKit.Search;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.ServiceFabric.Actors;
-using Microsoft.ServiceFabric.Actors.Runtime;
+﻿using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V1.FabricTransport.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
-using System.Data;
-using System.Text.RegularExpressions;
-using Tokenizer;
-using YahooFeederJob.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Fabric;
+using System.IO;
+using System.Net.Mail;
+using System.ServiceModel.MsmqIntegration;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml;
 
-namespace YahooFeederJob
+namespace YahooFeeder
 {
-    /// <remarks>
-    /// This class represents an actor.
-    /// Every ActorID maps to an instance of this class.
-    /// The StatePersistence attribute determines persistence and replication of actor state:
-    ///  - Persisted: State is written to disk and replicated.
-    ///  - Volatile: State is kept in memory only and replicated.
-    ///  - None: State is kept in memory only and not replicated.
-    /// </remarks>
-    [StatePersistence(StatePersistence.None)]
-    internal class YahooFeederJob : Actor, IYahooFeederJob, IRemindable
+    /// <summary>
+    /// An instance of this class is created for each service instance by the Service Fabric runtime.
+    /// </summary>
+    internal sealed class YahooFeeder : StatelessService, IService
     {
-        private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
-        private static readonly TokenizerService tokService = new();
-
         private ServiceProxyFactory serviceProxy;
 
+        public YahooFeeder(StatelessServiceContext context)
+            : base(context)
+        { }
+
         /// <summary>
-        /// Initializes a new instance of YahooFeederJob
+        /// Optional override to create listeners (e.g., TCP, HTTP) for this service replica to handle client or user requests.
         /// </summary>
-        /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
-        /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        public YahooFeederJob(ActorService actorService, ActorId actorId)
-            : base(actorService, actorId)
+        /// <returns>A collection of listeners.</returns>
+        protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
         {
-        }
-
-        async Task IRemindable.ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
-        {
-            try
-            {
-                MailSettings settings;
-
-                if (await StateManager.ContainsStateAsync("settings"))
-                {
-                    settings = await StateManager.GetStateAsync<MailSettings>("settings");
-                }
-                else
-                {
-                    var cfg = ActorService.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
-                    settings = new MailSettings()
-                    {
-                        Folders = ["Inbox"],
-                        From = ["dedeman.ro"],
-                        DaysBefore = int.Parse(cfg.Settings.Sections["Yahoo"].Parameters["days_before"].Value),
-                        Password = cfg.Settings.Sections["Yahoo"].Parameters["Password"].Value,
-                        User = cfg.Settings.Sections["Yahoo"].Parameters["User"].Value
-                    };
-                    await StateManager.SetStateAsync("settings", settings);
-                }
-
-
-                ActorEventSource.Current.ActorMessage(this, "Reminder executed {0}--{1}.", reminderName, DateTime.UtcNow);
-                await this.ReadMails(settings, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                ActorEventSource.Current.ActorMessage(this, "Job error: {0}", ex);
-            }
+            return [
+                new ServiceInstanceListener(
+                    (context) => new FabricTransportServiceRemotingListener(context, this))
+                ];
         }
 
         /// <summary>
-        /// This method is called whenever an actor is activated.
-        /// An actor is activated the first time any of its methods are invoked.
+        /// This is the main entry point for your service instance.
         /// </summary>
-        protected override async Task OnActivateAsync()
+        /// <param name="cancellationToken">Canceled when Service Fabric needs to shut down this service instance.</param>
+        protected override async Task RunAsync(CancellationToken cancellationToken)
         {
-            await base.OnActivateAsync();
-
-            ActorEventSource.Current.ActorMessage(this, "Actor activated.");
-
-            var serviceProxy = new ServiceProxyFactory((c) =>
+            serviceProxy = new ServiceProxyFactory((c) =>
             {
                 return new FabricTransportServiceRemotingClientFactory();
             });
 
-            var reminder = await this.RegisterReminderAsync("WORKWORK", BitConverter.GetBytes(100), TimeSpan.FromSeconds(60), TimeSpan.FromHours(3));
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                ServiceEventSource.Current.ServiceMessage(this.Context, "Working-{0}", ++iterations);
+                await Task.Delay(TimeSpan.FromHours(3), cancellationToken);
+            }
         }
 
         IEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, CancellationToken cancellationToken)
@@ -249,7 +213,7 @@ namespace YahooFeederJob
                                                 }
                                             ]
                                         }
-                                    ).Entity;
+            ).Entity;
         }
 
         private async Task SaveAttachments(MimeMessage message, Ticket ticket, ComplaintSeriesDbContext complaintSeriesDbContext)

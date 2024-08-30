@@ -35,8 +35,8 @@ namespace DataAccess.Context
             modelBuilder.Entity<Ticket>()
                     .HasOne(t => t.Complaint)
                     .WithMany(t => t.Tickets)
-                    .HasForeignKey(f => f.ComplaintId)
-                    .OnDelete(DeleteBehavior.ClientCascade);
+                    .HasForeignKey(f => f.ComplaintId);
+                    //.OnDelete(DeleteBehavior.ClientCascade);
 
             base.OnModelCreating(modelBuilder);
         }

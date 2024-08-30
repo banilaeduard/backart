@@ -12,12 +12,23 @@ namespace YahooFeederJob
         : base(context, typeInfo, actorFactory)
         { }
 
+/*        protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()
+        {
+            var listeners = base.CreateServiceReplicaListeners();
+            return new List<ServiceReplicaListener>(listeners)
+                    {
+                        new ServiceReplicaListener(c => new FabricTransportServiceRemotingListener(c, this)),
+                    };
+        }*/
+
         protected async override Task RunAsync(CancellationToken cancellationToken)
         {
             await base.RunAsync(cancellationToken);
-            var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
+
             if (typeof(IYahooFeederJob).IsAssignableFrom(typeof(T)))
-                await ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), "").SetOptions(new MailSettings()
+            {
+                var actorServiceProxy = ActorProxy.Create<IYahooFeederJob>(new ActorId("yM"), new Uri("fabric:/TextProcessing/YahooFeederJobActorService"));
+                await actorServiceProxy.SetOptions(new MailSettings()
                 {
                     Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
                     From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
@@ -25,6 +36,7 @@ namespace YahooFeederJob
                     Password = Environment.GetEnvironmentVariable("Password")!,
                     User = Environment.GetEnvironmentVariable("User")!
                 });
+            }
         }
     }
 }

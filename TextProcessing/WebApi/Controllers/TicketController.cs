@@ -19,7 +19,6 @@ namespace WebApi.Controllers
         private ComplaintSeriesDbContext complaintSeriesDbContext;
         public TicketController(
             ComplaintSeriesDbContext complaintSeriesDbContext,
-
             ILogger<TicketController> logger) : base(logger)
         {
             this.complaintSeriesDbContext = complaintSeriesDbContext;
@@ -36,12 +35,12 @@ namespace WebApi.Controllers
                         .ThenInclude(t => t.Attachments)
                         .Include(t => t.Tickets)
                         .ThenInclude(t => t.CodeLinks)
-                        .Select(t => ComplaintSeriesModel.from(t));
+                        .ToList();
 
             return Ok(new
             {
                 count = complaintSeriesDbContext.Complaints.Count(),
-                complaints
+                complaints = complaints.Select(ComplaintSeriesModel.from)
             });
         }
 
@@ -49,7 +48,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var item = complaintSeriesDbContext.Complaints.Where(t => t.Id == id).First();
-            complaintSeriesDbContext.Remove(item);
+            item.isDeleted = true;
             await complaintSeriesDbContext.SaveChangesAsync();
             return Ok();
         }

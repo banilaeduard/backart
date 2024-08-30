@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ServiceManifest Name="MailExtrasExtractorPkg"
+<ServiceManifest Name="YahooTFeederPkg"
                  Version="1.0.0"
                  xmlns="http://schemas.microsoft.com/2011/01/fabric"
                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -7,16 +7,24 @@
   <ServiceTypes>
     <!-- This is the name of your ServiceType. 
          This name must match the string used in the RegisterServiceAsync call in Program.cs. -->
-    <StatelessServiceType ServiceTypeName="MailExtrasExtractorType" />
+    <StatelessServiceType ServiceTypeName="YahooTFeederType" />
   </ServiceTypes>
 
   <!-- Code package is your service executable. -->
   <CodePackage Name="Code" Version="1.0.0">
     <EntryPoint>
       <ExeHost>
-        <Program>MailExtrasExtractor.exe</Program>
+        <Program>YahooTFeeder.exe</Program>
       </ExeHost>
     </EntryPoint>
+    <EnvironmentVariables>
+      <EnvironmentVariable Name="y_folders" Value="" />
+      <EnvironmentVariable Name="y_from" Value="" />
+      <EnvironmentVariable Name="ConnectionString" Value="" />
+      <EnvironmentVariable Name="days_before" Value="" />
+      <EnvironmentVariable Name="User" Value="" />
+      <EnvironmentVariable Name="Password" Value="" />
+    </EnvironmentVariables>
   </CodePackage>
 
   <!-- Config package is the contents of the Config directory under PackageRoot that contains an 

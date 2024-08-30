@@ -1,9 +1,9 @@
 using System.Diagnostics.Tracing;
 using System.Fabric;
 
-namespace MailExtrasExtractor
+namespace YahooTFeeder
 {
-    [EventSource(Name = "MyCompany-TextProcessing-MailExtrasExtractor")]
+    [EventSource(Name = "MyCompany-TextProcessing-YahooTFeeder")]
 internal sealed class ServiceEventSource : EventSource
 {
     public static readonly ServiceEventSource Current = new ServiceEventSource();

@@ -1,11 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StartupServicesManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
+    <Parameter Name="YahooTFeeder_InstanceCount" DefaultValue="-1" />
     <Parameter Name="MailExtrasExtractor_InstanceCount" DefaultValue="-1" />
     <Parameter Name="WebApi_InstanceCount" DefaultValue="-1" />
-    <Parameter Name="YahooFeederJobActorService_PartitionCount" DefaultValue="10" />
-    <Parameter Name="YahooFeederJobActorService_MinReplicaSetSize" DefaultValue="3" />
-    <Parameter Name="YahooFeederJobActorService_TargetReplicaSetSize" DefaultValue="3" />
   </Parameters>
   <Services>
     <!-- The section below creates instances of service types, when an instance of this 
@@ -13,6 +11,11 @@
          ServiceFabric PowerShell module.
 
          The attribute ServiceTypeName below must match the name defined in the imported ServiceManifest.xml file. -->
+    <Service Name="YahooTFeeder" ServicePackageActivationMode="ExclusiveProcess">
+      <StatelessService ServiceTypeName="YahooTFeederType" InstanceCount="[YahooTFeeder_InstanceCount]">
+        <SingletonPartition />
+      </StatelessService>
+    </Service>
     <Service Name="MailExtrasExtractor" ServicePackageActivationMode="ExclusiveProcess">
       <StatelessService ServiceTypeName="MailExtrasExtractorType" InstanceCount="[MailExtrasExtractor_InstanceCount]">
         <SingletonPartition />
@@ -22,11 +25,6 @@
       <StatelessService ServiceTypeName="WebApiType" InstanceCount="[WebApi_InstanceCount]">
         <SingletonPartition />
       </StatelessService>
-    </Service>
-    <Service Name="YahooFeederJobActorService" GeneratedIdRef="9999f6d0-ce4b-4dab-bdf0-2c514a1876d0|Persisted">
-      <StatefulService ServiceTypeName="YahooFeederJobActorServiceType" TargetReplicaSetSize="[YahooFeederJobActorService_TargetReplicaSetSize]" MinReplicaSetSize="[YahooFeederJobActorService_MinReplicaSetSize]">
-        <UniformInt64Partition PartitionCount="[YahooFeederJobActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
-      </StatefulService>
     </Service>
   </Services>
 </StartupServicesManifest>

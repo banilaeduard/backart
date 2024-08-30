@@ -37,25 +37,6 @@ namespace DataAccess
             }
         }
 
-        internal static void handleIsDeleted(this EntityEntry entityEntry)
-        {
-            // we ensure the separation of data based on clients
-            if (entityEntry.Entity is ISoftDelete softDelete)
-            {
-                if (entityEntry.State == EntityState.Deleted)
-                {
-                    foreach(var prop in entityEntry.Properties)
-                    {
-                        prop.IsModified = false;
-                    }
-                    softDelete.isDeleted = true;
-                    entityEntry.State = EntityState.Modified;
-                }
-                else
-                    entityEntry.Property("isDeleted").IsModified = false;
-            }
-        }
-
         internal static void handleTennant(this EntityEntry entityEntry, string tenant)
         {
             // we ensure the separation of data based on clients

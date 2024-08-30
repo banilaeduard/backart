@@ -46,7 +46,7 @@ namespace MailExtrasExtractor
         {
             return [
                 new ServiceInstanceListener(
-                    (context) => new FabricTransportServiceRemotingListener(context, this))
+                    (context) => new FabricTransportServiceRemotingListener(context, this), "ServiceEndpointV2")
                 ];
         }
     }

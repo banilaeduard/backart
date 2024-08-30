@@ -1,4 +1,4 @@
-﻿namespace YahooFeederJob.Interfaces
+﻿namespace YahooFeeder
 {
     public class MailSettings
     {

@@ -14,16 +14,13 @@ namespace DataAccess
                 options.UseMySql(
                     defaultConnection,
                     ServerVersion.AutoDetect(defaultConnection),
-                    b => b.MigrationsAssembly("DataAccess").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+                    b => { });
             }
             else
             {
                 options.UseSqlServer(defaultConnection, s =>
-                {
-                    s.MigrationsAssembly("DataAccess").UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                });
+                { });
             }
-            //options.UseInMemoryDatabase("backart");
             return;
         }
 

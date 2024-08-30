@@ -15,19 +15,20 @@
        should match the Name and Version attributes of the ServiceManifest element defined in the 
        ServiceManifest.xml file. -->
   <ServiceManifestImport>
-    <ServiceManifestRef ServiceManifestName="MailExtrasExtractorPkg" ServiceManifestVersion="1.0.0" />
+    <ServiceManifestRef ServiceManifestName="YahooTFeederPkg" ServiceManifestVersion="1.0.0" />
     <ConfigOverrides />
-  </ServiceManifestImport>
-  <ServiceManifestImport>
-    <ServiceManifestRef ServiceManifestName="YahooFeederJobPkg" ServiceManifestVersion="1.0.0" />
     <EnvironmentOverrides CodePackageRef="code">
+      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
       <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
       <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
       <EnvironmentVariable Name="days_before" Value="[feeder_days_before]" />
       <EnvironmentVariable Name="User" Value="[feeder_User]" />
       <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
-      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
     </EnvironmentOverrides>
+  </ServiceManifestImport>
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="MailExtrasExtractorPkg" ServiceManifestVersion="1.0.0" />
+    <ConfigOverrides />
   </ServiceManifestImport>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="WebApiPkg" ServiceManifestVersion="1.0.0" />

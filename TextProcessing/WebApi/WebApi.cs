@@ -13,7 +13,8 @@ using System.Text;
 using WebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using YahooFeederJob.Interfaces;
+using Microsoft.AspNetCore.Diagnostics;
+using YahooFeeder;
 
 namespace WebApi
 {
@@ -85,6 +86,13 @@ namespace WebApi
                         app.UseAuthentication();
                         app.UseAuthorization();
                         app.MapControllers();
+                        app.UseExceptionHandler(cfg => cfg.Run(async context => {
+                            var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
+                            var exception = exceptionHandlerPathFeature.Error;
+                            ServiceEventSource.Current.ServiceMessage(serviceContext, "Non-Event. {0}", exception.Message);
+                            ServiceEventSource.Current.Message("Event. {0}", exception.Message);
+                        }));
+
                         app.Services.GetRequiredService<IServiceScopeFactory>()
                             .CreateScope().ServiceProvider
                             .GetRequiredService<Initializer>()
