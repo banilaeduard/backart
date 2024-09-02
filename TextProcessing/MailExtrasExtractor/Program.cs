@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Diagnostics.EventFlow.ServiceFabric;
 using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace MailExtrasExtractor
@@ -16,14 +17,16 @@ namespace MailExtrasExtractor
                 // Registering a service maps a service type name to a .NET type.
                 // When Service Fabric creates an instance of this service type,
                 // an instance of the class is created in this host process.
-
-                ServiceRuntime.RegisterServiceAsync("MailExtrasExtractorType",
+                using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-MailExtrasExtractor-DiagnosticsPipeline"))
+                {
+                    ServiceRuntime.RegisterServiceAsync("MailExtrasExtractorType",
                     context => new MailExtrasExtractor(context)).GetAwaiter().GetResult();
 
-                ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(MailExtrasExtractor).Name);
+                    ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(MailExtrasExtractor).Name);
 
-                // Prevents this host process from terminating so services keep running.
-                Thread.Sleep(Timeout.Infinite);
+                    // Prevents this host process from terminating so services keep running.
+                    Thread.Sleep(Timeout.Infinite);
+                }
             }
             catch (Exception e)
             {

@@ -10,6 +10,7 @@ using MailKit.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
@@ -43,10 +44,7 @@ namespace YahooTFeeder
         /// <returns>A collection of listeners.</returns>
         protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
         {
-            return [
-                new ServiceInstanceListener(
-                    (context) => new FabricTransportServiceRemotingListener(context, this), "ServiceEndpointV2")
-                ];
+            return this.CreateServiceRemotingInstanceListeners();
         }
 
 
@@ -70,6 +68,7 @@ namespace YahooTFeeder
         {
             // TODO: Replace the following sample code with your own logic 
             //       or remove this RunAsync override if it's not needed in your service.
+            ServiceEventSource.Current.ServiceMessage(this.Context, "Service name is {0}. Listen address is {1}", Context.ServiceName.ToString(), Context.ListenAddress);
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -128,7 +127,7 @@ namespace YahooTFeeder
                     {
                         try
                         {
-                            IList<MailKit.UniqueId> uids;
+                            IList<UniqueId> uids;
                             DateTime fromDate = DateTime.Now.AddDays(-settings.DaysBefore);
 
                             jobStatusContext.JobStatus.Add(new JobStatusLog()
@@ -150,12 +149,6 @@ namespace YahooTFeeder
                             {
                                 if (complaintSeriesDbContext.Ticket.Where(t => t.CodeValue == uid.ToString()).FirstOrDefault() != null)
                                 {
-                                    jobStatusContext.JobStatus.Add(new JobStatusLog()
-                                    {
-                                        TenantId = "cubik",
-                                        Message = string.Format("Skipping item {0}", uid),
-                                        CreatedDate = DateTime.Now,
-                                    });
                                     continue;
                                 }
 
@@ -163,7 +156,7 @@ namespace YahooTFeeder
 
                                 var body = await getBody(message);
 
-                                var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractor")).Parse(body);
+                                var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
 
                                 var complaint = AddComplaint(message, extras, from, uid, complaintSeriesDbContext);
                                 await SaveAttachments(message, complaint.Tickets[0], complaintSeriesDbContext);
@@ -174,6 +167,7 @@ namespace YahooTFeeder
                                 }
                                 catch (Exception ex)
                                 {
+                                    ServiceEventSource.Current.ServiceMessage(this.Context, "{0}. {1}", ex.Message, ex.InnerException?.ToString() ?? "");
                                     jobStatusContext.JobStatus.Add(new JobStatusLog()
                                     {
                                         TenantId = "cubik",
@@ -185,6 +179,7 @@ namespace YahooTFeeder
                         }
                         catch (Exception ex)
                         {
+                            ServiceEventSource.Current.ServiceMessage(this.Context, ex.Message);
                             jobStatusContext.JobStatus.Add(new JobStatusLog()
                             {
                                 TenantId = "cubik",
@@ -256,7 +251,7 @@ namespace YahooTFeeder
                             var part = (MimePart)attachment;
                             await part.Content.DecodeToAsync(stream);
                         }
-                        var img = new DataAccess.Entities.Attachment()
+                        var img = new Attachment()
                         {
                             Data = string.Format("data:{0};base64,{1}", attachment.ContentType.MimeType, Convert.ToBase64String(stream.ToArray())),
                             Ticket = ticket,

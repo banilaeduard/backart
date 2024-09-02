@@ -1,5 +1,6 @@
 ﻿using DataAccess.Context;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using System.Fabric;
@@ -53,15 +54,17 @@ namespace WebApi.Controllers
         {
             try
             {
-                await serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeeder")).Get();
+                ServiceEventSource.Current.ServiceMessage(this.context, "Service name is {0}", this.context.ServiceName.ToString());
+                var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
+
+                await proxy.Get();
+
                 return Ok();
             }
             catch (Exception ex)
             {
-
                 ServiceEventSource.Current.ServiceMessage(this.context, ex.Message);
-                Console.WriteLine(ex.Message);
-                return Ok(ex.Message);
+                return Ok(ex);
             }
         }
     }

@@ -90,7 +90,6 @@ namespace WebApi
                             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
                             var exception = exceptionHandlerPathFeature.Error;
                             ServiceEventSource.Current.ServiceMessage(serviceContext, "Non-Event. {0}", exception.Message);
-                            ServiceEventSource.Current.Message("Event. {0}", exception.Message);
                         }));
 
                         app.Services.GetRequiredService<IServiceScopeFactory>()
