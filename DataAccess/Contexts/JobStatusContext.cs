@@ -6,7 +6,7 @@ namespace DataAccess.Context
 {
     public class JobStatusContext : BaseContext
     {
-        public JobStatusContext(DbContextOptions ctxBuilder,
+        public JobStatusContext(DbContextOptions<JobStatusContext> ctxBuilder,
     IBaseContextAccesor baseContextAccesor) : base(ctxBuilder, baseContextAccesor)
         {
         }
@@ -25,12 +25,6 @@ namespace DataAccess.Context
 
         protected override void BeforeSave(EntityEntry entityEntry, string correlationId)
         {
-            if (entityEntry.State == EntityState.Added && entityEntry.Entity is JobStatusLog jobStatus)
-            {
-                {
-                    jobStatus.CorelationId = correlationId;
-                }
-            }
         }
     }
 }

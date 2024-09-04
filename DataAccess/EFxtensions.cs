@@ -27,7 +27,7 @@ namespace DataAccess
             // we ensure the separation of data based on clients
             if (entityEntry.Entity is IDataKey dataKey)
             {
-                if (entityEntry.State == EntityState.Added)
+                if (entityEntry.State == EntityState.Added && dataKey.DataKey == null)
                     dataKey.DataKeyId = accesor.DataKeyId;
                 else
                 {

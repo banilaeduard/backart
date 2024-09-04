@@ -1,4 +1,5 @@
 ﻿using DataAccess.Context;
+using DataAccess.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +32,7 @@ namespace DataAccess
             services.AddDbContext<CodeDbContext>(options => configureConnectionString(defaultConnection, options));
             services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(defaultConnection, options));
             services.AddDbContext<JobStatusContext>(options => configureConnectionString(defaultConnection, options));
+            services.AddDbContext<ImportsDbContext>(options => configureConnectionString(defaultConnection, options));
 
             services.AddScoped<NoFilterBaseContext>();
             services.AddSingleton<Initializer>();

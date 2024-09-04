@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
+using DataAccess.Contexts;
 
 namespace DataAccess
 {
@@ -28,6 +29,9 @@ namespace DataAccess
                     var appIdentityDbContex = provider.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
                     //if(!appIdentityDbContex.Database.EnsureCreated()) return;
                     //var appIden = appIdentityDbContex.Database.GenerateCreateScript();
+
+                    var importsDbContext = provider.ServiceProvider.GetRequiredService<ImportsDbContext>();
+                    //var script = importsDbContext.Database.GenerateCreateScript();
 
                     var codeDbContex = provider.ServiceProvider.GetRequiredService<CodeDbContext>();
                     //var codeDb = codeDbContex.Database.GenerateCreateScript();

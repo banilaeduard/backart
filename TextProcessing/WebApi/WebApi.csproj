@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\DataAccess\DataAccess.csproj" />
+    <ProjectReference Include="..\..\WorkSheetServices\WorkSheetServices.csproj" />
     <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
   </ItemGroup>
 

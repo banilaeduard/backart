@@ -284,3 +284,28 @@ CREATE TABLE mailsourceconfigs (
   Password VARCHAR(45) NOT NULL,
   DaysBefore INT NOT NULL,
   PRIMARY KEY (Id));
+  
+  CREATE TABLE [ComandaVanzare] (
+    [Id] int NOT NULL IDENTITY,
+    [DocId] int NOT NULL,
+    [DetaliiDoc] nvarchar(max) NULL,
+    [DataDoc] datetime2 NOT NULL,
+    [CodLocatie] nvarchar(max) NULL,
+    [NumeLocatie] nvarchar(max) NULL,
+    [NumarComanda] bigint NOT NULL,
+    [CodArticol] nvarchar(max) NULL,
+    [NumeArticol] nvarchar(max) NULL,
+    [Cantitate] int NOT NULL,
+    [CreatedDate] datetime2 NOT NULL,
+    [UpdatedDate] datetime2 NOT NULL,
+    [DataKeyId] varchar(255) NULL,
+    [isDeleted] smallint NOT NULL,
+    [TenantId] nvarchar(max) NULL,
+    CONSTRAINT [PK_ComandaVanzare] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_ComandaVanzare_DataKeyLocation_DataKeyId] FOREIGN KEY ([DataKeyId]) REFERENCES [DataKeyLocation] ([Id]) ON DELETE NO ACTION
+);
+GO
+
+
+CREATE INDEX [IX_ComandaVanzare_DataKeyId] ON [ComandaVanzare] ([DataKeyId]);
+GO

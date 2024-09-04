@@ -15,7 +15,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServiceImplementation", "..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MailExtrasExtractor", "MailExtrasExtractor\MailExtrasExtractor.csproj", "{60A993FE-9C28-4B43-9EEE-E3B17D3332C7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YahooTFeeder", "YahooTFeeder\YahooTFeeder.csproj", "{B92E04DF-800A-4A8D-8C44-12608E746424}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "YahooTFeeder", "YahooTFeeder\YahooTFeeder.csproj", "{B92E04DF-800A-4A8D-8C44-12608E746424}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkSheetServices", "..\WorkSheetServices\WorkSheetServices.csproj", "{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityDto", "..\EntityDto\EntityDto.csproj", "{539E7DE2-CDFA-4119-B758-E59DBA727483}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -85,6 +89,22 @@ Global
 		{B92E04DF-800A-4A8D-8C44-12608E746424}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B92E04DF-800A-4A8D-8C44-12608E746424}.Release|x64.ActiveCfg = Release|Any CPU
 		{B92E04DF-800A-4A8D-8C44-12608E746424}.Release|x64.Build.0 = Release|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Debug|x64.Build.0 = Debug|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Release|x64.ActiveCfg = Release|Any CPU
+		{6361A99E-2CFA-4B9F-A0E8-173F57375BD7}.Release|x64.Build.0 = Release|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Debug|x64.Build.0 = Debug|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Release|Any CPU.Build.0 = Release|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Release|x64.ActiveCfg = Release|Any CPU
+		{539E7DE2-CDFA-4119-B758-E59DBA727483}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -4,10 +4,6 @@ namespace DataAccess.Entities
     using System.Text.Json.Serialization;
     using System.ComponentModel.DataAnnotations;
 
-    using Microsoft.EntityFrameworkCore;
-
-
-    //[Owned]
     public class RefreshToken
     {
         [Key]
