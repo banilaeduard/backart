@@ -47,7 +47,8 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
-                BadRequest(ex.Message);
+                logger.LogError(new EventId(), ex, ex.Message);
+                return BadRequest(ex.Message);
             }
 
             return Ok();

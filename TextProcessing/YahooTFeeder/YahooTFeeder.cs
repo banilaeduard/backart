@@ -12,7 +12,6 @@ using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
-using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
 using Tokenizer;
@@ -69,6 +68,7 @@ namespace YahooTFeeder
             // TODO: Replace the following sample code with your own logic 
             //       or remove this RunAsync override if it's not needed in your service.
             ServiceEventSource.Current.ServiceMessage(this.Context, "Service name is {0}. Listen address is {1}", Context.ServiceName.ToString(), Context.ListenAddress);
+            await Task.Delay(TimeSpan.FromHours(3));
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -226,7 +226,7 @@ namespace YahooTFeeder
                                                 new Ticket()
                                                 {
                                                     CodeValue = uid.ToString(),
-                                                    Description = extras.BodyResult
+                                                    Description = !string.IsNullOrWhiteSpace(message.HtmlBody) ? regexHtml.Replace(message.HtmlBody, " ") : message.TextBody
                                                 }
                                             ]
                                         }

@@ -10,8 +10,10 @@ namespace DataAccess.Contexts
 {
     public class ImportsDbContext : BaseContext
     {
+        private string comandaVanzareTable;
         public ImportsDbContext(DbContextOptions<ImportsDbContext> ctxBuilder, IBaseContextAccesor baseContextAccesor) : base(ctxBuilder, baseContextAccesor)
         {
+            comandaVanzareTable = Model.GetEntityTypes().Where(t => t.ClrType == typeof(ComandaVanzareEntry)).First().GetTableName();
         }
 
         public DbSet<ComandaVanzareEntry> ComandaVanzare { get; set; }
@@ -42,7 +44,7 @@ namespace DataAccess.Contexts
                 });
             }
 
-            await this.SaveChangesAsync();
+            await SaveChangesAsync();
 
             locations = DataKeyLocation.ToList();
             foreach (var entry in entries)
@@ -55,16 +57,13 @@ namespace DataAccess.Contexts
 
         public async Task AddUniqueEntries(IList<ComandaVanzareEntry> entries)
         {
-            var docIds = entries.Select(t => t.DocId).ToList();
-            var existing = ComandaVanzare.Where(t => docIds.Contains(t.DocId)).ToList();
-            existing.ForEach(t => Entry(t).State = EntityState.Detached);
-
-            foreach (var entry in entries.Where(t => !existing.Any(x => x.DocId == t.DocId)))
+            foreach (var entry in entries)
             {
                 ComandaVanzare.Add(entry);
             }
 
-            await this.SaveChangesAsync();
+            await Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {comandaVanzareTable};");
+            await SaveChangesAsync();
         }
 
         protected override void BeforeSave(EntityEntry entityEntry, string correlationId)
