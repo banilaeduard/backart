@@ -11,6 +11,10 @@ namespace WebApi.Controllers
     using DataAccess.Entities;
     using DataAccess.Context;
     using System.Linq;
+    using EntityDto;
+    using Microsoft.EntityFrameworkCore;
+    using WorkSheetServices;
+    using ServiceImplementation;
 
     public class CodesController : WebApiController2
     {
@@ -25,7 +29,26 @@ namespace WebApi.Controllers
         [Authorize(Roles = "partener, admin")]
         public IActionResult GetCodes()
         {
-            var result = this.codeDbContext.Codes.ToList();
+            dynamic map(CodeLink t)
+            {
+                return new
+                {
+                    id = t.Id,
+                    codeDisplay = t.CodeDisplay,
+                    codeValue = t.CodeValue,
+                    codeValueFormat = t.CodeValueFormat,
+                    t.isRoot,
+                    children = t.Children?.Select(t => map(t.Child)).OrderBy(t => t.codeValueFormat),
+                    barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
+                };
+            }
+
+            var result = this.codeDbContext.Codes
+                .Include(t => t.Children)
+                .ThenInclude(t => t.Child)
+                .ToList()
+                .Select(map);
+
             return Ok(result);
         }
 
@@ -90,10 +113,60 @@ namespace WebApi.Controllers
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteCodesAttributes(List<CodeAttribute> codes)
         {
-            codes.ForEach(code => 
+            codes.ForEach(code =>
             this.codeDbContext.Entry(new CodeAttribute() { Tag = code.Tag, InnerValue = code.InnerValue })
                               .State = Microsoft.EntityFrameworkCore.EntityState.Deleted);
             await this.codeDbContext.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("upload"), DisableRequestSizeLimit]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UploadStructure()
+        {
+
+            var file = Request.Form.Files[0];
+
+            using (var stream = file.OpenReadStream())
+            {
+                var items = WorkbookReader.ReadWorkBook<StructuraCod>(stream, 2);
+                var existingRootCodes = codeDbContext.Codes.Where(t => t.isRoot).AsNoTracking().ToDictionary(t => t.CodeDisplay, t => t);
+
+                foreach (var code in items.Select(t => t.NumeArticol).Distinct())
+                {
+                    if (!existingRootCodes.ContainsKey(code))
+                    {
+                        codeDbContext.Codes.Add(new CodeLink() { CodeValue = code, CodeDisplay = code, isRoot = true });
+                    }
+                }
+                await codeDbContext.SaveChangesAsync();
+
+                var childNodes = codeDbContext.Codes.Where(t => !t.isRoot).AsNoTracking().ToDictionary(t => t.CodeValue, t => t);
+
+                foreach (var item in items.DistinctBy(t => t.CodColet))
+                {
+                    if (!childNodes.ContainsKey(item.CodColet))
+                    {
+                        codeDbContext.Codes.Add(new CodeLink { CodeValue = item.CodColet, CodeDisplay = item.NumeColet, isRoot = false, CodeValueFormat = item.NumarColet });
+                    }
+                }
+
+                await codeDbContext.SaveChangesAsync();
+
+                existingRootCodes = codeDbContext.Codes.Where(t => t.isRoot).Include(t => t.Children).ThenInclude(t => t.Child).ToDictionary(t => t.CodeDisplay, t => t);
+
+                foreach(var missing in items.Where(t => existingRootCodes[t.NumeArticol].Children.FirstOrDefault(x => x.Child.CodeValue == t.CodColet) == null))
+                {
+                    existingRootCodes[missing.NumeArticol].Children.Add(new CodeLinkNode()
+                    {
+                        Child = codeDbContext.Codes.First(t => t.CodeValue == missing.CodColet),
+                        Parent = existingRootCodes[missing.NumeArticol]
+                    });
+                }
+
+                await codeDbContext.SaveChangesAsync();
+            }
 
             return Ok();
         }

@@ -4,11 +4,11 @@ namespace WorkSheetServices
 {
     public static class WorkbookReader
     {
-        public static List<T> ReadWorkBook<T>(Stream stream, int firstDataRow, string sheetName = "") where T : class, new()
+        public static List<T> ReadWorkBook<T>(Stream stream, int firstDataRow = 4, string sheetName = "") where T : class, new()
         {
             return ReadWorkBook(stream, new Settings<T>()
             {
-                FirstDataRow = 4
+                FirstDataRow = firstDataRow
             }, sheetName);
         }
 
@@ -25,7 +25,7 @@ namespace WorkSheetServices
                 {
                     if (!settings.LastDataRow.HasValue && worksheet.Cell(i, 1).IsEmpty()) break;
 
-                    lst.Add(settings.Mapper.ReadLines((col) => worksheet.Cell(i, col).Value));
+                    lst.Add(settings.Mapper.ReadLines((col, row) => worksheet.Cell(row, col).Value, i));
                 }
             }
 

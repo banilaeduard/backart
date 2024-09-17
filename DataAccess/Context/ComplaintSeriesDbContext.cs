@@ -30,7 +30,8 @@ namespace DataAccess.Context
                 .HasName("Id");
 
             modelBuilder.Entity<CodeLink>()
-                .ToTable("CodeLinkSnapshot");
+                .ToTable("CodeLinkSnapshot")
+                .Ignore(t => t.Ancestors).Ignore(t => t.Children);
 
             modelBuilder.Entity<Ticket>()
                     .HasOne(t => t.Complaint)

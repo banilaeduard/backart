@@ -43,12 +43,12 @@ namespace WebApi.Controllers
                         DocId = t.DocId,
                         NumarComanda = t.NumarComanda,
                         NumeArticol = t.NumeArticol,
-                        NumeLocatie = t.NumeLocatie
+                        NumeLocatie = t.NumeLocatie,
                     }).ToList();
 
                     var codes = codeDbContext.Codes.AsNoTracking().ToList();
                     var toInsert = dbItems.Where(t => !codes.Any(x => x.CodeValue == t.CodArticol))
-                                          .Select(t => new CodeLink() { CodeValue = t.CodArticol, CodeDisplay = t.NumeArticol })
+                                          .Select(t => new CodeLink() { CodeValue = t.CodArticol, CodeDisplay = t.NumeArticol, isRoot = true })
                                           .DistinctBy(t => t.CodeValue)
                                           .ToList();
                     codeDbContext.Codes.AddRange(toInsert);

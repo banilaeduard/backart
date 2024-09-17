@@ -25,14 +25,14 @@ namespace WorkSheetServices
             }
         }
 
-        public T ReadLines(Func<int, XLCellValue> getValue)
+        public T ReadLines(Func<int, int, XLCellValue> getValue, int rowIndex)
         {
             var item = new T();
 
             foreach (var kvp in _internalMap)
             {
                 var (k, v) = kvp;
-                v.SetValue(item, CastTo(kvp, getValue(k.GetColNumber())));
+                v.SetValue(item, CastTo(kvp, getValue(k.GetColNumber(), k.GetRowNumber() ?? rowIndex)));
             }
 
             return item;

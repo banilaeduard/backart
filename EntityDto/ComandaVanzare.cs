@@ -4,7 +4,7 @@
     {
         public ComandaVanzare() { }
 
-        [MapExcel(1, typeof(string))]
+        [MapExcel(1, type = typeof(string))]
         public int DocId { get; set; }
         [MapExcel(2)]
         public string? DetaliiDoc { get; set; }
@@ -14,7 +14,7 @@
         public string CodLocatie { get; set; }
         [MapExcel(7)]
         public string NumeLocatie { get; set; }
-        [MapExcel(8, typeof(string))]
+        [MapExcel(8, type = typeof(string))]
         public long NumarComanda { get; set; }
         [MapExcel(9)]
         public string CodArticol { get; set; }

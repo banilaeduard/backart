@@ -8,7 +8,8 @@ namespace DataAccess.Entities
         public int Id { get; set; }
         public string CodeDisplay { get; set; }
         public string CodeValue { get; set; }
-        public List<CodeLink> Children  { get; set; }
+        public ICollection<CodeLinkNode> Ancestors { get; set; }
+        public ICollection<CodeLinkNode> Children { get; set; }
         public string AttributeTags { get; set; }
         public string CodeValueFormat { get; set; }
         public bool isRoot { get; set; }
