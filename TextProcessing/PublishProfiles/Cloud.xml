@@ -7,21 +7,23 @@
          For example: <ClusterConnectionParameters ConnectionEndpoint="mycluster.westus.cloudapp.azure.com:19000" />
 
        Example showing parameters for a cluster that uses certificate security:
-       <ClusterConnectionParameters ConnectionEndpoint="mycluster.westus.cloudapp.azure.com:19000"
-                                    X509Credential="true"
-                                    ServerCertThumbprint="0123456789012345678901234567890123456789"
-                                    FindType="FindByThumbprint"
-                                    FindValue="9876543210987654321098765432109876543210"
-                                    StoreLocation="CurrentUser"
-                                    StoreName="My" />
+       <ClusterConnectionParameters ConnectionEndpoint="" />
 
        Example showing parameters for a cluster that uses Microsoft Entra ID (formerly known as Azure Active Directory) security:
        <ClusterConnectionParameters ConnectionEndpoint="mycluster.westus.cloudapp.azure.com:19000"
                                     AzureActiveDirectory="true"
                                     ServerCertThumbprint="0123456789012345678901234567890123456789" />
   -->
-  <ClusterConnectionParameters ConnectionEndpoint="" />
-  <ApplicationParameterFile Path="..\ApplicationParameters\Local.1Node.xml" />
-  <StartupServiceParameterFile Path="..\StartupServiceParameters\Local.1Node.xml" />
+  
+  <ClusterConnectionParameters 
+                                    ConnectionEndpoint="bartazeu2.germanywestcentral.cloudapp.azure.com:19000"
+                                    X509Credential="true"
+                                    ServerCertThumbprint="67f96e5d5f39a4edd31744e446f664b6cc8ac028"
+                                    FindType="FindByThumbprint"
+                                    FindValue="67f96e5d5f39a4edd31744e446f664b6cc8ac028"
+                                    StoreLocation="LocalMachine"
+                                    StoreName="My" />
+  <ApplicationParameterFile Path="..\ApplicationParameters\Cloud.xml" />
+  <StartupServiceParameterFile Path="..\StartupServiceParameters\Cloud.xml" />
   <CopyPackageParameters CompressPackage="true" />
 </PublishProfile>

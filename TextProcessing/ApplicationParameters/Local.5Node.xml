@@ -2,10 +2,13 @@
 <Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/TextProcessing" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
     <Parameter Name="WebApi_ASPNETCORE_ENVIRONMENT" Value="Development" />
-    <Parameter Name="WebApi_Secret" Value="aehfdriojuas432qG.wE3CoDUtS02eQjvgt7k0Kw.DGHKFKrq5_-zNPd9TFtllrHKJda-CAQrZ-ECjjsTJeo8912@" />
-    <Parameter Name="WebApi_ConnectionString" Value="Server=localhost;Port=3308;Database=backart;Uid=root;Pwd=123EWQasd!@#;" />
-    <Parameter Name="WebApi_SengridKey" Value="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" />
+    <Parameter Name="WebApi_Secret" Value="aehfdriojuas432qG.wE3CoDUtS02eQjvtgt7k0Kw.DGHKFKrq5_-zNPd9TFtllrHKJda-CAQrZ-ECjjsTJeo8912@" />
+    <Parameter Name="WebApi_ConnectionString" Value="Server=localhost;Port=3306;Database=backart;Uid=root;Pwd=123EWQasd!@#;" />
+    <Parameter Name="WebApi_SengridKey" Value="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" />
     <Parameter Name="feeder_y_folders" Value="Inbox" />
-    <Parameter Name="feeder_y_from" Value="dedeman.ro" />
+    <Parameter Name="feeder_y_from" Value="dedeman.ro;2-10 DEDEMAN" />
+    <Parameter Name="feeder_days_before" Value="100" />
+    <Parameter Name="feeder_User" Value="tehninvest@yahoo.com" />
+    <Parameter Name="feeder_Password" Value="xhfwxsovcuykpjwo" />
   </Parameters>
 </Application>

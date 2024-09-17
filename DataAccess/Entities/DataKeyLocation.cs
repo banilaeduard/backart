@@ -10,5 +10,6 @@
         public string Id { get; set; }
         public string name { get; set; }
         public string locationCode { get; set; }
+        public string townName { get; set; }
     }
 }

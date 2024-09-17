@@ -1,8 +1,9 @@
-﻿using DataAccess.Contexts;
+﻿using DataAccess.Context;
 using DataAccess.Entities;
 using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WorkSheetServices;
 
 namespace WebApi.Controllers
@@ -11,12 +12,15 @@ namespace WebApi.Controllers
     public class UploadController : WebApiController2
     {
         private ImportsDbContext imports;
+        private CodeDbContext codeDbContext;
         public UploadController(
             ILogger<UploadController> logger,
-            ImportsDbContext imports
+            ImportsDbContext imports,
+            CodeDbContext codeDbContext
             ) : base(logger)
         {
             this.imports = imports;
+            this.codeDbContext = codeDbContext;
         }
 
         [HttpPost("orders"), DisableRequestSizeLimit]
@@ -25,6 +29,7 @@ namespace WebApi.Controllers
             try
             {
                 var file = Request.Form.Files[0];
+
                 using (var stream = file.OpenReadStream())
                 {
                     var items = WorkbookReader.ReadWorkBook<ComandaVanzare>(stream, 4);
@@ -40,6 +45,14 @@ namespace WebApi.Controllers
                         NumeArticol = t.NumeArticol,
                         NumeLocatie = t.NumeLocatie
                     }).ToList();
+
+                    var codes = codeDbContext.Codes.AsNoTracking().ToList();
+                    var toInsert = dbItems.Where(t => !codes.Any(x => x.CodeValue == t.CodArticol))
+                                          .Select(t => new CodeLink() { CodeValue = t.CodArticol, CodeDisplay = t.NumeArticol })
+                                          .DistinctBy(t => t.CodeValue)
+                                          .ToList();
+                    codeDbContext.Codes.AddRange(toInsert);
+                    await codeDbContext.SaveChangesAsync();
 
                     await imports.SetNewLocations(dbItems);
                     await imports.AddUniqueEntries(dbItems);

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
-using DataAccess.Contexts;
 
 namespace DataAccess
 {

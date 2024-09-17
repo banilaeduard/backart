@@ -146,7 +146,7 @@ namespace WebApi
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = false,
                     ValidateAudience = false,
-                    ValidateLifetime = true,
+                    ValidateLifetime = false,
                 };
                 x.IncludeErrorDetails = true;
             });

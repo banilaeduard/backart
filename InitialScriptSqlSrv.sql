@@ -14,6 +14,7 @@ CREATE TABLE DataKeyLocation (
     Id varchar(255) NOT NULL,
     name varchar(255) NOT NULL,
     locationCode varchar(max) NULL,
+	townName varchar(255) NULL,
     CONSTRAINT PK_DataKeyLocation PRIMARY KEY (Id),
     CONSTRAINT AK_DataKeyLocation_name UNIQUE (name)
 );

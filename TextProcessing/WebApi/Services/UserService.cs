@@ -137,7 +137,7 @@ namespace WebApi.Services
         private async Task<string> generateJwtToken(AppIdentityUser appUser)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("Secret"));
+            var key = Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("Secret")!);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
@@ -153,7 +153,7 @@ namespace WebApi.Services
                     new Claim("dataKeyId", appUser.DataKeyLocation?.Id.ToString() ??""),
                     new Claim("dataKeyName", appUser.DataKeyLocation?.name ??"")
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddHours(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);

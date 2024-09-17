@@ -1,12 +1,11 @@
-﻿using DataAccess.Context;
-using DataAccess.Entities;
+﻿using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace DataAccess.Contexts
+namespace DataAccess.Context
 {
     public class ImportsDbContext : BaseContext
     {
@@ -21,21 +20,21 @@ namespace DataAccess.Contexts
 
         public async Task SetNewLocations(IList<ComandaVanzareEntry> entries)
         {
-            var locs = entries.Select(t => t.CodLocatie).ToList();
-            var locations = DataKeyLocation.Where(t => locs.Contains(t.locationCode)).ToList();
+            var locs = entries.Select(t => t.NumeLocatie).ToList();
+            var locations = DataKeyLocation.Where(t => locs.Contains(t.name)).ToList();
 
             Dictionary<string, string> items = new();
 
             foreach (var entry in entries)
             {
-                var loc = locations.Where(t => t.locationCode == entry.CodLocatie).FirstOrDefault();
+                var loc = locations.Where(t => t.name == entry.NumeLocatie).FirstOrDefault();
                 if (loc == null)
                 {
-                    items[entry.CodLocatie] = entry.NumeLocatie;
+                    items[entry.NumeLocatie] = entry.CodLocatie;
                 }
             }
 
-            foreach (var (cod, nume) in items)
+            foreach (var (nume, cod) in items)
             {
                 DataKeyLocation.Add(new DataKeyLocation()
                 {
@@ -49,7 +48,7 @@ namespace DataAccess.Contexts
             locations = DataKeyLocation.ToList();
             foreach (var entry in entries)
             {
-                var loc = locations.Where(t => t.locationCode == entry.CodLocatie).FirstOrDefault();
+                var loc = locations.Where(t => t.name == entry.NumeLocatie).FirstOrDefault();
                 entry.DataKeyId = loc.Id;
                 entry.DataKey = loc;
             }

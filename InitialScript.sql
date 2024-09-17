@@ -16,6 +16,7 @@ CREATE TABLE `DataKeyLocation` (
     `Id` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
     `name` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
     `locationCode` longtext CHARACTER SET utf8mb4 NULL,
+	`townName` varchar(255) CHARACTER SET utf8mb4 NULL,
     CONSTRAINT `PK_DataKeyLocation` PRIMARY KEY (`Id`),
     CONSTRAINT `AK_DataKeyLocation_name` UNIQUE (`name`)
 ) CHARACTER SET=utf8mb4;
