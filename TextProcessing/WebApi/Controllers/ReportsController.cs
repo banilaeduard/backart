@@ -29,7 +29,7 @@ namespace WebApi.Controllers
                 }
             }
 
-            return new FileContentResult(WorkbookReportsService.GenerateReport(disp), contentType);
+            return File(WorkbookReportsService.GenerateReport(disp), contentType);
         }
     }
 }

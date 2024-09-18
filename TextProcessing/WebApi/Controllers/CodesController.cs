@@ -39,7 +39,7 @@ namespace WebApi.Controllers
                     codeValueFormat = t.CodeValueFormat,
                     t.isRoot,
                     children = t.Children?.Select(t => map(t.Child)).OrderBy(t => t.codeValueFormat),
-                    barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
+                    //barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
                 };
             }
 

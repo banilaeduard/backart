@@ -37,7 +37,7 @@ namespace WebApi
             var endpoint = aspNetCoreEnvironment.Equals("Development") ? "ServiceEndpoint" : "EndpointHttps";
             return [
                 new ServiceInstanceListener(serviceContext =>
-                    new KestrelCommunicationListener(serviceContext,endpoint,
+                    new KestrelCommunicationListener(serviceContext, endpoint,
                     (url, listener) =>
                     {
                         ServiceEventSource.Current.ServiceMessage(serviceContext, $"Starting Kestrel on {url}");
@@ -61,7 +61,7 @@ namespace WebApi
                                         int port = serviceContext.CodePackageActivationContext.GetEndpoint(endpoint).Port;
                                         opt.Listen(IPAddress.IPv6Any, port, listenOptions =>
                                         {
-                                            listenOptions.UseHttps(GetCertificateFromStore()!);
+                                            //listenOptions.UseHttps(GetCertificateFromStore()!);
                                         });
                                     })
                                     .UseContentRoot(Directory.GetCurrentDirectory())
