@@ -70,22 +70,27 @@ namespace WebApi.Controllers
         [HttpGet("orders")]
         public async Task<IActionResult> GetOrders()
         {
-            return Ok(imports.ComandaVanzare.Select(GetOrderModel));
+            var codeLinks = codeDbContext.CodeLinkNode.Include(t => t.Parent).ToList();
+            return Ok(imports.ComandaVanzare.Select(GetOrderModel(codeLinks)));
         }
 
-        private ComandaVanzare GetOrderModel(ComandaVanzareEntry dbEntry)
+        private Func<ComandaVanzareEntry, ComandaVanzare> GetOrderModel(List<CodeLinkNode> codeLinkls)
         {
-            return new ComandaVanzare()
+            return (ComandaVanzareEntry dbEntry) =>
             {
-                Cantitate = dbEntry.Cantitate,
-                CodArticol = dbEntry.CodArticol,
-                CodLocatie = dbEntry.CodLocatie,
-                DataDoc = dbEntry.DataDoc,
-                DetaliiDoc = dbEntry.DetaliiDoc,
-                DocId = dbEntry.DocId,
-                NumarComanda = dbEntry.NumarComanda,
-                NumeArticol = dbEntry.NumeArticol,
-                NumeLocatie = dbEntry.NumeLocatie
+                return new ComandaVanzare()
+                {
+                    Cantitate = dbEntry.Cantitate,
+                    CodArticol = dbEntry.CodArticol,
+                    CodLocatie = dbEntry.CodLocatie,
+                    DataDoc = dbEntry.DataDoc,
+                    DetaliiDoc = dbEntry.DetaliiDoc,
+                    DocId = dbEntry.DocId,
+                    NumarComanda = dbEntry.NumarComanda,
+                    NumeArticol = dbEntry.NumeArticol,
+                    NumeLocatie = dbEntry.NumeLocatie,
+                    HasChildren = codeLinkls.Any(t => t.Parent.CodeValue == dbEntry.CodArticol)
+                };
             };
         }
     }

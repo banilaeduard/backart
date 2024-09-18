@@ -24,5 +24,6 @@
         public int Cantitate { get; set; }
         [MapExcel(15)]
         public string? DetaliiLinie { get; set; }
+        public bool? HasChildren { get; set; }
     }
 }

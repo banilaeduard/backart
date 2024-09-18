@@ -14,7 +14,7 @@ namespace WebApi.Controllers
     using EntityDto;
     using Microsoft.EntityFrameworkCore;
     using WorkSheetServices;
-    using ServiceImplementation;
+    using global::WebApi.Models;
 
     public class CodesController : WebApiController2
     {
@@ -29,16 +29,15 @@ namespace WebApi.Controllers
         [Authorize(Roles = "partener, admin")]
         public IActionResult GetCodes()
         {
-            dynamic map(CodeLink t)
+            CodeLinkModel map(CodeLink t)
             {
-                return new
+                return new CodeLinkModel()
                 {
-                    id = t.Id,
-                    codeDisplay = t.CodeDisplay,
-                    codeValue = t.CodeValue,
-                    codeValueFormat = t.CodeValueFormat,
-                    t.isRoot,
-                    children = t.Children?.Select(t => map(t.Child)).OrderBy(t => t.codeValueFormat),
+                    Id = t.Id,
+                    CodeDisplay = t.CodeDisplay,
+                    CodeValue = t.CodeValue,
+                    isRoot = t.isRoot,
+                    Children = t.Children?.Select(t => map(t.Child)).ToList(),
                     //barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
                 };
             }
@@ -61,21 +60,39 @@ namespace WebApi.Controllers
 
         [HttpPost]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> SaveCodes(List<CodeLink> codes)
+        public async Task<IActionResult> SaveCodes(List<CodeLinkModel> codes)
         {
-            this.codeDbContext.Codes.AddRange(codes);
-            await this.codeDbContext.SaveChangesAsync();
+            var codeDb = codeDbContext.Codes.FirstOrDefault(t => codes[0].CodeValue == t.CodeValue);
+            if (codeDb != null) return BadRequest("Code already exists");
 
+            var code = codes[0];
+
+            codeDb = new CodeLink()
+            {
+                isRoot = true,
+                Children = []
+            };
+            codeDb = codeDbContext.Add(codeDb).Entity;
+
+            await MapCode(code, codeDb);
+
+            await codeDbContext.SaveChangesAsync();
             return Ok(codes);
         }
 
         [HttpPatch]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UpdateCodes(List<CodeLink> codes)
+        public async Task<IActionResult> UpdateCodes(List<CodeLinkModel> codes)
         {
-            this.codeDbContext.Codes.UpdateRange(codes);
-            await this.codeDbContext.SaveChangesAsync();
+            var codeDb = codeDbContext.Codes.Where(t => codes[0].Id == t.Id).Include(t => t.Children).ThenInclude(t => t.Child).ToList();
 
+            foreach (var item in codes)
+            {
+                var dbEntry = codeDb.Where(t => t.Id == item.Id).First();
+                await MapCode(item, dbEntry);
+            }
+
+            await codeDbContext.SaveChangesAsync();
             return Ok(codes);
         }
 
@@ -156,7 +173,7 @@ namespace WebApi.Controllers
 
                 existingRootCodes = codeDbContext.Codes.Where(t => t.isRoot).Include(t => t.Children).ThenInclude(t => t.Child).ToDictionary(t => t.CodeDisplay, t => t);
 
-                foreach(var missing in items.Where(t => existingRootCodes[t.NumeArticol].Children.FirstOrDefault(x => x.Child.CodeValue == t.CodColet) == null))
+                foreach (var missing in items.Where(t => existingRootCodes[t.NumeArticol].Children.FirstOrDefault(x => x.Child.CodeValue == t.CodColet) == null))
                 {
                     existingRootCodes[missing.NumeArticol].Children.Add(new CodeLinkNode()
                     {
@@ -169,6 +186,50 @@ namespace WebApi.Controllers
             }
 
             return Ok();
+        }
+
+        private async Task MapCode(CodeLinkModel model, CodeLink dbEntry)
+        {
+            dbEntry.CodeDisplay = model.CodeDisplay;
+            dbEntry.CodeValue = model.CodeValue;
+
+            foreach (var child in dbEntry.Children)
+            {
+                var found = model.Children?.FirstOrDefault(t => t.Id == child.ChildNode);
+                if (found == null)
+                {
+                    codeDbContext.Entry(child).State = EntityState.Deleted;
+                    continue;
+                }
+
+                child.Child.CodeDisplay = found!.CodeDisplay;
+                child.Child.CodeValue = found.CodeValue;
+            }
+
+            foreach (var it in model.Children!.Where(t => !dbEntry.Children.Any(x => x.ChildNode == t.Id)))
+            {
+                var existing = model.Children.FirstOrDefault(t => t.CodeValue == it.CodeValue && t.Id > 0);
+                if (existing != null)
+                {
+                    dbEntry.Children.Add(new CodeLinkNode() { ChildNode = existing.Id, Parent = dbEntry });
+                }
+                else
+                {
+                    var dbChildCode = codeDbContext.Codes.FirstOrDefault(t => t.CodeValue == it.CodeValue) ?? new CodeLink()
+                    {
+                        CodeDisplay = it.CodeDisplay,
+                        CodeValue = it.CodeValue,
+                    };
+
+                    dbChildCode.Ancestors = [new CodeLinkNode() { Parent = dbEntry, Child = dbChildCode }];
+
+                    if (dbChildCode.Id < 1)
+                    {
+                        codeDbContext.Codes.Add(dbChildCode);
+                        await codeDbContext.SaveChangesAsync();
+                    }
+                }
+            }
         }
     }
 }
