@@ -132,7 +132,7 @@ namespace WebApi.Controllers
         {
             codes.ForEach(code =>
             this.codeDbContext.Entry(new CodeAttribute() { Tag = code.Tag, InnerValue = code.InnerValue })
-                              .State = Microsoft.EntityFrameworkCore.EntityState.Deleted);
+                              .State = EntityState.Deleted);
             await this.codeDbContext.SaveChangesAsync();
 
             return Ok();

@@ -89,7 +89,7 @@ namespace WebApi.Controllers
                     NumarComanda = dbEntry.NumarComanda,
                     NumeArticol = dbEntry.NumeArticol,
                     NumeLocatie = dbEntry.NumeLocatie,
-                    HasChildren = codeLinkls.Any(t => t.Parent.CodeValue == dbEntry.CodArticol)
+                    HasChildren = codeLinkls.Any(t => t.Parent.CodeValue == dbEntry.CodArticol) ? true : null,
                 };
             };
         }
