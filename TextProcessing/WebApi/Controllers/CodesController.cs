@@ -37,6 +37,7 @@ namespace WebApi.Controllers
                     CodeDisplay = t.CodeDisplay,
                     CodeValue = t.CodeValue,
                     isRoot = t.isRoot,
+                    CodeValueFormat = t.CodeValueFormat,
                     Children = t.Children?.Select(t => map(t.Child)).ToList(),
                     //barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
                 };
@@ -148,16 +149,34 @@ namespace WebApi.Controllers
             using (var stream = file.OpenReadStream())
             {
                 var items = WorkbookReader.ReadWorkBook<StructuraCod>(stream, 2);
-                var existingRootCodes = codeDbContext.Codes.Where(t => t.isRoot).AsNoTracking().ToDictionary(t => t.CodeDisplay, t => t);
+                var existingRootCodes = codeDbContext.Codes.Where(t => t.isRoot && t.CodeValueFormat != null).AsNoTracking().ToDictionary(t => t.CodeValueFormat);
 
-                foreach (var code in items.Select(t => t.NumeArticol).Distinct())
+                foreach (var code in items.DistinctBy(t => t.CodEanProdusParinte))
                 {
-                    if (!existingRootCodes.ContainsKey(code))
+                    if (!string.IsNullOrEmpty(code.CodEanProdusParinte) && !existingRootCodes.ContainsKey(code.CodEanProdusParinte))
                     {
-                        codeDbContext.Codes.Add(new CodeLink() { CodeValue = code, CodeDisplay = code, isRoot = true });
+                        codeDbContext.Codes.Add(new CodeLink() { CodeValue = code.NumeArticol, CodeDisplay = code.NumeArticol, CodeValueFormat = code.CodEanProdusParinte, isRoot = true });
                     }
                 }
                 await codeDbContext.SaveChangesAsync();
+
+                var existingRootCodes2 = codeDbContext.Codes.Where(t => t.isRoot).AsNoTracking().ToList();
+                Dictionary<string, string> syn = new();
+
+                foreach (var code in items.DistinctBy(t => t.NumeArticol))
+                {
+                    var item = existingRootCodes2.Where(t => t.CodeDisplay == code.NumeArticol || t.CodeValueFormat == code.CodEanProdusParinte).FirstOrDefault();
+                    if (item != null)
+                    {
+                        if (item.CodeDisplay != code.NumeArticol)
+                            syn.Add(code.NumeArticol, item.CodeDisplay);
+                    }
+                    else
+                    {
+                        codeDbContext.Codes.Add(new CodeLink() { CodeValue = code.NumeArticol, CodeDisplay = code.NumeArticol, CodeValueFormat = code.CodEanProdusParinte, isRoot = true });
+                        await codeDbContext.SaveChangesAsync();
+                    }
+                }
 
                 var childNodes = codeDbContext.Codes.Where(t => !t.isRoot).AsNoTracking().ToDictionary(t => t.CodeValue, t => t);
 
@@ -173,12 +192,18 @@ namespace WebApi.Controllers
 
                 existingRootCodes = codeDbContext.Codes.Where(t => t.isRoot).Include(t => t.Children).ThenInclude(t => t.Child).ToDictionary(t => t.CodeDisplay, t => t);
 
-                foreach (var missing in items.Where(t => existingRootCodes[t.NumeArticol].Children.FirstOrDefault(x => x.Child.CodeValue == t.CodColet) == null))
+                string getKey(Dictionary<string, string> syn, string key)
                 {
-                    existingRootCodes[missing.NumeArticol].Children.Add(new CodeLinkNode()
+                    if (syn.ContainsKey(key)) return syn[key];
+                    return key;
+                }
+
+                foreach (var missing in items.Where(t => existingRootCodes[getKey(syn, t.NumeArticol)].Children.FirstOrDefault(x => x.Child.CodeValue == t.CodColet) == null))
+                {
+                    existingRootCodes[getKey(syn, missing.NumeArticol)].Children.Add(new CodeLinkNode()
                     {
                         Child = codeDbContext.Codes.First(t => t.CodeValue == missing.CodColet),
-                        Parent = existingRootCodes[missing.NumeArticol]
+                        Parent = existingRootCodes[getKey(syn, missing.NumeArticol)]
                     });
                 }
 
@@ -192,6 +217,7 @@ namespace WebApi.Controllers
         {
             dbEntry.CodeDisplay = model.CodeDisplay;
             dbEntry.CodeValue = model.CodeValue;
+            dbEntry.CodeValueFormat = model.CodeValueFormat;
 
             foreach (var child in dbEntry.Children)
             {

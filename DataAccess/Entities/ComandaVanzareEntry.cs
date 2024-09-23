@@ -12,7 +12,7 @@ namespace DataAccess.Entities
         public DateTime DataDoc { get; set; }
         public string CodLocatie { get; set; }
         public string NumeLocatie { get; set; }
-        public long NumarComanda { get; set; }
+        public string NumarComanda { get; set; }
         public string CodArticol { get; set; }
         public string NumeArticol { get; set; }
         public int Cantitate { get; set; }

@@ -33,7 +33,7 @@ namespace WorkSheetServices
                     worksheet.Row(3).Style.Font.FontSize = 16;
                     worksheet.Cell(3, 1).Value = "Cod Produs";
                     worksheet.Cell(3, 2).Value = "Nume Produs";
-                    worksheet.Cell(3, 3).Value = "Cnt";
+                    worksheet.Cell(3, 3).Value = "Q";
                     worksheet.Cell(3, 4).Value = "Stoc";
                     
                     var firstEmptyCol = 5;
@@ -52,7 +52,7 @@ namespace WorkSheetServices
                         z_sheet.Row(1).Style.Font.FontSize = 14;
                         z_sheet.Cell(1, 1).Value = "Cod Produs";
                         z_sheet.Cell(1, 2).Value = "Nume Produs";
-                        z_sheet.Cell(1, 3).Value = "Cnt";
+                        z_sheet.Cell(1, 3).Value = "Q";
                         rowCounter[ids[z]] = 2;
                     }
                     workbook.FullCalculationOnLoad = true;
@@ -116,12 +116,14 @@ namespace WorkSheetServices
                         }
                     }
 
-                    worksheet.Range(3, 1, i, 3).CreateTable();
+                    var table = worksheet.Range(3, 1, i - 1, 3).CreateTable();
+                    table.Theme = XLTableTheme.TableStyleLight1;
+
                     worksheet.Rows().AdjustToContents();
                     worksheet.Columns("1:" + lastColCountIndex).AdjustToContents();
 
                     worksheet.PageSetup.PrintAreas.Clear();
-                    worksheet.PageSetup.PrintAreas.Add(1, 1, i, pageOrientation == "landscape" ? (firstEmptyCol + ids.Count() - 1) : firstEmptyCol - 1);
+                    worksheet.PageSetup.PrintAreas.Add(1, 1, i + 1, firstEmptyCol - 2);
                     worksheet.PageSetup.PageOrientation = XLPageOrientation.Landscape;// pageOrientation == "landscape" ? XLPageOrientation.Landscape : XLPageOrientation.Portrait;
                     worksheet.PageSetup.Margins.SetTop(1);
                     worksheet.PageSetup.Margins.SetLeft(0);

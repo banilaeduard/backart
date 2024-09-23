@@ -293,7 +293,7 @@ CREATE TABLE mailsourceconfigs (
     [DataDoc] datetime2 NOT NULL,
     [CodLocatie] nvarchar(max) NULL,
     [NumeLocatie] nvarchar(max) NULL,
-    [NumarComanda] bigint NOT NULL,
+    [NumarComanda] nvarchar(max) NULL,
     [CodArticol] nvarchar(max) NULL,
     [NumeArticol] nvarchar(max) NULL,
     [Cantitate] int NOT NULL,

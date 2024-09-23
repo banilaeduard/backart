@@ -25,7 +25,7 @@ namespace WorkSheetServices
                 {
                     if (!settings.LastDataRow.HasValue && worksheet.Cell(i, 1).IsEmpty()) break;
 
-                    lst.Add(settings.Mapper.ReadLines((col, row) => worksheet.Cell(row, col).Value, i));
+                    lst.Add(settings.Mapper.ReadLines((col, row) => worksheet.Cell(row, col), i));
                 }
             }
 

@@ -25,7 +25,17 @@ namespace WorkSheetServices
             }
         }
 
-        public T ReadLines(Func<int, int, XLCellValue> getValue, int rowIndex)
+        public static Type ChangeType(Type conversion)
+        {
+            if (conversion.IsGenericType && conversion.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
+            {
+                conversion = Nullable.GetUnderlyingType(conversion)!;
+            }
+
+            return conversion;
+        }
+
+        public T ReadLines(Func<int, int, IXLCell> getValue, int rowIndex)
         {
             var item = new T();
 
@@ -38,29 +48,32 @@ namespace WorkSheetServices
             return item;
         }
 
-        private object CastTo(KeyValuePair<MapExcelAttribute, PropertyInfo> fieldInfo, XLCellValue val)
+        private object CastTo(KeyValuePair<MapExcelAttribute, PropertyInfo> fieldInfo, IXLCell val)
         {
             var sourceType = fieldInfo.Key.GetParseFrom();
-            var targetType = fieldInfo.Value.PropertyType;
+            var targetType = ChangeType(fieldInfo.Value.PropertyType);
+            if (val.IsEmpty()
+                && fieldInfo.Value.PropertyType.IsGenericType 
+                && fieldInfo.Value.PropertyType.GetGenericTypeDefinition().Equals(typeof(Nullable<>))) return null;
 
             if (sourceType.IsAssignableFrom(typeof(int)))
             {
-                return Convert.ChangeType(val.GetNumber(), targetType);
+                return Convert.ChangeType(val.Value.GetNumber(), targetType);
             }
 
             if (sourceType.IsAssignableFrom(typeof(DateTime)))
             {
-                return Convert.ChangeType(val.GetDateTime(), targetType);
+                return Convert.ChangeType(val.Value.GetDateTime(), targetType);
             }
 
             if (sourceType.IsAssignableFrom(typeof(long)))
             {
-                return Convert.ChangeType(val.GetNumber(), targetType);
+                return Convert.ChangeType(val.Value.GetNumber(), targetType);
             }
 
             if (sourceType.IsAssignableFrom(typeof(string)))
             {
-                return Convert.ChangeType(val.GetText(), targetType);
+                return (val.Value.IsBlank || val.IsEmpty()) ? "" : Convert.ChangeType(val.Value.GetText(), targetType);
             }
 
             throw new NotImplementedException(string.Format("{0} -> {1} missing", sourceType, targetType));

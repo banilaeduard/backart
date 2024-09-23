@@ -61,7 +61,7 @@ namespace DataAccess.Context
                 ComandaVanzare.Add(entry);
             }
 
-            await Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {comandaVanzareTable};");
+            await Database.ExecuteSqlRawAsync($"DELETE FROM {comandaVanzareTable} WHERE TenantId = '{entries[0].TenantId}';");
             await SaveChangesAsync();
         }
 

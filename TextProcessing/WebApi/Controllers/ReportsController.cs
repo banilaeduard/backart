@@ -106,24 +106,33 @@ namespace WebApi.Controllers
 
                     foreach (var structure in dItems.GroupBy(t => t.CodProdus))
                     {
-                        var codes = codeDbContext.Codes
+                        var code = codeDbContext.Codes
                             .Where(c => c.CodeValue == structure.Key)
                             .Include(t => t.Children)
                             .ThenInclude(t => t.Child)
                             .First();
 
+                        if (string.IsNullOrEmpty(code.CodeValueFormat) && !string.IsNullOrEmpty(structure.ElementAt(0).CodEan)
+                            || string.IsNullOrEmpty(code.AttributeTags) && !string.IsNullOrEmpty(structure.ElementAt(0).NumeCodificare)
+                            )
+                        {
+                            code.CodeValueFormat = string.IsNullOrEmpty(code.CodeValueFormat) ? structure.ElementAt(0).CodEan : code.CodeValueFormat;
+                            code.AttributeTags = structure.ElementAt(0).NumeCodificare;
+                            await codeDbContext.SaveChangesAsync();
+                        }
+
                         foreach (var disp in structure)
                         {
-                            if (codes.Children?.Count() > 0)
-                                foreach (var code in codes.Children.Select(t => t.Child))
+                            if (code.Children?.Count() > 0)
+                                foreach (var code2 in code.Children.Select(t => t.Child))
                                 {
                                     items.Add(new DispozitieLivrare()
                                     {
-                                        CodProdus = code.CodeValue,
+                                        CodProdus = code2.CodeValue,
                                         Cantitate = disp.Cantitate,
                                         CodLocatie = disp.CodLocatie,
                                         NumarIntern = disp.NumarIntern,
-                                        NumeProdus = code.CodeDisplay,
+                                        NumeProdus = code2.CodeDisplay,
                                         CodProdus2 = disp.CodProdus
                                     });
                                 }

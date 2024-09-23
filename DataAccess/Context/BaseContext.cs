@@ -59,7 +59,7 @@ namespace DataAccess.Context
                             || e.ClrType.GetInterface(typeof(ISoftDelete).Name) != null))
             {
                 var baseFilter = (Expression<Func<Object, bool>>)(_ => baseContextAccesor.disableFiltering);
-                var tenantFilter = (Expression<Func<ITenant, bool>>)(e => e.TenantId == baseContextAccesor.TenantId);
+                var tenantFilter = (Expression<Func<ITenant, bool>>)(e => e.TenantId == baseContextAccesor.TenantId || baseContextAccesor.DataKeyLocation == "admin");
                 var dataKeyFilter = (Expression<Func<IDataKey, bool>>)(e => e.DataKey.locationCode == baseContextAccesor.DataKeyLocation ||
                                                                             e.DataKey.Id == baseContextAccesor.DataKeyId ||
                                                                             baseContextAccesor.DataKeyLocation == "admin");
@@ -124,7 +124,7 @@ namespace DataAccess.Context
                 {
                     entityEntry.handleCreatedUpdated();
                     entityEntry.handleDataKey(baseContextAccesor);
-                    entityEntry.handleTennant(baseContextAccesor.TenantId);
+                    entityEntry.handleTennant(baseContextAccesor);
                 }
             }
         }

@@ -41,12 +41,13 @@ namespace WebApi.Controllers
                         DataDoc = t.DataDoc,
                         DetaliiDoc = t.DetaliiDoc,
                         DocId = t.DocId,
-                        NumarComanda = t.NumarComanda,
+                        NumarComanda = t.NumarComanda.Trim(),
                         NumeArticol = t.NumeArticol,
                         NumeLocatie = t.NumeLocatie,
+                        TenantId = t.NumePartener.Trim()
                     }).ToList();
 
-                    var codes = codeDbContext.Codes.AsNoTracking().ToList();
+                    var codes = codeDbContext.Codes.Where(t => t.isRoot).AsNoTracking().ToList();
                     var toInsert = dbItems.Where(t => !codes.Any(x => x.CodeValue == t.CodArticol))
                                           .Select(t => new CodeLink() { CodeValue = t.CodArticol, CodeDisplay = t.NumeArticol, isRoot = true })
                                           .DistinctBy(t => t.CodeValue)
@@ -90,6 +91,7 @@ namespace WebApi.Controllers
                     NumeArticol = dbEntry.NumeArticol,
                     NumeLocatie = dbEntry.NumeLocatie,
                     HasChildren = codeLinkls.Any(t => t.Parent.CodeValue == dbEntry.CodArticol) ? true : null,
+                    NumePartener = dbEntry.TenantId
                 };
             };
         }

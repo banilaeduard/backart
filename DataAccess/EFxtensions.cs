@@ -37,13 +37,16 @@ namespace DataAccess
             }
         }
 
-        internal static void handleTennant(this EntityEntry entityEntry, string tenant)
+        internal static void handleTennant(this EntityEntry entityEntry, IBaseContextAccesor accesor)
         {
             // we ensure the separation of data based on clients
             if (entityEntry.Entity is ITenant tennant)
             {
                 if (entityEntry.State == EntityState.Added)
-                    tennant.TenantId = tenant;
+                {
+                    if (!accesor.IsAdmin || string.IsNullOrEmpty(tennant.TenantId))
+                        tennant.TenantId = accesor.TenantId;
+                }
                 else
                     entityEntry.Property("TenantId").IsModified = false;
             }
