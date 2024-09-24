@@ -4,8 +4,10 @@
     {
         public DispozitieLivrare() { CodProdus = ""; NumeProdus = ""; }
 
-        [MapExcel(10,2)]
+        [MapExcel(34)]
         public string? CodLocatie {  get; set; }
+        [MapExcel(35)]
+        public string? NumeLocatie { get; set; }
         [MapExcel(6,2, srcType: typeof(long))]
         public string NumarIntern { get; set; }
         [MapExcel(1)]

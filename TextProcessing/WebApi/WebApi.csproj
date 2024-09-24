@@ -24,8 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\AzureServices\AzureServices.csproj" />
     <ProjectReference Include="..\..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
+    <ProjectReference Include="..\..\Services\Services.csproj" />
     <ProjectReference Include="..\..\WorkSheetServices\WorkSheetServices.csproj" />
     <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
   </ItemGroup>

@@ -15,6 +15,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Diagnostics;
 using YahooFeeder;
+using AzureServices;
+using Services.Storage;
 
 namespace WebApi
 {
@@ -123,6 +125,8 @@ namespace WebApi
             });
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<EmailSender, EmailSender>();
+            services.AddScoped<IStorageService, BlobAccessStorageService>();
+            services.AddScoped<TableStorageService, TableStorageService>();
 
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()

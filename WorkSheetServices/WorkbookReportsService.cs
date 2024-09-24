@@ -27,7 +27,7 @@ namespace WorkSheetServices
                     worksheet.Range("A:D").Row(1).Merge();
                     worksheet.Cell(1, 1).Value = "Dispozitii Livrare:";
                     worksheet.Range("A:D").Row(2).Merge();
-                    worksheet.Cell(2, 1).Value = string.Join("; ", ids);
+                    worksheet.Cell(2, 1).Value = string.Join("; ", dispozitii.Select(t => t.NumarIntern).Distinct().Order().ToArray());
 
                     worksheet.Row(3).Cells("1:3").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
                     worksheet.Row(3).Style.Font.FontSize = 16;

@@ -28,6 +28,7 @@
       <EnvironmentVariable Name="days_before" Value="" />
       <EnvironmentVariable Name="User" Value="" />
       <EnvironmentVariable Name="Password" Value="" />
+      <EnvironmentVariable Name="storage_connection" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 
