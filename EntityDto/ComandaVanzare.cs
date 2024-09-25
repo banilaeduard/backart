@@ -23,9 +23,14 @@
         [MapExcel(10)]
         public string NumeArticol { get; set; }
         [MapExcel(11)]
+        public int CantitateTarget { get; set; }
+        [MapExcel(12)]
         public int Cantitate { get; set; }
         [MapExcel(15)]
         public string? DetaliiLinie { get; set; }
         public bool? HasChildren { get; set; }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
     }
 }

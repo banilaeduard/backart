@@ -17,6 +17,10 @@ using Microsoft.AspNetCore.Diagnostics;
 using YahooFeeder;
 using AzureServices;
 using Services.Storage;
+using RepositoryContract.Orders;
+using AzureTableRepository.Orders;
+using RepositoryContract.CommitedOrders;
+using AzureTableRepository.CommitedOrders;
 
 namespace WebApi
 {
@@ -127,7 +131,8 @@ namespace WebApi
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
-            services.AddScoped<TableStorageService, TableStorageService>();
+            services.AddScoped<IOrdersRepository, OrdersRepository>();
+            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
 
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()

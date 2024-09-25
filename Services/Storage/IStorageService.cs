@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Services.Storage
+﻿namespace Services.Storage
 {
     public interface IStorageService
     {
@@ -9,4 +7,3 @@ namespace Services.Storage
         void Delete(string fName);
     }
 }
-

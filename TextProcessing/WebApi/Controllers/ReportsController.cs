@@ -1,9 +1,12 @@
 ﻿using AzureServices;
+using AzureTableRepository.CommitedOrders;
 using DataAccess.Context;
 using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RepositoryContract.CommitedOrders;
+using RepositoryContract.Orders;
 using Services.Storage;
 using WorkSheetServices;
 
@@ -15,18 +18,20 @@ namespace WebApi.Controllers
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         private CodeDbContext codeDbContext;
         private IStorageService storageService;
-        private TableStorageService tableStorageService;
+        private ICommitedOrdersRepository commitedOrdersRepository;
+        private IOrdersRepository ordersRepository;
 
         public ReportsController(
             CodeDbContext codeDbContext,
-            ImportsDbContext importsDbContext,
             ILogger<TicketController> logger,
             IStorageService storageService,
-            TableStorageService tableStorageService) : base(logger)
+            ICommitedOrdersRepository commitedOrdersRepository,
+            IOrdersRepository ordersRepository) : base(logger)
         {
             this.codeDbContext = codeDbContext;
             this.storageService = storageService;
-            this.tableStorageService = tableStorageService;
+            this.commitedOrdersRepository = commitedOrdersRepository;
+            this.ordersRepository = ordersRepository;
         }
 
         [HttpPost("MergeDispozitii")]
@@ -55,25 +60,14 @@ namespace WebApi.Controllers
 
                 if (keys.ContainsKey(sample.NumarIntern))
                 {
-                    var old_entries = tableStorageService.Query<DispozitieLivrareAzEntry>(t => sample.NumarIntern == t.PartitionKey);
+                    var old_entries = await commitedOrdersRepository.GetCommitedOrders(t => sample.NumarIntern == t.PartitionKey);
                     keys.Remove(sample.NumarIntern);
-                    await tableStorageService.PrepareDelete(old_entries.ToList()).ExecuteBatch();
+                    await commitedOrdersRepository.DeleteCommitedOrders(old_entries.ToList());
                 }
 
-                var az = DispozitieLivrareAzEntry.create(sample, group.Sum(t => t.Cantitate));
-                az.PartitionKey = sample.NumarIntern;
-                az.RowKey = sample.CodProdus;
+                var az = DispozitieLivrareEntry.create(sample, group.Sum(t => t.Cantitate));
                 az.AggregatedFileNmae = fileName;
-                tableStorageService.Insert(az);
-
-                //keep product codes updated
-                tableStorageService.Insert(new CodProduseAz
-                {
-                    PartitionKey = az.CodProdus,
-                    RowKey = az.CodEan ?? "1",
-                    CodeDisplay = az.NumeProdus,
-                    Timestamp = DateTime.Now
-                });
+                await commitedOrdersRepository.InsertCommitedOrder(az);
             }
 
             var reportData = WorkbookReportsService.GenerateReport(
@@ -91,7 +85,7 @@ namespace WebApi.Controllers
         {
             List<DispozitieLivrare> items = new();
 
-            var dItems = tableStorageService.Query<ComandaVanzareAzEntry>(t => true).Select(t => new DispozitieLivrare()
+            var dItems = (await ordersRepository.GetOrders()).Select(t => new DispozitieLivrare()
             {
                 Cantitate = t.Cantitate,
                 CodLocatie = t.CodLocatie,

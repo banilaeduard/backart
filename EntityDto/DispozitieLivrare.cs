@@ -21,5 +21,9 @@
         [MapExcel(33)]
         public string CodEan { get; set; }
         public string CodProdus2 { get; set; }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public string AggregatedFileNmae { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
     }
 }

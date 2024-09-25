@@ -2,20 +2,17 @@
 using Azure.Data.Tables;
 using EntityDto;
 
-namespace AzureServices
+namespace RepositoryContract.Orders
 {
-    public class ComandaVanzareAzEntry : ComandaVanzare, ITableEntity
+    public class ComandaVanzareEntry : ComandaVanzare, ITableEntity
     {
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
 
         private static ComandaComparer comparer = new(false);
 
-        public static ComandaVanzareAzEntry create(ComandaVanzare entry)
+        public static ComandaVanzareEntry create(ComandaVanzare entry)
         {
-            var it = new ComandaVanzareAzEntry()
+            var it = new ComandaVanzareEntry()
             {
                 Cantitate = entry.Cantitate,
                 Timestamp = DateTime.Now.ToUniversalTime(),
@@ -30,6 +27,7 @@ namespace AzureServices
                 NumeArticol = entry.NumeArticol,
                 NumeLocatie = entry.NumeLocatie,
                 NumePartener = entry.NumePartener,
+                CantitateTarget = entry.CantitateTarget,
                 PartitionKey = PKey(entry),
             };
             it.RowKey = comparer.GetHashCode(it).ToString();
@@ -41,28 +39,29 @@ namespace AzureServices
             return $"{entry.NumePartener}";
         }
 
-        public static IEqualityComparer<ComandaVanzareAzEntry> GetEqualityComparer(bool includeQ = false)
+        public static IEqualityComparer<ComandaVanzareEntry> GetEqualityComparer(bool includeQ = false)
         {
             return new ComandaComparer(includeQ);
         }
 
         public static string GetProgressTableName()
         {
-            return $"{typeof(ComandaVanzareAzEntry).Name}Progress";
+            return $"{typeof(ComandaVanzareEntry).Name}Progress";
         }
 
-        internal class ComandaComparer : IEqualityComparer<ComandaVanzareAzEntry>
+        internal class ComandaComparer : IEqualityComparer<ComandaVanzareEntry>
         {
             bool includeQ;
             public ComandaComparer(bool includeQ) { this.includeQ = includeQ; }
-            public bool Equals(ComandaVanzareAzEntry x, ComandaVanzareAzEntry y)
+            public bool Equals(ComandaVanzareEntry x, ComandaVanzareEntry y)
             {
                 if (ReferenceEquals(x, y)) return true;
 
                 if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
                     return false;
 
-                if (x.NumePartener == y.NumePartener && x.CodLocatie == y.CodLocatie && x.DocId == y.DocId && x.DataDoc == y.DataDoc
+                if (x.NumePartener == y.NumePartener && x.CodLocatie == y.CodLocatie && x.DocId == y.DocId && 
+                    x.DataDoc.HasValue == y.DataDoc.HasValue && (x.DataDoc.HasValue ? (x.DataDoc.Value == y.DataDoc.Value) : true)
                     && x.CodArticol == y.CodArticol && x.DetaliiDoc == y.DetaliiDoc && x.DetaliiLinie == y.DetaliiLinie && x.NumarComanda == y.NumarComanda
                     && (!includeQ || x.Cantitate == y.Cantitate))
                 {
@@ -72,13 +71,13 @@ namespace AzureServices
                 return false;
             }
 
-            public int GetHashCode(ComandaVanzareAzEntry other)
+            public int GetHashCode(ComandaVanzareEntry other)
             {
                 // if (Object.ReferenceEquals(number, null)) return 0;
                 int hash1 = other.NumePartener.GetHashCode();
                 int hash2 = other.CodLocatie == null ? 0 : other.CodLocatie.GetHashCode();
                 int hash3 = other.DocId.GetHashCode();
-                int hash4 = other.DataDoc == null ? 0 : other.DataDoc.GetHashCode();
+                int hash4 = !other.DataDoc.HasValue ? 0 : other.DataDoc.Value.ToString().GetHashCode();
                 int hash5 = other.CodArticol == null ? 0 : other.CodArticol.GetHashCode();
                 int hash6 = other.DetaliiDoc == null ? 0 : other.DetaliiDoc.GetHashCode();
                 int hash7 = other.DetaliiLinie == null ? 0 : other.DetaliiLinie.GetHashCode();

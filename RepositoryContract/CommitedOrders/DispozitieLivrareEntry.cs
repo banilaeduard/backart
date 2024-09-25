@@ -2,19 +2,15 @@
 using Azure.Data.Tables;
 using EntityDto;
 
-namespace AzureServices
+namespace RepositoryContract.CommitedOrders
 {
-    public class DispozitieLivrareAzEntry : DispozitieLivrare, ITableEntity
+    public class DispozitieLivrareEntry : DispozitieLivrare, ITableEntity
     {
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
-        public string AggregatedFileNmae { get; set; }
 
-        public static DispozitieLivrareAzEntry create(DispozitieLivrare entry, int cantitate)
+        public static DispozitieLivrareEntry create(DispozitieLivrare entry, int cantitate)
         {
-            return new DispozitieLivrareAzEntry()
+            return new DispozitieLivrareEntry()
             {
                 Cantitate = cantitate,
                 CodEan = entry.CodEan,
@@ -26,6 +22,8 @@ namespace AzureServices
                 NumeLocatie = entry.NumeLocatie,
                 NumeProdus = entry.NumeProdus,
                 Timestamp = DateTime.Now.ToUniversalTime(),
+                PartitionKey = entry.NumarIntern,
+                RowKey = entry.CodProdus
             };
         }
     }

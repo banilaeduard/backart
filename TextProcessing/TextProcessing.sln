@@ -21,9 +21,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkSheetServices", "..\Wor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityDto", "..\EntityDto\EntityDto.csproj", "{539E7DE2-CDFA-4119-B758-E59DBA727483}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureServices", "..\AzureServices\AzureServices.csproj", "{547E0CA0-1BAA-41C7-B452-D7598CCCC7E6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureServices", "..\AzureServices\AzureServices.csproj", "{547E0CA0-1BAA-41C7-B452-D7598CCCC7E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services", "..\Services\Services.csproj", "{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureTableRepository", "..\AzureTableRepository\AzureTableRepository.csproj", "{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -125,6 +129,22 @@ Global
 		{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}.Release|x64.ActiveCfg = Release|Any CPU
 		{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}.Release|x64.Build.0 = Release|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Debug|x64.Build.0 = Debug|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Release|x64.ActiveCfg = Release|Any CPU
+		{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}.Release|x64.Build.0 = Release|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Debug|x64.Build.0 = Debug|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|x64.ActiveCfg = Release|Any CPU
+		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
