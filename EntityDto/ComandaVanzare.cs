@@ -9,7 +9,7 @@
         [MapExcel(2)]
         public string? DetaliiDoc { get; set; }
         [MapExcel(3)]
-        public DateTime DataDoc { get; set; }
+        public DateTime? DataDoc { get; set; }
         [MapExcel(5)]
         public string NumePartener { get; set; }
         [MapExcel(6)]

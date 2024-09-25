@@ -25,6 +25,7 @@
       <EnvironmentVariable Name="days_before" Value="[feeder_days_before]" />
       <EnvironmentVariable Name="User" Value="[feeder_User]" />
       <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
+      <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>

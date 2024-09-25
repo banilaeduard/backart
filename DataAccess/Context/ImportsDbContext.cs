@@ -18,9 +18,9 @@ namespace DataAccess.Context
         public DbSet<ComandaVanzareEntry> ComandaVanzare { get; set; }
         public DbSet<DataKeyLocation> DataKeyLocation { get; set; }
 
-        public async Task SetNewLocations(IList<ComandaVanzareEntry> entries)
+        public async Task SetNewLocations(IList<(string NumeLocatie, string CodLocatie)> entries)
         {
-            var locs = entries.Select(t => t.NumeLocatie).ToList();
+            var locs = entries.Select(t => t.NumeLocatie);
             var locations = DataKeyLocation.Where(t => locs.Contains(t.name)).ToList();
 
             Dictionary<string, string> items = new();
@@ -44,26 +44,18 @@ namespace DataAccess.Context
             }
 
             await SaveChangesAsync();
-
-            locations = DataKeyLocation.ToList();
-            foreach (var entry in entries)
-            {
-                var loc = locations.Where(t => t.name == entry.NumeLocatie).FirstOrDefault();
-                entry.DataKeyId = loc.Id;
-                entry.DataKey = loc;
-            }
         }
 
-        public async Task AddUniqueEntries(IList<ComandaVanzareEntry> entries)
-        {
-            foreach (var entry in entries)
-            {
-                ComandaVanzare.Add(entry);
-            }
+        //public async Task AddUniqueEntries(IList<ComandaVanzareEntry> entries)
+        //{
+        //    foreach (var entry in entries)
+        //    {
+        //        ComandaVanzare.Add(entry);
+        //    }
 
-            await Database.ExecuteSqlRawAsync($"DELETE FROM {comandaVanzareTable} WHERE TenantId = '{entries[0].TenantId}';");
-            await SaveChangesAsync();
-        }
+        //    await Database.ExecuteSqlRawAsync($"DELETE FROM {comandaVanzareTable} WHERE TenantId = '{entries[0].TenantId}';");
+        //    await SaveChangesAsync();
+        //}
 
         protected override void BeforeSave(EntityEntry entityEntry, string correlationId)
         {

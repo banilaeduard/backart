@@ -1,5 +1,6 @@
 using System.Fabric;
 using System.Text.RegularExpressions;
+using AzureServices;
 using DataAccess;
 using DataAccess.Context;
 using DataAccess.Entities;
@@ -82,7 +83,7 @@ namespace YahooTFeeder
                     User = Environment.GetEnvironmentVariable("User")!
                 }, cancellationToken);
 
-                await Task.Delay(TimeSpan.FromHours(3));
+                await Task.Delay(TimeSpan.FromHours(12));
             }
         }
 
@@ -159,7 +160,7 @@ namespace YahooTFeeder
                                 var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
 
                                 var complaint = AddComplaint(message, extras, from, uid, complaintSeriesDbContext);
-                                await SaveAttachments(message, complaint.Tickets[0], complaintSeriesDbContext);
+                                await SaveAttachments(message, complaint.Tickets[0], complaint.Status.Trim(), complaintSeriesDbContext);
 
                                 try
                                 {
@@ -233,8 +234,9 @@ namespace YahooTFeeder
                                     ).Entity;
         }
 
-        private async Task SaveAttachments(MimeMessage message, Ticket ticket, ComplaintSeriesDbContext complaintSeriesDbContext)
+        private async Task SaveAttachments(MimeMessage message, Ticket ticket, string status, ComplaintSeriesDbContext complaintSeriesDbContext)
         {
+            BlobAccessStorageService storageService = new();
             if (message.Attachments?.Count() > 0)
             {
                 foreach (var attachment in message.Attachments)
@@ -251,9 +253,15 @@ namespace YahooTFeeder
                             var part = (MimePart)attachment;
                             await part.Content.DecodeToAsync(stream);
                         }
+
+                        MimeTypes.TryGetExtension(attachment.ContentType.MimeType, out var extension);
+                        var fname = $"attachments/{status}/{DateTime.Now.ToString("ddMMyy")}-{ticket.CodeValue}.{extension ?? "txt"}";
+
+                        storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
+
                         var img = new Attachment()
                         {
-                            Data = string.Format("data:{0};base64,{1}", attachment.ContentType.MimeType, Convert.ToBase64String(stream.ToArray())),
+                            Data = fname,
                             Ticket = ticket,
                             CreatedDate = new DateTime(message.Date.Ticks),
                             UpdatedDate = new DateTime(message.ResentDate.Ticks),

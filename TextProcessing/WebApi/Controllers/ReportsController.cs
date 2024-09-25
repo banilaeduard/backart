@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Services.Storage;
-using System.Linq;
 using WorkSheetServices;
 
 namespace WebApi.Controllers
@@ -15,7 +14,6 @@ namespace WebApi.Controllers
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         private CodeDbContext codeDbContext;
-        private ImportsDbContext importsDbContext;
         private IStorageService storageService;
         private TableStorageService tableStorageService;
 
@@ -27,16 +25,14 @@ namespace WebApi.Controllers
             TableStorageService tableStorageService) : base(logger)
         {
             this.codeDbContext = codeDbContext;
-            this.importsDbContext = importsDbContext;
             this.storageService = storageService;
             this.tableStorageService = tableStorageService;
         }
 
         [HttpPost("MergeDispozitii")]
-        public IActionResult MergeDispozitii()
+        public async Task<IActionResult> MergeDispozitii()
         {
             List<DispozitieLivrare> items = new();
-            string dateSuffix = DateTime.Now.ToString("ddMMyy");
 
             foreach (var file in Request.Form.Files)
             {
@@ -48,24 +44,25 @@ namespace WebApi.Controllers
             }
 
             var keys = items.GroupBy(t => t.NumarIntern).Select(t => t.Key).ToDictionary(t => t);
-            var resultName = string.Join("_", items.Select(t => t.NumeLocatie).Distinct().Take(3)) + "_" + Guid.NewGuid();
-            var fileName = string.Format("DispozitiiMP_{0}/{1}.{2}", dateSuffix, resultName, "xlsx");
+            var fileName = string.Format("DispozitiiMP_{0}/{1}_{2}.{3}", DateTime.Now.ToString("ddMMyy"),
+                string.Join("_", items.Select(t => t.NumeLocatie).Distinct().Take(3)),
+                DateTime.Now.ToString("HHmm"),
+                "xlsx");
 
             foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie }))
             {
                 var sample = group.ElementAt(0);
-                sample.Cantitate = group.Sum(t => t.Cantitate);
 
                 if (keys.ContainsKey(sample.NumarIntern))
                 {
-                    var old_entries = tableStorageService.Query<DispozitieLivrareAzEntry>(t => sample.NumarIntern == t.NumarIntern);
+                    var old_entries = tableStorageService.Query<DispozitieLivrareAzEntry>(t => sample.NumarIntern == t.PartitionKey);
                     keys.Remove(sample.NumarIntern);
-                    tableStorageService.Delete(old_entries);
+                    await tableStorageService.PrepareDelete(old_entries.ToList()).ExecuteBatch();
                 }
 
-                var az = DispozitieLivrareAzEntry.create(sample);
-                az.PartitionKey = sample.CodProdus;
-                az.RowKey = sample.NumarIntern;
+                var az = DispozitieLivrareAzEntry.create(sample, group.Sum(t => t.Cantitate));
+                az.PartitionKey = sample.NumarIntern;
+                az.RowKey = sample.CodProdus;
                 az.AggregatedFileNmae = fileName;
                 tableStorageService.Insert(az);
 
@@ -94,7 +91,7 @@ namespace WebApi.Controllers
         {
             List<DispozitieLivrare> items = new();
 
-            var dItems = importsDbContext.ComandaVanzare.ToList().Select(t => new DispozitieLivrare()
+            var dItems = tableStorageService.Query<ComandaVanzareAzEntry>(t => true).Select(t => new DispozitieLivrare()
             {
                 Cantitate = t.Cantitate,
                 CodLocatie = t.CodLocatie,

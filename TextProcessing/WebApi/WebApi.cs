@@ -70,13 +70,14 @@ namespace WebApi
                                     .UseServiceFabricIntegration(listener, ServiceFabricIntegrationOptions.None)
                                     .UseUrls(url);
                         builder.Services.AddEndpointsApiExplorer();
-                        builder.Services.AddSwaggerGen();
+                        //builder.Services.AddSwaggerGen();
                         var app = builder.Build();
-                        if (app.Environment.IsDevelopment())
-                        {
-                        app.UseSwagger();
-                        app.UseSwaggerUI();
-                        }
+
+                        //if (app.Environment.IsDevelopment())
+                        //{
+                        //app.UseSwagger();
+                        //app.UseSwaggerUI();
+                        //}
 
                          app.UseCors(x => x
                             .SetIsOriginAllowed(origin => true)
@@ -94,10 +95,10 @@ namespace WebApi
                             ServiceEventSource.Current.ServiceMessage(serviceContext, "Non-Event. {0}", exception.Message);
                         }));
 
-                        app.Services.GetRequiredService<IServiceScopeFactory>()
-                            .CreateScope().ServiceProvider
-                            .GetRequiredService<Initializer>()
-                            .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                        //app.Services.GetRequiredService<IServiceScopeFactory>()
+                        //    .CreateScope().ServiceProvider
+                        //    .GetRequiredService<Initializer>()
+                        //    .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                         return app;
                     }), "bart")

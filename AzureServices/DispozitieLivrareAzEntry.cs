@@ -12,11 +12,11 @@ namespace AzureServices
         public ETag ETag { get; set; }
         public string AggregatedFileNmae { get; set; }
 
-        public static DispozitieLivrareAzEntry create(DispozitieLivrare entry)
+        public static DispozitieLivrareAzEntry create(DispozitieLivrare entry, int cantitate)
         {
             return new DispozitieLivrareAzEntry()
             {
-                Cantitate = entry.Cantitate,
+                Cantitate = cantitate,
                 CodEan = entry.CodEan,
                 CodLocatie = entry.CodLocatie,
                 CodProdus = entry.CodProdus,
@@ -25,7 +25,7 @@ namespace AzureServices
                 NumeCodificare = entry.NumeCodificare,
                 NumeLocatie = entry.NumeLocatie,
                 NumeProdus = entry.NumeProdus,
-                Timestamp = DateTime.Now,
+                Timestamp = DateTime.Now.ToUniversalTime(),
             };
         }
     }

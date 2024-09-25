@@ -1,4 +1,5 @@
-﻿using DataAccess.Context;
+﻿using AzureServices;
+using DataAccess.Context;
 using DataAccess.Entities;
 using EntityDto;
 using Microsoft.AspNetCore.Authorization;
@@ -13,56 +14,61 @@ namespace WebApi.Controllers
     {
         private ImportsDbContext imports;
         private CodeDbContext codeDbContext;
+        private TableStorageService tableStorageService;
+
         public UploadController(
             ILogger<UploadController> logger,
             ImportsDbContext imports,
-            CodeDbContext codeDbContext
+            CodeDbContext codeDbContext,
+            TableStorageService tableStorageService
             ) : base(logger)
         {
             this.imports = imports;
             this.codeDbContext = codeDbContext;
+            this.tableStorageService = tableStorageService;
         }
 
         [HttpPost("orders"), DisableRequestSizeLimit]
         public async Task<IActionResult> UploadOrders()
         {
-            try
-            {
-                var file = Request.Form.Files[0];
+            var file = Request.Form.Files[0];
 
-                using (var stream = file.OpenReadStream())
+            using (var stream = file.OpenReadStream())
+            {
+                var items = WorkbookReader.ReadWorkBook<ComandaVanzare>(stream, 4);
+                var newEntries = items.Select(ComandaVanzareAzEntry.create).GroupBy(ComandaVanzareAzEntry.PKey).ToDictionary(t => t.Key, MergeByHash);
+
+                foreach (var item in newEntries)
                 {
-                    var items = WorkbookReader.ReadWorkBook<ComandaVanzare>(stream, 4);
-                    var dbItems = items.Select(t => new ComandaVanzareEntry()
+                    var oldEntries = tableStorageService.Query<ComandaVanzareAzEntry>(t => t.PartitionKey == item.Key).ToList();
+                    var comparer = ComandaVanzareAzEntry.GetEqualityComparer();
+                    var comparerQuantity = ComandaVanzareAzEntry.GetEqualityComparer(true);
+
+                    var currentEntries = newEntries[item.Key];
+
+                    var exceptAdd = currentEntries.Except(oldEntries, comparer).ToList();
+                    var exceptDelete = oldEntries.Except(currentEntries, comparer).ToList();
+
+                    var intersectOld2 = oldEntries.Intersect(currentEntries, comparer).ToList();
+                    var intersectNew2 = currentEntries.Intersect(oldEntries, comparer).ToList();
+
+                    var intersectNew = intersectNew2.Except(intersectOld2, comparerQuantity).ToList().ToDictionary(comparer.GetHashCode);
+                    var intersectOld = intersectOld2.Except(intersectNew2, comparerQuantity).ToList().ToDictionary(comparer.GetHashCode);
+
+                    foreach (var differential in intersectOld)
                     {
-                        Cantitate = t.Cantitate,
-                        CodArticol = t.CodArticol,
-                        CodLocatie = t.CodLocatie,
-                        DataDoc = t.DataDoc,
-                        DetaliiDoc = t.DetaliiDoc,
-                        DocId = t.DocId,
-                        NumarComanda = t.NumarComanda.Trim(),
-                        NumeArticol = t.NumeArticol,
-                        NumeLocatie = t.NumeLocatie,
-                        TenantId = t.NumePartener.Trim()
-                    }).ToList();
+                        differential.Value.Cantitate = differential.Value.Cantitate - intersectNew[differential.Key].Cantitate;
+                    }
 
-                    var codes = codeDbContext.Codes.Where(t => t.isRoot).AsNoTracking().ToList();
-                    var toInsert = dbItems.Where(t => !codes.Any(x => x.CodeValue == t.CodArticol))
-                                          .Select(t => new CodeLink() { CodeValue = t.CodArticol, CodeDisplay = t.NumeArticol, isRoot = true })
-                                          .DistinctBy(t => t.CodeValue)
-                                          .ToList();
-                    codeDbContext.Codes.AddRange(toInsert);
-                    await codeDbContext.SaveChangesAsync();
+                    await tableStorageService.PrepareUpsert(exceptDelete)
+                                             .Concat(tableStorageService.PrepareUpsert(intersectOld.Select(t => t.Value)))
+                                             .ExecuteBatch(ComandaVanzareAzEntry.GetProgressTableName());
 
-                    await imports.SetNewLocations(dbItems);
-                    await imports.AddUniqueEntries(dbItems);
+                    await tableStorageService.PrepareUpsert(intersectNew.Values)
+                                            .Concat(tableStorageService.PrepareInsert(exceptAdd))
+                                            .Concat(tableStorageService.PrepareDelete(exceptDelete))
+                                            .ExecuteBatch();
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(), ex, ex.Message);
-                return BadRequest(ex.Message);
             }
 
             return Ok();
@@ -72,12 +78,12 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetOrders()
         {
             var codeLinks = codeDbContext.CodeLinkNode.Include(t => t.Parent).ToList();
-            return Ok(imports.ComandaVanzare.Select(GetOrderModel(codeLinks)));
+            return Ok(tableStorageService.Query<ComandaVanzareAzEntry>(t => true).Select(GetOrderModel(codeLinks)));
         }
 
-        private Func<ComandaVanzareEntry, ComandaVanzare> GetOrderModel(List<CodeLinkNode> codeLinkls)
+        private Func<ComandaVanzareAzEntry, ComandaVanzare> GetOrderModel(List<CodeLinkNode> codeLinkls)
         {
-            return (ComandaVanzareEntry dbEntry) =>
+            return (ComandaVanzareAzEntry dbEntry) =>
             {
                 return new ComandaVanzare()
                 {
@@ -91,9 +97,21 @@ namespace WebApi.Controllers
                     NumeArticol = dbEntry.NumeArticol,
                     NumeLocatie = dbEntry.NumeLocatie,
                     HasChildren = codeLinkls.Any(t => t.Parent.CodeValue == dbEntry.CodArticol) ? true : null,
-                    NumePartener = dbEntry.TenantId
+                    NumePartener = dbEntry.NumePartener
                 };
             };
+        }
+
+        private IEnumerable<ComandaVanzareAzEntry> MergeByHash(IEnumerable<ComandaVanzareAzEntry> list)
+        {
+            var comparer = ComandaVanzareAzEntry.GetEqualityComparer();
+            foreach (var items in list.GroupBy(comparer.GetHashCode))
+            {
+                var sample = items.ElementAt(0);
+                sample.Cantitate = items.Sum(t => t.Cantitate);
+                if (items.Distinct(comparer).Count() > 1) throw new Exception("We fucked boyzs");
+                yield return sample;
+            }
         }
     }
 }
