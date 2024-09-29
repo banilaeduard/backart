@@ -1,20 +1,20 @@
 using System.Fabric;
+using System.IO;
 using System.Text.RegularExpressions;
 using AzureServices;
-using DataAccess;
-using DataAccess.Context;
-using DataAccess.Entities;
+using AzureTableRepository.Tickets;
 using MailExtrasExtractor;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
+using RepositoryContract.Tickets;
+using Services.Storage;
 using Tokenizer;
 using YahooFeeder;
 using UniqueId = MailKit.UniqueId;
@@ -46,7 +46,6 @@ namespace YahooTFeeder
         {
             return this.CreateServiceRemotingInstanceListeners();
         }
-
 
         public async Task Get()
         {
@@ -105,8 +104,7 @@ namespace YahooTFeeder
 
         async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
         {
-            var complaintSeriesDbContext = DbContextFactory.GetContext<ComplaintSeriesDbContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
-            var jobStatusContext = DbContextFactory.GetContext<JobStatusContext>(Environment.GetEnvironmentVariable("ConnectionString"), new NoFilterBaseContext());
+            var ticketEntryRepository = new TicketEntryRepository(null);
 
             using (ImapClient client = new ImapClient())
             {
@@ -115,12 +113,6 @@ namespace YahooTFeeder
                     993,
                     true, cancellationToken); //For SSL
                 await client.AuthenticateAsync(settings.User, settings.Password, cancellationToken);
-                jobStatusContext.JobStatus.Add(new JobStatusLog()
-                {
-                    TenantId = "cubik",
-                    Message = string.Format("Started Job at date {0} ", DateTime.Now),
-                    CreatedDate = DateTime.Now,
-                });
 
                 foreach (var folder in GetFolders(client, settings.Folders, cancellationToken))
                 {
@@ -130,13 +122,6 @@ namespace YahooTFeeder
                         {
                             IList<UniqueId> uids;
                             DateTime fromDate = DateTime.Now.AddDays(-settings.DaysBefore);
-
-                            jobStatusContext.JobStatus.Add(new JobStatusLog()
-                            {
-                                TenantId = "cubik",
-                                Message = string.Format("Executing for {0}_{1} @ {2}", from, folder, fromDate),
-                                CreatedDate = DateTime.Now,
-                            });
 
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
@@ -148,95 +133,73 @@ namespace YahooTFeeder
 
                             foreach (var uid in uids)
                             {
-                                if (complaintSeriesDbContext.Ticket.Where(t => t.CodeValue == uid.ToString()).FirstOrDefault() != null)
-                                {
-                                    continue;
-                                }
-
-                                var message = folder.GetMessage(uid, cancellationToken);
-
-                                var body = await getBody(message);
-
-                                var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
-
-                                var complaint = AddComplaint(message, extras, from, uid, complaintSeriesDbContext);
-                                await SaveAttachments(message, complaint.Tickets[0], complaint.Status.Trim(), complaintSeriesDbContext);
-
                                 try
                                 {
-                                    await complaintSeriesDbContext.SaveChangesAsync();
+                                    var message = folder.GetMessage(uid, cancellationToken);
+
+                                    var body = await getBody(message);
+
+                                    var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
+
+                                    if (await ticketEntryRepository.Exists<TicketEntity>(message.Date.Date.ToString("MMyy"), uid.ToString()))
+                                        continue;
+
+                                    var ticket = await AddComplaint(message, extras, from, uid, ticketEntryRepository);
+                                    await SaveAttachments(message, ticket, ticketEntryRepository);
                                 }
                                 catch (Exception ex)
                                 {
                                     ServiceEventSource.Current.ServiceMessage(this.Context, "{0}. {1}", ex.Message, ex.InnerException?.ToString() ?? "");
-                                    jobStatusContext.JobStatus.Add(new JobStatusLog()
-                                    {
-                                        TenantId = "cubik",
-                                        Message = string.Format("Message {0} terminated in error: {1}", uid, ex),
-                                        CreatedDate = DateTime.Now,
-                                    });
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
                             ServiceEventSource.Current.ServiceMessage(this.Context, ex.Message);
-                            jobStatusContext.JobStatus.Add(new JobStatusLog()
-                            {
-                                TenantId = "cubik",
-                                Message = string.Format("Job terminated in error: {0}", ex),
-                                CreatedDate = DateTime.Now,
-                            });
                         }
                         finally
                         {
                             folder.Close(cancellationToken: cancellationToken);
-                            jobStatusContext.JobStatus.Add(new JobStatusLog()
-                            {
-                                TenantId = "cubik",
-                                Message = string.Format("Ending job at {0}", DateTime.Now),
-                                CreatedDate = DateTime.Now,
-                            });
                         }
                     }
                 }
-                await jobStatusContext.SaveChangesAsync(cancellationToken: cancellationToken);
                 client.Disconnect(true, cancellationToken);
             }
         }
 
-        private ComplaintSeries AddComplaint(MimeMessage message, Extras extras, string from, UniqueId uid, ComplaintSeriesDbContext complaintSeriesDbContext)
-        {
-            var dataKey = new DataKeyLocation()
-            {
-                locationCode = extras.Addreses.Length > 0 ? extras.Addreses[0] : message.From.FirstOrDefault()!.Name,
-                name = string.Format("{0}@{1}", message.From.FirstOrDefault()!.Name, from),
-            };
-
-            dataKey = complaintSeriesDbContext.DataKeyLocation.Where(t => t.name == dataKey.name).FirstOrDefault() ?? dataKey;
-
-            return complaintSeriesDbContext.Complaints.Add(
-                                        new ComplaintSeries()
-                                        {
-                                            CreatedDate = message.Date.Date,
-                                            DataKey = dataKey,
-                                            NrComanda = extras.NumarComanda,
-                                            TenantId = "cubik",
-                                            Status = message.Subject,
-                                            Tickets = [
-                                                new Ticket()
-                                                {
-                                                    CodeValue = uid.ToString(),
-                                                    Description = !string.IsNullOrWhiteSpace(message.HtmlBody) ? regexHtml.Replace(message.HtmlBody, " ") : message.TextBody
-                                                }
-                                            ]
-                                        }
-                                    ).Entity;
-        }
-
-        private async Task SaveAttachments(MimeMessage message, Ticket ticket, string status, ComplaintSeriesDbContext complaintSeriesDbContext)
+        private async Task<TicketEntity> AddComplaint(MimeMessage message, Extras extras, string from, UniqueId uid, ITicketEntryRepository ticketEntryRepository)
         {
             BlobAccessStorageService storageService = new();
+            var body = !string.IsNullOrWhiteSpace(message.HtmlBody) ? regexHtml.Replace(message.HtmlBody, " ") : message.TextBody;
+
+            var ticket = new TicketEntity()
+            {
+                From = extras.Addreses.Length > 0 ? string.Join(";", extras.Addreses) : message.From.FirstOrDefault()!.Name,
+                CreatedDate = message.Date.Date.ToUniversalTime(),
+                NrComanda = extras.NumarComanda ?? "",
+                TicketSource = "Mail",
+                PartitionKey = message.Date.Date.ToString("MMyy"),
+                RowKey = uid.ToString(),
+                InReplyTo = message.InReplyTo,
+                MessageId = message.MessageId,
+                ResentReplyTo = string.Join(";", message.ResentReplyTo.Select(t => t.Name)),
+                From2 = string.Join(";", message.From.Select(t => t.Name)),
+                ResentFrom = string.Join(";", message.ResentFrom.Select(t => t.Name)),
+            };
+
+            var extension = string.IsNullOrWhiteSpace(message.HtmlBody) ? "txt" : "html";
+            var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}_body.{extension}";
+            storageService.WriteTo(fname, new BinaryData(System.Text.Encoding.UTF8.GetBytes(body)));
+            ticket.Description = fname;
+
+            await ticketEntryRepository.Save(ticket);
+            return ticket;
+        }
+
+        private async Task SaveAttachments(MimeMessage message, TicketEntity ticket, ITicketEntryRepository ticketEntryRepository)
+        {
+            BlobAccessStorageService storageService = new();
+
             if (message.Attachments?.Count() > 0)
             {
                 foreach (var attachment in message.Attachments)
@@ -255,19 +218,19 @@ namespace YahooTFeeder
                         }
 
                         MimeTypes.TryGetExtension(attachment.ContentType.MimeType, out var extension);
-                        var fname = $"attachments/{status}/{DateTime.Now.ToString("ddMMyy")}-{ticket.CodeValue}.{extension ?? "txt"}";
+                        var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}_{Guid.NewGuid()}.{extension ?? "txt"}";
 
                         storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
 
-                        var img = new Attachment()
+                        await ticketEntryRepository.Save(new AttachmentEntry()
                         {
+                            PartitionKey = ticket.RowKey,
+                            RowKey = Guid.NewGuid().ToString(),
                             Data = fname,
-                            Ticket = ticket,
-                            CreatedDate = new DateTime(message.Date.Ticks),
-                            UpdatedDate = new DateTime(message.ResentDate.Ticks),
                             ContentType = attachment.ContentType.MimeType,
-                        };
-                        complaintSeriesDbContext.Entry(img).State = EntityState.Added;
+                            RefPartition = ticket.PartitionKey,
+                            RefKey = ticket.RowKey,
+                        });
                     }
                 }
             }

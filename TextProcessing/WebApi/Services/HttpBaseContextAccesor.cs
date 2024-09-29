@@ -1,9 +1,8 @@
-﻿using DataAccess;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 
 namespace WebApi.Services
 {
-    public class HttpBaseContextAccesor : IBaseContextAccesor
+    public class HttpBaseContextAccesor
     {
         IHttpContextAccessor _baseContext;
         public HttpBaseContextAccesor(IHttpContextAccessor baseContext)

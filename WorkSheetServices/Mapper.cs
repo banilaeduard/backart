@@ -63,7 +63,7 @@ namespace WorkSheetServices
 
             if (sourceType.IsAssignableFrom(typeof(DateTime)))
             {
-                return Convert.ChangeType(val.Value.GetDateTime(), targetType);
+                return Convert.ChangeType(val.Value.GetDateTime().ToUniversalTime(), targetType);
             }
 
             if (sourceType.IsAssignableFrom(typeof(long)))

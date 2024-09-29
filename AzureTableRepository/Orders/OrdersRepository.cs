@@ -13,14 +13,14 @@ namespace AzureTableRepository.Orders
         {
             tableStorageService = new TableStorageService(logger);
         }
-        public async Task<List<ComandaVanzareEntry>> GetOrders()
+        public async Task<List<ComandaVanzareEntry>> GetOrders(string? table = null)
         {
-            return tableStorageService.Query<ComandaVanzareEntry>(t => true).ToList();
+            return tableStorageService.Query<ComandaVanzareEntry>(t => true, table).ToList();
         }
 
-        public async Task<List<ComandaVanzareEntry>> GetOrders(Expression<Func<ComandaVanzareEntry, bool>> expr)
+        public async Task<List<ComandaVanzareEntry>> GetOrders(Expression<Func<ComandaVanzareEntry, bool>> expr, string? table = null)
         {
-            return tableStorageService.Query(expr).ToList();
+            return tableStorageService.Query(expr, table).ToList();
         }
 
         public async Task ImportOrders(IList<ComandaVanzare> items)

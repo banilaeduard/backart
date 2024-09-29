@@ -89,7 +89,6 @@ namespace WebApi.Controllers
             if (result.Succeeded)
             {
                 logger.LogInformation("Parola modificata cu succes {0}", email);
-                identityUser.RefreshTokens.Clear();
                 await userManager.UpdateAsync(identityUser);
                 return Ok(new { user = identityUser.UserName });
             }

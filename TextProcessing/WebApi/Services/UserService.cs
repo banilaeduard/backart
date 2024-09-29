@@ -46,53 +46,52 @@ namespace WebApi.Services
             var refreshToken = generateRefreshToken(ipAddress);
 
             // save refresh token
-            identityUser.RefreshTokens.Add(refreshToken);
             await _userManager.UpdateAsync(identityUser);
 
-            return new AuthenticateResponse(identityUser, jwtToken, refreshToken.Token);
+            return new AuthenticateResponse(identityUser, jwtToken, refreshToken);
         }
 
         public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
-            var user = _userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
+            AppIdentityUser user = null;//_userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
 
             // return null if no user found with token
             if (user == null) return null;
 
-            var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
+            //var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
 
             // return null if token is no longer active
-            if (!refreshToken.IsActive) return null;
+            //if (!refreshToken.IsActive) return null;
 
             // replace old refresh token with a new one and save
             var newRefreshToken = generateRefreshToken(ipAddress);
-            refreshToken.Revoked = DateTime.UtcNow;
-            refreshToken.RevokedByIp = ipAddress;
-            refreshToken.ReplacedByToken = newRefreshToken.Token;
-            user.RefreshTokens.Add(newRefreshToken);
+            //refreshToken.Revoked = DateTime.UtcNow;
+            //refreshToken.RevokedByIp = ipAddress;
+            //refreshToken.ReplacedByToken = newRefreshToken.Token;
+            //user.RefreshTokens.Add(newRefreshToken);
             await _userManager.UpdateAsync(user);
             // generate new jwt
             var jwtToken = await generateJwtToken(user);
 
-            return new AuthenticateResponse(user, jwtToken, newRefreshToken.Token);
+            return new AuthenticateResponse(user, jwtToken, token);
         }
 
         public async Task<bool> RevokeToken(string token, string ipAddress)
         {
-            var user = _userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
+            AppIdentityUser user = null;//_userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
 
             // return false if no user found with token
             if (user == null) return false;
 
-            var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
+            //var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
 
             // return false if token is not active
-            if (!refreshToken.IsActive) return false;
+            //if (!refreshToken.IsActive) return false;
 
-            // revoke token and save
-            refreshToken.Revoked = DateTime.UtcNow;
-            refreshToken.RevokedByIp = ipAddress;
-            await _userManager.UpdateAsync(user);
+            //// revoke token and save
+            //refreshToken.Revoked = DateTime.UtcNow;
+            //refreshToken.RevokedByIp = ipAddress;
+            //await _userManager.UpdateAsync(user);
 
             return true;
         }
@@ -111,7 +110,7 @@ namespace WebApi.Services
                     Email = user.Email,
                     Password = "",
                     Phone = user.PhoneNumber,
-                    DataKey = user.DataKeyLocation.locationCode,
+                    //DataKey = user.DataKeyLocation.locationCode,
                 });
             }
             return users;
@@ -129,7 +128,7 @@ namespace WebApi.Services
                 Email = user.Email,
                 Password = "",
                 Phone = user.PhoneNumber,
-                DataKey = user.DataKeyLocation.locationCode,
+                //DataKey = user.DataKeyLocation.locationCode,
             };
         }
         // helper methods
@@ -149,9 +148,9 @@ namespace WebApi.Services
                     new Claim(ClaimTypes.MobilePhone, appUser.PhoneNumber?.ToString()??""),
                     new Claim(ClaimTypes.Role, string.Join(",", await _userManager.GetRolesAsync(appUser))?? ""),
                     new Claim(ClaimTypes.Actor, appUser.Tenant??"cubik"),
-                    new Claim("dataKeyLocation", appUser.DataKeyLocation?.locationCode ??""),
-                    new Claim("dataKeyId", appUser.DataKeyLocation?.Id.ToString() ??""),
-                    new Claim("dataKeyName", appUser.DataKeyLocation?.name ??"")
+                    //new Claim("dataKeyLocation", appUser.DataKeyLocation?.locationCode ??""),
+                    //new Claim("dataKeyId", appUser.DataKeyLocation?.Id.ToString() ??""),
+                    //new Claim("dataKeyName", appUser.DataKeyLocation?.name ??"")
                 }),
                 Expires = DateTime.UtcNow.AddHours(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -160,19 +159,13 @@ namespace WebApi.Services
             return tokenHandler.WriteToken(token);
         }
 
-        private RefreshToken generateRefreshToken(string ipAddress)
+        private string generateRefreshToken(string ipAddress)
         {
             using (var rngCryptoServiceProvider = new RNGCryptoServiceProvider())
             {
                 var randomBytes = new byte[64];
                 rngCryptoServiceProvider.GetBytes(randomBytes);
-                return new RefreshToken
-                {
-                    Token = Convert.ToBase64String(randomBytes),
-                    Expires = DateTime.UtcNow.AddDays(7),
-                    Created = DateTime.UtcNow,
-                    CreatedByIp = ipAddress
-                };
+                return Convert.ToBase64String(randomBytes);
             }
         }
     }

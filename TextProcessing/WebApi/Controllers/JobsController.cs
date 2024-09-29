@@ -9,7 +9,6 @@ namespace WebApi.Controllers
 {
     public class JobsController : WebApiController2
     {
-        private JobStatusContext jobStatusContext;
         private MailSettings mailSettings;
         private StatelessServiceContext context;
         private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
@@ -19,11 +18,9 @@ namespace WebApi.Controllers
 
         public JobsController(
             ILogger<JobsController> logger,
-            JobStatusContext jobStatusContext,
             StatelessServiceContext context,
             MailSettings settings) : base(logger)
         {
-            this.jobStatusContext = jobStatusContext;
             this.mailSettings = settings;
             this.context = context;
         }
@@ -34,11 +31,7 @@ namespace WebApi.Controllers
             try
             {
                 return Ok(
-                    jobStatusContext.JobStatus
-                    .Where(t => t.CreatedDate > DateTime.Now.AddDays(-2))
-                    .Take(1000)
-                    .ToList()
-                    .GroupBy(t => t.CorelationId).OrderByDescending(t => t.First().CreatedDate)
+                    null
                     );
             }
             catch (Exception ex)

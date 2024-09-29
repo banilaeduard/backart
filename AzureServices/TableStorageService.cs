@@ -1,5 +1,6 @@
 ﻿using Azure.Data.Tables;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Linq.Expressions;
 
 namespace AzureServices
@@ -9,43 +10,52 @@ namespace AzureServices
         private ILogger<TableStorageService> logger;
         public TableStorageService(ILogger<TableStorageService> logger) { this.logger = logger; }
 
-        public IQueryable<T> Query<T>(Expression<Func<T, bool>> expr, string? tableName = null) where T : class, ITableEntity
+        public Azure.Pageable<T> Query<T>(Expression<Func<T, bool>> expr, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? typeof(T).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            return tableClient.Query(expr).AsQueryable();
+            return tableClient.Query(expr);
         }
 
-        public void Insert<T>(T entry, string? tableName = null) where T : class, ITableEntity
+        public async Task Insert<T>(T entry, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? entry.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            try
-            {
-                tableClient.AddEntity(entry);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(tableName.GetHashCode(), tableName) { }, ex, "Entry: {0} - {1}", entry.PartitionKey, entry.RowKey);
-            }
+            await tableClient.AddEntityAsync(entry);
         }
 
-        public void Upsert(ITableEntity entry, string? tableName = null)
+        public async Task Upsert(ITableEntity entry, string? tableName = null)
         {
             tableName = tableName ?? entry.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            tableClient.UpsertEntity(entry);
+            await tableClient.UpsertEntityAsync(entry);
         }
 
-        public void Delete<T>(T entry, string? tableName = null) where T : class, ITableEntity
+        public async Task Update(ITableEntity entry, string? tableName = null)
+        {
+            tableName = tableName ?? entry.GetType().Name;
+            TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
+            tableClient.CreateIfNotExists();
+            await tableClient.UpdateEntityAsync(entry, entry.ETag);
+        }
+
+        public async Task Delete<T>(T entry, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? typeof(T).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            tableClient.DeleteEntity(entry.PartitionKey, entry.RowKey);
+            await tableClient.DeleteEntityAsync(entry.PartitionKey, entry.RowKey);
+        }
+
+        public async Task Delete(string partitionKey, string rowKey, string tableName)
+        {
+            Debug.Assert(tableName != null);
+            TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
+            tableClient.CreateIfNotExists();
+            await tableClient.DeleteEntityAsync(partitionKey, rowKey);
         }
 
         public async Task ExecuteBatch(IEnumerable<TableTransactionAction> transactionActions, string? tableName = null)

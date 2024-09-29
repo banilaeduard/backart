@@ -1,5 +1,8 @@
 ﻿using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Services.Storage;
+using System.Collections.Generic;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AzureServices
 {
@@ -28,6 +31,29 @@ namespace AzureServices
         {
             client.DeleteBlobIfExists(fName);
             client.UploadBlob(fName, file);
+        }
+
+        public DateTime Check(string fName)
+        {
+            var blob = client.GetBlobClient(fName);
+            BlobContentInfo bCon = null;
+
+            if (!blob.Exists())
+            {
+                bCon = client.UploadBlob(fName, new BinaryData([])).Value;
+                return bCon.LastModified.UtcDateTime;
+            }
+            return blob.GetProperties().Value.LastModified.UtcDateTime;
+        }
+        public void Bust(string fName)
+        {
+            var blob = client.GetBlobClient(fName);
+            BlobContentInfo bCon = null;
+
+            if (blob.Exists())
+            {
+                blob.SetMetadata(new Dictionary<string, string>() { { "busted", DateTime.UtcNow.ToString() } });
+            }
         }
     }
 }

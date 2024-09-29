@@ -1,50 +1,45 @@
-﻿using DataAccess.Context;
-using DataAccess.Entities;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RepositoryContract.DataKeyLocation;
 
 namespace WebApi.Controllers
 {
     [Authorize(Roles = "admin")]
     public class DataKeyLocationController : WebApiController2
     {
-        AppIdentityDbContext ctx;
+        IDataKeyLocationRepository dataKeyLocationRepository;
         public DataKeyLocationController(
             ILogger<DataKeyLocationController> logger,
-            AppIdentityDbContext ctx
+            IDataKeyLocationRepository dataKeyLocationRepository
             ) : base(logger)
         {
-            this.ctx = ctx;
+            this.dataKeyLocationRepository = dataKeyLocationRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetLocations()
         {
-            return Ok(ctx.DataKeyLocation.ToList());
+            return Ok(await dataKeyLocationRepository.GetLocations());
         }
 
         [HttpPatch]
-        public async Task<IActionResult> UpdateLocation([FromBody] DataKeyLocation location)
+        public async Task<IActionResult> UpdateLocation([FromBody] DataKeyLocationEntry location)
         {
-            ctx.DataKeyLocation.Update(location);
-            await ctx.SaveChangesAsync();
+            await dataKeyLocationRepository.UpdateLocation(location);
             return Ok(location);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddLocation([FromBody] DataKeyLocation location)
+        public async Task<IActionResult> AddLocation([FromBody] DataKeyLocationEntry location)
         {
-            await ctx.DataKeyLocation.AddAsync(location);
-            await ctx.SaveChangesAsync();
+            await dataKeyLocationRepository.InsertLocation(location);
             return Ok(location);
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteLocation(string id)
+        [HttpDelete("{partitionKey}/{rowKey}")]
+        public async Task<IActionResult> DeleteLocation(string partitionKey, string rowKey)
         {
-            var item = ctx.DataKeyLocation.Where(t => t.Id == id).First();
-            ctx.DataKeyLocation.Remove(item);
-            await ctx.SaveChangesAsync();
+            await dataKeyLocationRepository.DeleteLocation(new() { PartitionKey = partitionKey, RowKey = rowKey });
             return Ok();
         }
     }

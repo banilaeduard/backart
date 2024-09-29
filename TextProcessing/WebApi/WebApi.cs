@@ -21,6 +21,12 @@ using RepositoryContract.Orders;
 using AzureTableRepository.Orders;
 using RepositoryContract.CommitedOrders;
 using AzureTableRepository.CommitedOrders;
+using RepositoryContract.ProductCodes;
+using AzureTableRepository.ProductCodes;
+using RepositoryContract.DataKeyLocation;
+using AzureTableRepository.DataKeyLocation;
+using RepositoryContract.Tickets;
+using AzureTableRepository.Tickets;
 
 namespace WebApi
 {
@@ -60,7 +66,6 @@ namespace WebApi
                                                         });
                         ConfigureServices(builder.Services);
 
-                        builder.Services.AddSingleton<IBaseContextAccesor, HttpBaseContextAccesor>();
                         builder.WebHost
                                     .UseKestrel(opt =>
                                     {
@@ -117,7 +122,7 @@ namespace WebApi
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"));
+            services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"), Environment.GetEnvironmentVariable("external_sql_server"));
 
             var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
             services.AddSingleton(new MailSettings()
@@ -132,7 +137,10 @@ namespace WebApi
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
+            services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
+            services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
+            services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
 
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()
@@ -167,8 +175,6 @@ namespace WebApi
                 opts.Password.RequiredLength = 8;
                 opts.SignIn.RequireConfirmedEmail = true;
             });
-
-            services.AddScoped<IBaseContextAccesor, HttpBaseContextAccesor>();
         }
 
         /// <summary>

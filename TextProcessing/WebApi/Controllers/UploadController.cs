@@ -1,7 +1,9 @@
 ﻿using DataAccess.Context;
+using DataAccess.Entities;
 using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RepositoryContract.Orders;
 using WorkSheetServices;
 
@@ -10,19 +12,13 @@ namespace WebApi.Controllers
     [Authorize(Roles = "admin")]
     public class UploadController : WebApiController2
     {
-        private ImportsDbContext imports;
-        private CodeDbContext codeDbContext;
         private IOrdersRepository ordersRepository;
 
         public UploadController(
             ILogger<UploadController> logger,
-            ImportsDbContext imports,
-            CodeDbContext codeDbContext,
             IOrdersRepository ordersRepository
             ) : base(logger)
         {
-            this.imports = imports;
-            this.codeDbContext = codeDbContext;
             this.ordersRepository = ordersRepository;
         }
 

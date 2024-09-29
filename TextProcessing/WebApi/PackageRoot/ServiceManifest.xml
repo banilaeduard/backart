@@ -29,6 +29,7 @@
       <EnvironmentVariable Name="User" Value="" />
       <EnvironmentVariable Name="Password" Value="" />
       <EnvironmentVariable Name="storage_connection" Value="" />
+      <EnvironmentVariable Name="external_sql_server" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 

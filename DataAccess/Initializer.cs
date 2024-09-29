@@ -4,7 +4,6 @@ using System.Threading;
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
 using DataAccess.Context;
 
 namespace DataAccess
@@ -23,19 +22,9 @@ namespace DataAccess
             {
                 using (var provider = providerScope.CreateScope())
                 {
-                    // we ensure databases are created and up to date
                     var appIdentityDbContex = provider.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
-                    //if(!appIdentityDbContex.Database.EnsureCreated()) return;
-                    //var appIden = appIdentityDbContex.Database.GenerateCreateScript();
 
                     var importsDbContext = provider.ServiceProvider.GetRequiredService<ImportsDbContext>();
-                    //var script = importsDbContext.Database.GenerateCreateScript();
-
-                    var codeDbContex = provider.ServiceProvider.GetRequiredService<CodeDbContext>();
-                    //var codeDb = codeDbContex.Database.GenerateCreateScript();
-
-                    var complaintSeriesDbContext = provider.ServiceProvider.GetRequiredService<ComplaintSeriesDbContext>();
-                    //var complaintdb = complaintSeriesDbContext.Database.GenerateCreateScript();
 
                     // we ensure roles are created
                     var roleManager = provider.ServiceProvider.GetRequiredService<RoleManager<AppIdentityRole>>();
@@ -81,8 +70,7 @@ namespace DataAccess
                         {
                             UserName = "admin",
                             Email = "banila.eduard@gmail.com",
-                            Tenant = "cubik",
-                            DataKeyLocation = new DataKeyLocation() { name = "admin", locationCode = "admin" }
+                            Tenant = "cubik"
                         };
                         var result = await userManager.CreateAsync(user, "123EWQasd!@#");
                         if (result.Succeeded)

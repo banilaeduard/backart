@@ -4,6 +4,8 @@
     {
         public DispozitieLivrare() { CodProdus = ""; NumeProdus = ""; }
 
+        [MapExcel(1,2)]
+        public DateTime DataDocument { get; set; }
         [MapExcel(34)]
         public string? CodLocatie {  get; set; }
         [MapExcel(35)]

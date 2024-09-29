@@ -11,8 +11,4 @@
     <ProjectReference Include="..\RepositoryContract\RepositoryContract.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="ProductCodes\" />
-  </ItemGroup>
-
 </Project>

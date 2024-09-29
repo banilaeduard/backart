@@ -5,9 +5,9 @@
         public int Id { get; set; }
         public string CodeDisplay { get; set; }
         public string CodeValue { get; set; }
-        public string? CodeValueFormat { get; set; }
-        //public ICollection<CodeLinkModel> Ancestors { get; set; }
-        public ICollection<CodeLinkModel>? Children { get; set; }
-        public bool? isRoot { get; set; }
+        public string? CodeBar { get; set; }
+        public string ParentCode { get; set; }
+        public string RootCode { get; set; }
+        public int Level { get; set; }
     }
 }

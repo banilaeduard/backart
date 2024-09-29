@@ -1,12 +1,9 @@
-﻿using AzureServices;
-using AzureTableRepository.CommitedOrders;
-using DataAccess.Context;
-using EntityDto;
+﻿using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
+using RepositoryContract.ProductCodes;
 using Services.Storage;
 using WorkSheetServices;
 
@@ -16,19 +13,19 @@ namespace WebApi.Controllers
     public class ReportsController : WebApiController2
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        private CodeDbContext codeDbContext;
         private IStorageService storageService;
         private ICommitedOrdersRepository commitedOrdersRepository;
         private IOrdersRepository ordersRepository;
+        private IProductCodeRepository productCodeRepository;
 
         public ReportsController(
-            CodeDbContext codeDbContext,
-            ILogger<TicketController> logger,
+            ILogger<ReportsController> logger,
             IStorageService storageService,
             ICommitedOrdersRepository commitedOrdersRepository,
+            IProductCodeRepository productCodeRepository,
             IOrdersRepository ordersRepository) : base(logger)
         {
-            this.codeDbContext = codeDbContext;
+            this.productCodeRepository = productCodeRepository;
             this.storageService = storageService;
             this.commitedOrdersRepository = commitedOrdersRepository;
             this.ordersRepository = ordersRepository;
@@ -96,24 +93,20 @@ namespace WebApi.Controllers
 
             foreach (var structure in dItems.GroupBy(t => t.CodProdus))
             {
-                var codes = codeDbContext.Codes
-                    .Where(c => c.CodeValue == structure.Key)
-                    .Include(t => t.Children)
-                    .ThenInclude(t => t.Child)
-                    .First();
+                var codes = await productCodeRepository.GetProductCodes(t => t.RootCode == structure.Key && t.Level == 3);
 
                 foreach (var disp in structure)
                 {
-                    if (codes.Children?.Count() > 0)
-                        foreach (var code in codes.Children.Select(t => t.Child))
+                    if (codes?.Count > 0)
+                        foreach (var code in codes)
                         {
                             items.Add(new DispozitieLivrare()
                             {
-                                CodProdus = code.CodeValue,
+                                CodProdus = code.Code,
                                 Cantitate = disp.Cantitate,
                                 CodLocatie = disp.CodLocatie,
                                 NumarIntern = disp.NumarIntern,
-                                NumeProdus = code.CodeDisplay,
+                                NumeProdus = code.Name,
                                 CodProdus2 = disp.CodProdus
                             });
                         }
@@ -142,33 +135,20 @@ namespace WebApi.Controllers
 
                     foreach (var structure in dItems.GroupBy(t => t.CodProdus))
                     {
-                        var code = codeDbContext.Codes
-                            .Where(c => c.CodeValue == structure.Key)
-                            .Include(t => t.Children)
-                            .ThenInclude(t => t.Child)
-                            .First();
-
-                        if (string.IsNullOrEmpty(code.CodeValueFormat) && !string.IsNullOrEmpty(structure.ElementAt(0).CodEan)
-                            || string.IsNullOrEmpty(code.AttributeTags) && !string.IsNullOrEmpty(structure.ElementAt(0).NumeCodificare)
-                            )
-                        {
-                            code.CodeValueFormat = string.IsNullOrEmpty(code.CodeValueFormat) ? structure.ElementAt(0).CodEan : code.CodeValueFormat;
-                            code.AttributeTags = structure.ElementAt(0).NumeCodificare;
-                            await codeDbContext.SaveChangesAsync();
-                        }
+                        var codes = await productCodeRepository.GetProductCodes(t => t.RootCode == structure.Key.Trim() && t.Level == 3);
 
                         foreach (var disp in structure)
                         {
-                            if (code.Children?.Count() > 0)
-                                foreach (var code2 in code.Children.Select(t => t.Child))
+                            if (codes.Count() > 0)
+                                foreach (var code2 in codes)
                                 {
                                     items.Add(new DispozitieLivrare()
                                     {
-                                        CodProdus = code2.CodeValue,
+                                        CodProdus = code2.Code,
                                         Cantitate = disp.Cantitate,
                                         CodLocatie = disp.CodLocatie,
                                         NumarIntern = disp.NumarIntern,
-                                        NumeProdus = code2.CodeDisplay,
+                                        NumeProdus = code2.Name,
                                         CodProdus2 = disp.CodProdus
                                     });
                                 }

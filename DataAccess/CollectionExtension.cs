@@ -24,17 +24,11 @@ namespace DataAccess
             return;
         }
 
-        public static IServiceCollection configureDataAccess(this IServiceCollection services, string defaultConnection)
+        public static IServiceCollection configureDataAccess(this IServiceCollection services, string defaultConnection, string externalConnection)
         {
-
-            services.AddDbContext<ComplaintSeriesDbContext>(options => configureConnectionString(defaultConnection, options));
-            services.AddDbContext<CodeDbContext>(options => configureConnectionString(defaultConnection, options));
             services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(defaultConnection, options));
-            services.AddDbContext<JobStatusContext>(options => configureConnectionString(defaultConnection, options));
-            services.AddDbContext<ImportsDbContext>(options => configureConnectionString(defaultConnection, options));
+            services.AddDbContext<ImportsDbContext>(options => options.UseSqlServer(externalConnection, s => { }));
 
-            services.AddScoped<NoFilterBaseContext>();
-            services.AddSingleton<Initializer>();
             return services;
         }
     }

@@ -1,7 +1,6 @@
 ﻿using AzureServices;
 using Microsoft.Extensions.Logging;
 using RepositoryContract.CommitedOrders;
-using System.Linq.Expressions;
 
 namespace AzureTableRepository.CommitedOrders
 {
@@ -18,19 +17,20 @@ namespace AzureTableRepository.CommitedOrders
             await tableStorageService.PrepareDelete(items.ToList()).ExecuteBatch();
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Expression<Func<DispozitieLivrareEntry, bool>> expr)
-        {
-            return tableStorageService.Query(expr).ToList();
-        }
-
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
+        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Func<DispozitieLivrareEntry, bool> expr)
         {
             return tableStorageService.Query<DispozitieLivrareEntry>(t => true).ToList();
         }
 
+        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
+        {
+            return CacheManager<DispozitieLivrareEntry>.GetAll(() => tableStorageService.Query<DispozitieLivrareEntry>(t => true).ToList()).ToList();
+        }
+
         public async Task InsertCommitedOrder(DispozitieLivrareEntry sample)
         {
-            tableStorageService.Insert(sample);
+            await tableStorageService.Insert(sample);
+            CacheManager<DispozitieLivrareEntry>.Bust();
         }
     }
 }

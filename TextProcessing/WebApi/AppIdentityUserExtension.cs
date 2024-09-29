@@ -10,18 +10,7 @@ namespace WebApi
             user.Name = userModel.Name;
             user.PhoneNumber = userModel.Phone;
             user.Address = userModel.Address;
-            if (user.DataKeyLocation != null)
-            {
-                user.DataKeyLocation.locationCode = userModel.DataKey;
-            }
-            else
-            {
-                user.DataKeyLocation = new DataKeyLocation()
-                {
-                    name = userModel.UserName,
-                    locationCode = userModel.DataKey
-                };
-            }
+
             return user;
         }
 

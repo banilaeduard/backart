@@ -23,7 +23,8 @@ namespace RepositoryContract.CommitedOrders
                 NumeProdus = entry.NumeProdus,
                 Timestamp = DateTime.Now.ToUniversalTime(),
                 PartitionKey = entry.NumarIntern,
-                RowKey = entry.CodProdus
+                RowKey = entry.CodProdus,
+                DataDocument = entry.DataDocument,
             };
         }
     }
