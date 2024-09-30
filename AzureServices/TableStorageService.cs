@@ -66,7 +66,8 @@ namespace AzureServices
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
             foreach (var batch in Batch(transactionActions))
-                await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
+                if (batch.Any())
+                    await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
         }
 
         public (IEnumerable<TableTransactionAction> items, TableStorageService self) PrepareInsert<T>(IEnumerable<T> entries) where T : class, ITableEntity

@@ -107,7 +107,7 @@ namespace WebApi.Controllers
                                 CodLocatie = disp.CodLocatie,
                                 NumarIntern = disp.NumarIntern,
                                 NumeProdus = code.Name,
-                                CodProdus2 = disp.CodProdus
+                                StatusName = disp.CodProdus
                             });
                         }
                     else items.Add(disp);
@@ -115,7 +115,7 @@ namespace WebApi.Controllers
             }
 
             return File(WorkbookReportsService.GenerateReport(
-                items.OrderBy(t => t.CodProdus2).ToList(),
+                items.OrderBy(t => t.StatusName).ToList(),
                 t => "dummy",
                 t => t.CodProdus.AsSpan(0, 4).ToString(),
                 t => t.CodProdus,
@@ -149,7 +149,7 @@ namespace WebApi.Controllers
                                         CodLocatie = disp.CodLocatie,
                                         NumarIntern = disp.NumarIntern,
                                         NumeProdus = code2.Name,
-                                        CodProdus2 = disp.CodProdus
+                                        StatusName = disp.CodProdus
                                     });
                                 }
                             else items.Add(disp);
@@ -159,7 +159,7 @@ namespace WebApi.Controllers
             }
 
             return File(WorkbookReportsService.GenerateReport(
-                items.OrderBy(t => t.CodProdus2).ToList(),
+                items.OrderBy(t => t.StatusName).ToList(),
                 t => t.NumarIntern.ToString(),
                 t => t.CodProdus.AsSpan(0, 4).ToString(),
                 t => t.CodProdus,

@@ -12,15 +12,16 @@ namespace WebApi.Controllers
     using DataAccess.Entities;
     using global::WebApi.Services;
     using global::WebApi.Models;
-    using Microsoft.AspNetCore.Authentication;
     using System.Security.Claims;
-    using System.Linq;
+    using Microsoft.Extensions.Caching.Memory;
+    using Pegasus.Common;
 
     public class UsersController : WebApiController2
     {
         IUserService _userService;
         UserManager<AppIdentityUser> _userManager;
         EmailSender _emailService;
+        private static MemoryCache _userCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromDays(2) } );
 
         public UsersController(
             IUserService userService,
@@ -147,11 +148,18 @@ namespace WebApi.Controllers
         [HttpGet("{username}")]
         public async Task<IActionResult> GetById(string username)
         {
-            if (this.CurrentUserName != username)
+            if (CurrentUserName != username)
                 return Forbid();
-            var user = await _userService.GetById((await _userManager.FindByNameAsync(username)).Id);
-            if (user == null) return NotFound();
 
+            if (!_userCache.TryGetValue(username, out UserModel user))
+            {
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetPriority(CacheItemPriority.NeverRemove);
+
+                user = await _userService.GetById((await _userManager.FindByNameAsync(username))!.Id);
+                if (user == null) return NotFound();
+                _userCache.Set(username, user, cacheEntryOptions);
+            }
             return Ok(user);
         }
 

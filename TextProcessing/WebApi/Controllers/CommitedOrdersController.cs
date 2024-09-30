@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
+using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using Services.Storage;
 using WebApi.Models;
@@ -13,42 +14,35 @@ namespace WebApi.Controllers
         private IStorageService storageService;
         private ICommitedOrdersRepository commitedOrdersRepository;
         private IOrdersRepository ordersRepository;
+        private IImportsRepository importsRepository;
 
         public CommitedOrdersController(
             ILogger<CommitedOrdersController> logger,
             IStorageService storageService,
             ICommitedOrdersRepository commitedOrdersRepository,
+            IImportsRepository importsRepository,
             IOrdersRepository ordersRepository) : base(logger)
         {
             this.storageService = storageService;
             this.commitedOrdersRepository = commitedOrdersRepository;
             this.ordersRepository = ordersRepository;
+            this.importsRepository = importsRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCommitedOrders()
         {
-            List<CommitedOrdersResponse> result = new();
-            var commitedOrders = await commitedOrdersRepository.GetCommitedOrders();
-            foreach (var orderClient in commitedOrders.GroupBy(t => t.CodLocatie))
-            {
-                var minDate = orderClient.Min(t => t.DataDocument);
-                var progressOrders = await ordersRepository.GetOrders(t => t.CodLocatie == orderClient.Key && t.DataDoc <= minDate, ComandaVanzareEntry.GetProgressTableName());
-                var pendingOrders = await ordersRepository.GetOrders(t => t.CodLocatie == orderClient.Key && t.DataDoc <= minDate);
+            var orders = await commitedOrdersRepository.GetCommitedOrders();
+            return Ok(CommitedOrdersResponse.From(orders));
+        }
 
-                foreach (var order in orderClient)
-                {
-                    result.Add(new()
-                    {
-                        Entry = order,
-                        Progress = progressOrders.Where(t => t.CodArticol == order.CodProdus).ToList(),
-                        Pending = pendingOrders.Where(t => t.CodArticol == order.CodProdus).ToList()
-                    }
-                        );
-                }
-            }
-
-            return Ok(result.ToList());
+        [HttpPost("sync"), DisableRequestSizeLimit]
+        public async Task<IActionResult> SyncCommitedOrders()
+        {
+            var sourceOrders = await importsRepository.GetImportCommitedOrders();
+            await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.Where(t => t.StatusName == "Final").ToList());
+            var orders = await commitedOrdersRepository.GetCommitedOrders();
+            return Ok(CommitedOrdersResponse.From(orders));
         }
     }
 }

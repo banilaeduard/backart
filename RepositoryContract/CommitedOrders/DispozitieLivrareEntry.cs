@@ -16,15 +16,19 @@ namespace RepositoryContract.CommitedOrders
                 CodEan = entry.CodEan,
                 CodLocatie = entry.CodLocatie,
                 CodProdus = entry.CodProdus,
-                CodProdus2 = entry.CodProdus2,
                 NumarIntern = entry.NumarIntern,
                 NumeCodificare = entry.NumeCodificare,
                 NumeLocatie = entry.NumeLocatie,
                 NumeProdus = entry.NumeProdus,
                 Timestamp = DateTime.Now.ToUniversalTime(),
                 PartitionKey = entry.NumarIntern,
-                RowKey = entry.CodProdus,
-                DataDocument = entry.DataDocument,
+                RowKey = Guid.NewGuid().ToString(),
+                DataDocument = entry.DataDocument.ToUniversalTime(),
+                NumarComanda = entry.NumarComanda,
+                StatusName = entry.StatusName,
+                DetaliiDoc = entry.DetaliiDoc,
+                DetaliiLinie = entry.DetaliiLinie,
+                DataDocumentBaza = entry.DataDocumentBaza.ToUniversalTime()
             };
         }
     }

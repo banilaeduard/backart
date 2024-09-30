@@ -1,12 +1,20 @@
 ﻿using RepositoryContract.CommitedOrders;
-using RepositoryContract.Orders;
 
 namespace WebApi.Models
 {
     public class CommitedOrdersResponse
     {
-        public DispozitieLivrareEntry Entry { get; set; }
-        public List<ComandaVanzareEntry> Progress { get; set; }
-        public List<ComandaVanzareEntry> Pending { get; set; }
+        public List<DispozitieLivrareEntry> Entry { get; set; }
+
+        public static IEnumerable<CommitedOrdersResponse> From(IList<DispozitieLivrareEntry> entries)
+        {
+            foreach (var group in entries.GroupBy(t => t.NumarIntern).OrderByDescending(t => t.Key))
+            {
+                yield return new CommitedOrdersResponse()
+                {
+                    Entry = group.Select(t => DispozitieLivrareEntry.create(t, t.Cantitate)).OrderBy(t => t.DataDocumentBaza).ToList()
+                };
+            }
+        }
     }
 }

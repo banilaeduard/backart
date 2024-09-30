@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+﻿using EntityDto;
 
 namespace RepositoryContract.CommitedOrders
 {
@@ -8,5 +8,6 @@ namespace RepositoryContract.CommitedOrders
         Task<List<DispozitieLivrareEntry>> GetCommitedOrders();
         Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items);
         Task InsertCommitedOrder(DispozitieLivrareEntry item);
+        Task ImportCommitedOrders(IList<DispozitieLivrare> items);
     }
 }
