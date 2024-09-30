@@ -25,9 +25,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureServices", "..\AzureSe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureTableRepository", "..\AzureTableRepository\AzureTableRepository.csproj", "{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureTableRepository", "..\AzureTableRepository\AzureTableRepository.csproj", "{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlTableRepository", "..\SqlTableRepository\SqlTableRepository.csproj", "{FD234AD6-5CED-4346-9321-0FBC6EA884B5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -145,6 +147,14 @@ Global
 		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|x64.ActiveCfg = Release|Any CPU
 		{2EC67C95-90FC-4AD9-A7A7-FE32661298D7}.Release|x64.Build.0 = Release|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Debug|x64.Build.0 = Debug|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Release|x64.ActiveCfg = Release|Any CPU
+		{FD234AD6-5CED-4346-9321-0FBC6EA884B5}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

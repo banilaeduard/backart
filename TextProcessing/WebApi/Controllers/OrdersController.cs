@@ -1,28 +1,29 @@
-﻿using DataAccess.Context;
-using DataAccess.Entities;
-using EntityDto;
+﻿using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using WorkSheetServices;
 
 namespace WebApi.Controllers
 {
     [Authorize(Roles = "admin")]
-    public class UploadController : WebApiController2
+    public class OrdersController : WebApiController2
     {
         private IOrdersRepository ordersRepository;
+        private IImportsRepository importsRepository;
 
-        public UploadController(
-            ILogger<UploadController> logger,
-            IOrdersRepository ordersRepository
+        public OrdersController(
+            ILogger<OrdersController> logger,
+            IOrdersRepository ordersRepository,
+            IImportsRepository importsRepository
             ) : base(logger)
         {
             this.ordersRepository = ordersRepository;
+            this.importsRepository = importsRepository;
         }
 
-        [HttpPost("orders"), DisableRequestSizeLimit]
+        [HttpPost("upload"), DisableRequestSizeLimit]
         public async Task<IActionResult> UploadOrders()
         {
             var file = Request.Form.Files[0];
@@ -36,10 +37,19 @@ namespace WebApi.Controllers
             return Ok();
         }
 
-        [HttpGet("orders")]
+        [HttpGet()]
         public async Task<IActionResult> GetOrders()
         {
             return Ok(await ordersRepository.GetOrders());
+        }
+
+        [HttpPost("sync"), DisableRequestSizeLimit]
+        public async Task<IActionResult> SyncOrders()
+        {
+            var sourceOrders = await importsRepository.GetImportOrders();
+            await ordersRepository.ImportOrders(sourceOrders.Where(t => t.StatusName == "Final").ToList());
+            var orders = await ordersRepository.GetOrders();
+            return Ok(orders);
         }
     }
 }

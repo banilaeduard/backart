@@ -8,11 +8,13 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="13.0.1" />
-    <PackageReference Include="Azure.Data.Tables" Version="12.9.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AzureServices\AzureServices.csproj" />
+    <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\EntityDto\EntityDto.csproj" />
+    <ProjectReference Include="..\RepositoryContract\RepositoryContract.csproj" />
   </ItemGroup>
 
 </Project>

@@ -60,8 +60,7 @@ namespace RepositoryContract.Orders
                 if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
                     return false;
 
-                if (x.NumePartener == y.NumePartener && x.CodLocatie == y.CodLocatie && x.DocId == y.DocId && 
-                    x.DataDoc.HasValue == y.DataDoc.HasValue && (x.DataDoc.HasValue ? (x.DataDoc.Value == y.DataDoc.Value) : true)
+                if (x.NumePartener == y.NumePartener && x.CodLocatie == y.CodLocatie && x.DocId == y.DocId
                     && x.CodArticol == y.CodArticol && x.DetaliiDoc == y.DetaliiDoc && x.DetaliiLinie == y.DetaliiLinie && x.NumarComanda == y.NumarComanda
                     && (!includeQ || x.Cantitate == y.Cantitate))
                 {
@@ -77,7 +76,6 @@ namespace RepositoryContract.Orders
                 int hash1 = other.NumePartener.GetHashCode();
                 int hash2 = other.CodLocatie == null ? 0 : other.CodLocatie.GetHashCode();
                 int hash3 = other.DocId.GetHashCode();
-                int hash4 = !other.DataDoc.HasValue ? 0 : other.DataDoc.Value.ToString().GetHashCode();
                 int hash5 = other.CodArticol == null ? 0 : other.CodArticol.GetHashCode();
                 int hash6 = other.DetaliiDoc == null ? 0 : other.DetaliiDoc.GetHashCode();
                 int hash7 = other.DetaliiLinie == null ? 0 : other.DetaliiLinie.GetHashCode();
@@ -85,8 +83,8 @@ namespace RepositoryContract.Orders
                 int hash8 = other.Cantitate.GetHashCode();
 
                 if (includeQ)
-                    return hash1 ^ hash2 ^ hash3 ^ hash4 ^ hash5 ^ hash6 ^ hash7 ^ hash9 ^ hash8;
-                return hash1 ^ hash2 ^ hash3 ^ hash4 ^ hash5 ^ hash6 ^ hash7 ^ hash9;
+                    return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9 ^ hash8;
+                return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9;
             }
         }
     }

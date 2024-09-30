@@ -1,8 +1,6 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Services.Storage;
-using System.Collections.Generic;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AzureServices
 {

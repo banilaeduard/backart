@@ -12,6 +12,9 @@ namespace WebApi.Controllers
     using DataAccess.Entities;
     using global::WebApi.Services;
     using global::WebApi.Models;
+    using Microsoft.AspNetCore.Authentication;
+    using System.Security.Claims;
+    using System.Linq;
 
     public class UsersController : WebApiController2
     {
@@ -176,16 +179,9 @@ namespace WebApi.Controllers
         [HttpPost("isInRoles")]
         public async Task<IActionResult> isInRoles(IList<string> roles)
         {
-            var identityUser = await this._userManager.FindByNameAsync(this.CurrentUserName);
-            if (identityUser == null) return NotFound();
+            var role = HttpContext.User.FindFirst(ClaimTypes.Role);
 
-            foreach (var role in roles)
-            {
-                var result = await _userManager.IsInRoleAsync(identityUser, role);
-                if (result) return Ok(true);
-            }
-
-            return Ok(false);
+            return Ok(roles.Contains(role.Value));
         }
     }
 }
