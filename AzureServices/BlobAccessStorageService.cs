@@ -43,15 +43,31 @@ namespace AzureServices
             }
             return blob.GetProperties().Value.LastModified.UtcDateTime;
         }
-        public void Bust(string fName)
+        public void SetMetadata(string fName, Dictionary<string, string> metadata = null)
         {
             var blob = client.GetBlobClient(fName);
             BlobContentInfo bCon = null;
 
             if (blob.Exists())
             {
-                blob.SetMetadata(new Dictionary<string, string>() { { "busted", DateTime.UtcNow.ToString() } });
+                blob.SetMetadata(metadata ?? new Dictionary<string, string>() { { "busted", DateTime.UtcNow.ToString() } });
             }
+            else
+            {
+                client.UploadBlob(fName, new BinaryData([]));
+            }
+        }
+
+        public IDictionary<string, string> GetMetadata(string fName)
+        {
+            var blob = client.GetBlobClient(fName);
+
+            if (blob.Exists())
+            {
+                return blob.GetProperties().Value.Metadata;
+            }
+
+            return new Dictionary<string, string>();
         }
     }
 }

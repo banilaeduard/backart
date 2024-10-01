@@ -44,7 +44,7 @@ namespace AzureTableRepository
         public static void Bust(string? tableName = null)
         {
             tableName = tableName ?? typeof(T).Name;
-            blobAccessStorageService.Bust($"cache_control/{tableName}");
+            blobAccessStorageService.SetMetadata($"cache_control/{tableName}");
         }
     }
 }

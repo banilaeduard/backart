@@ -45,27 +45,27 @@ namespace WebApi.Controllers
                 }
             }
 
-            var keys = items.GroupBy(t => t.NumarIntern).Select(t => t.Key).ToDictionary(t => t);
+            //var keys = items.GroupBy(t => t.NumarIntern).Select(t => t.Key).ToDictionary(t => t);
             var fileName = string.Format("DispozitiiMP_{0}/{1}_{2}.{3}", DateTime.Now.ToString("ddMMyy"),
                 string.Join("_", items.Select(t => t.NumeLocatie).Distinct().Take(3)),
                 DateTime.Now.ToString("HHmm"),
                 "xlsx");
 
-            foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie }))
-            {
-                var sample = group.ElementAt(0);
+            //foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie }))
+            //{
+            //    var sample = group.ElementAt(0);
 
-                if (keys.ContainsKey(sample.NumarIntern))
-                {
-                    var old_entries = await commitedOrdersRepository.GetCommitedOrders(t => sample.NumarIntern == t.PartitionKey);
-                    keys.Remove(sample.NumarIntern);
-                    await commitedOrdersRepository.DeleteCommitedOrders(old_entries.ToList());
-                }
+            //    if (keys.ContainsKey(sample.NumarIntern))
+            //    {
+            //        var old_entries = await commitedOrdersRepository.GetCommitedOrders(t => sample.NumarIntern == t.PartitionKey);
+            //        keys.Remove(sample.NumarIntern);
+            //        await commitedOrdersRepository.DeleteCommitedOrders(old_entries.ToList());
+            //    }
 
-                var az = DispozitieLivrareEntry.create(sample, group.Sum(t => t.Cantitate));
-                az.AggregatedFileNmae = fileName;
-                await commitedOrdersRepository.InsertCommitedOrder(az);
-            }
+            //    var az = DispozitieLivrareEntry.create(sample, group.Sum(t => t.Cantitate));
+            //    az.AggregatedFileNmae = fileName;
+            //    await commitedOrdersRepository.InsertCommitedOrder(az);
+            //}
 
             var reportData = WorkbookReportsService.GenerateReport(
                 items,

@@ -39,10 +39,18 @@ namespace WebApi.Controllers
         [HttpPost("sync"), DisableRequestSizeLimit]
         public async Task<IActionResult> SyncCommitedOrders()
         {
-            var sourceOrders = await importsRepository.GetImportCommitedOrders();
-            await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.Where(t => t.StatusName == "Final").ToList());
+            var sourceOrders = await importsRepository.GetImportCommitedOrders(await commitedOrdersRepository.GetLastSyncDate());
+            await commitedOrdersRepository.ImportCommitedOrders(sourceOrders);
             var orders = await commitedOrdersRepository.GetCommitedOrders();
+
             return Ok(CommitedOrdersResponse.From(orders));
+        }
+
+        [HttpPost("delivered/{internalNumber}")]
+        public async Task<IActionResult> DeliverOrder(int internalNumber)
+        {
+            await commitedOrdersRepository.SetDelivered(internalNumber);
+            return Ok();
         }
     }
 }

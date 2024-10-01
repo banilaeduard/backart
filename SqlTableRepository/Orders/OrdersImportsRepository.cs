@@ -48,7 +48,7 @@ namespace SqlTableRepository.Orders
             var blob = storageService.Access("QImport/disp.txt", out var contentType);
             var sql = Encoding.UTF8.GetString(blob);
 
-            var items = importsDbContext.DispozitieLivrare.FromSqlRaw(sql).Where(t => t.DataDocument > ro).ToList();
+            var items = importsDbContext.DispozitieLivrare.FromSqlRaw(sql).Where(t => t.DataDocument >= ro).ToList();
             return items.Select(mapper.Map<DispozitieLivrare>).ToList();
         }
     }

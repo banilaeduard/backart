@@ -176,7 +176,7 @@ namespace WebApi
             {
                 opts.User.RequireUniqueEmail = true;
                 opts.Password.RequiredLength = 8;
-                opts.SignIn.RequireConfirmedEmail = true;
+                opts.SignIn.RequireConfirmedEmail = false;
             });
         }
 

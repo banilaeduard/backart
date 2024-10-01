@@ -28,7 +28,8 @@ namespace RepositoryContract.CommitedOrders
                 StatusName = entry.StatusName,
                 DetaliiDoc = entry.DetaliiDoc,
                 DetaliiLinie = entry.DetaliiLinie,
-                DataDocumentBaza = entry.DataDocumentBaza.ToUniversalTime()
+                DataDocumentBaza = entry.DataDocumentBaza.ToUniversalTime(),
+                Livrata = entry.Livrata,
             };
         }
     }
