@@ -1,5 +1,4 @@
 using System.Fabric;
-using System.IO;
 using System.Text.RegularExpressions;
 using AzureServices;
 using AzureTableRepository.Tickets;
@@ -14,7 +13,6 @@ using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
 using RepositoryContract.Tickets;
-using Services.Storage;
 using Tokenizer;
 using YahooFeeder;
 using UniqueId = MailKit.UniqueId;
@@ -188,7 +186,7 @@ namespace YahooTFeeder
             };
 
             var extension = string.IsNullOrWhiteSpace(message.HtmlBody) ? "txt" : "html";
-            var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}_body.{extension}";
+            var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}/body.{extension}";
             storageService.WriteTo(fname, new BinaryData(System.Text.Encoding.UTF8.GetBytes(body)));
             ticket.Description = fname;
 
@@ -218,7 +216,7 @@ namespace YahooTFeeder
                         }
 
                         MimeTypes.TryGetExtension(attachment.ContentType.MimeType, out var extension);
-                        var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}_{Guid.NewGuid()}.{extension ?? "txt"}";
+                        var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}/{Guid.NewGuid()}.{extension ?? "txt"}";
 
                         storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
 

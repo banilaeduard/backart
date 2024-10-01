@@ -9,16 +9,21 @@ namespace WebApi.Controllers
 
     using RepositoryContract.Tickets;
     using global::WebApi.Models;
+    using global::Services.Storage;
+    using System.Text;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
     {
         private ITicketEntryRepository ticketEntryRepository;
+        private IStorageService storageService;
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
+            IStorageService storageService,
             ILogger<TicketController> logger) : base(logger)
         {
             this.ticketEntryRepository = ticketEntryRepository;
+            this.storageService = storageService;
         }
 
         [HttpGet("{page}/{pageSize}")]
@@ -29,7 +34,8 @@ namespace WebApi.Controllers
             return Ok(new
             {
                 count = complaints.Count,
-                complaints = complaints.Skip((page - 1) * pageSize).Take(pageSize).Select(TicketSeriesModel.from)
+                complaints = complaints.Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(t => TicketSeriesModel.from(t, Encoding.UTF8.GetString(storageService.Access(t.Description, out var contentType))))
             });
         }
 

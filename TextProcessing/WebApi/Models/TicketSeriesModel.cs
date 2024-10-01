@@ -20,13 +20,13 @@
 
         [JsonConstructor]
         private TicketSeriesModel() { }
-        private TicketSeriesModel(TicketEntity complaint)
+        private TicketSeriesModel(TicketEntity complaint, string content)
         {
             PartitionKey = complaint.PartitionKey;
             RowKey = complaint.RowKey;
             Tickets = [new TicketModel()
             {
-                Description = complaint.Description,
+                Description = content,
                 CodeValue = complaint.RowKey
             }];
             Created = complaint.CreatedDate;
@@ -34,9 +34,9 @@
             Status = complaint.From;
         }
 
-        public static TicketSeriesModel from(TicketEntity dbModel)
+        public static TicketSeriesModel from(TicketEntity dbModel, string content)
         {
-            return new TicketSeriesModel(dbModel);
+            return new TicketSeriesModel(dbModel, content);
         }
     }
 }

@@ -6,14 +6,13 @@ namespace AzureTableRepository
 {
     internal class CacheManager<T>
     {
-        static BlobAccessStorageService blobAccessStorageService = new();
-
         private static ConcurrentDictionary<string, DateTime> lastModified = new();
         private static ConcurrentDictionary<string, ImmutableList<T>> cache = new();
         private static ConcurrentDictionary<string, object> lockers = new();
 
         public static ImmutableList<T> GetAll(Func<IList<T>> getContent, string? tableName = null)
         {
+            BlobAccessStorageService blobAccessStorageService = new();
             tableName = tableName ?? typeof(T).Name;
             cache.GetOrAdd(tableName, s => []);
             lastModified.GetOrAdd(tableName, s => DateTime.MinValue);
@@ -43,6 +42,7 @@ namespace AzureTableRepository
 
         public static void Bust(string? tableName = null)
         {
+            BlobAccessStorageService blobAccessStorageService = new();
             tableName = tableName ?? typeof(T).Name;
             blobAccessStorageService.SetMetadata($"cache_control/{tableName}");
         }
