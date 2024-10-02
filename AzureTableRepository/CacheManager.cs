@@ -2,7 +2,6 @@
 using Azure.Data.Tables;
 using AzureServices;
 using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 
 namespace AzureTableRepository
 {
@@ -35,7 +34,7 @@ namespace AzureTableRepository
                 dateSync = DateTimeOffset.Parse(dSync);
             }
 
-            if (tokenSync != null && tokenSync == token || lM != minValueForAzure && (dateSync == null || dateSync <= lM))
+            if (metaData.Any() && (tokenSync == null || tokenSync == token) && lM != minValueForAzure && (dateSync == null || dateSync <= lM))
                 return cache[tableName].Cast<T>().ToList();
             else
             {
@@ -53,10 +52,10 @@ namespace AzureTableRepository
                             dateSync = DateTimeOffset.Parse(dSync);
                         }
 
-                        if (tokenSync != null && tokenSync == token || lM != minValueForAzure && (dateSync == null || dateSync <= lM))
+                        if (metaData.Any() && (tokenSync == null || tokenSync == token) && lM != minValueForAzure && (dateSync == null || dateSync <= lM))
                             return cache[tableName].Cast<T>().ToList();
 
-                        if (tokenSync != null && tokenSync != token)
+                        if (tokenSync != null && tokenSync != token || !metaData.Any())
                         {
                             lM = minValueForAzure;
                             tokens.AddOrUpdate(tableName, tokenSync, (_, _) => tokenSync);
@@ -64,22 +63,18 @@ namespace AzureTableRepository
 
                         var content = getContent(lM);
 
-                        if (metaData.TryGetValue("timestamp", out dSync))
-                        {
-                            dateSync = DateTimeOffset.Parse(dSync);
-                        }
-
                         if (lM == minValueForAzure) // full bust
                         {
                             var items = new ConcurrentBag<ITableEntity>(content.Cast<ITableEntity>());
                             if (items.Any())
                             {
                                 lastModified[tableName] = items.Max(t => t.Timestamp)!.Value;
-                                if (dateSync == null || lastModified[tableName] > dateSync)
+                                try
                                 {
                                     metaData["timestamp"] = lastModified[tableName].ToString();
                                     blobAccessStorageService.SetMetadata($"cache_control/{tableName}", null, metaData);
                                 }
+                                catch (Exception e) { }
                             }
 
                             cache[tableName] = items;
@@ -90,11 +85,12 @@ namespace AzureTableRepository
                             if (content.Any())
                             {
                                 lastModified[tableName] = content.Max(t => t.Timestamp)!.Value;
-                                if (dateSync == null || lastModified[tableName] > dateSync)
+                                try
                                 {
                                     metaData["timestamp"] = lastModified[tableName].ToString();
                                     blobAccessStorageService.SetMetadata($"cache_control/{tableName}", null, metaData);
                                 }
+                                catch (Exception e) { }
                             }
                         }
 

@@ -3,7 +3,6 @@ using AzureSerRepositoryContract.ProductCodesvices;
 using AzureServices;
 using Microsoft.Extensions.Logging;
 using RepositoryContract.Tickets;
-using System.Collections.Concurrent;
 
 namespace AzureTableRepository.Tickets
 {
@@ -25,7 +24,7 @@ namespace AzureTableRepository.Tickets
 
         public async Task<IList<TicketEntity>> GetAll(int page, int pageSize)
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp >= from).ToList()).ToList();
+            return CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList()).ToList();
         }
 
         public async Task Save(AttachmentEntry entry)

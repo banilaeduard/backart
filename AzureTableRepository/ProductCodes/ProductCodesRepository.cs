@@ -18,7 +18,7 @@ namespace AzureTableRepository.ProductCodes
         public async Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr, string? table = null)
         {
             return CacheManager.GetAll((from) =>
-                    tableStorageService.Query<ProductCodeEntry>(t => t.Timestamp >= from, table).ToList()
+                    tableStorageService.Query<ProductCodeEntry>(t => t.Timestamp > from, table).ToList()
                     , table).Select(t => t.Shallowcopy())
                 .Where(expr).ToList();
         }
@@ -26,7 +26,7 @@ namespace AzureTableRepository.ProductCodes
         public async Task<IList<ProductCodeEntry>> GetProductCodes(string? table = null)
         {
             return CacheManager.GetAll((from) =>
-                    tableStorageService.Query<ProductCodeEntry>(t => t.Timestamp >= from, table).ToList()
+                    tableStorageService.Query<ProductCodeEntry>(t => t.Timestamp > from, table).ToList()
                     , table).Select(t => t.Shallowcopy()).ToList();
         }
 

@@ -48,6 +48,7 @@ namespace AzureServices
             else
             {
                 client.UploadBlob(fName, new BinaryData([]));
+                SetMetadata(fName, leaseId, metadata);
             }
         }
 
