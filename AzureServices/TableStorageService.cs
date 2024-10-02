@@ -23,7 +23,7 @@ namespace AzureServices
             tableName = tableName ?? entry.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            await tableClient.AddEntityAsync(entry);
+            var resp = await tableClient.AddEntityAsync(entry);
         }
 
         public async Task Upsert(ITableEntity entry, string? tableName = null)
@@ -67,22 +67,26 @@ namespace AzureServices
             tableClient.CreateIfNotExists();
             foreach (var batch in Batch(transactionActions))
                 if (batch.Any())
-                    await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
+                {
+                    var resp = await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
+                    var items = resp.Value.ToList();
+                    var x = 1;
+                }
         }
 
-        public (IEnumerable<TableTransactionAction> items, TableStorageService self) PrepareInsert<T>(IEnumerable<T> entries) where T : class, ITableEntity
+        public (List<TableTransactionAction> items, TableStorageService self) PrepareInsert<T>(IEnumerable<T> entries) where T : class, ITableEntity
         {
-            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.Add, e)), this);
+            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.Add, e)).ToList(), this);
         }
 
-        public (IEnumerable<TableTransactionAction> items, TableStorageService self) PrepareDelete<T>(IEnumerable<T> entries) where T : class, ITableEntity
+        public (List<TableTransactionAction> items, TableStorageService self) PrepareDelete<T>(IEnumerable<T> entries) where T : class, ITableEntity
         {
-            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.Delete, e)), this);
+            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.Delete, e)).ToList(), this);
         }
 
-        public (IEnumerable<TableTransactionAction> items, TableStorageService self) PrepareUpsert<T>(IEnumerable<T> entries) where T : class, ITableEntity
+        public (List<TableTransactionAction> items, TableStorageService self) PrepareUpsert<T>(IEnumerable<T> entries) where T : class, ITableEntity
         {
-            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.UpsertReplace, e)), this);
+            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.UpsertReplace, e)).ToList(), this);
         }
 
         private IEnumerable<List<TableTransactionAction>> Batch(IEnumerable<TableTransactionAction> items)

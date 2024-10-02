@@ -7,5 +7,6 @@ namespace RepositoryContract.ProductCodes
     {
         Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr, string? table = null);
         Task<IList<ProductCodeEntry>> GetProductCodes(string? table = null);
+        Task Delete(string partitionKey, string rowKey);
     }
 }

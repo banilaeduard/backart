@@ -3,6 +3,8 @@ using AzureServices;
 using EntityDto;
 using Microsoft.Extensions.Logging;
 using RepositoryContract.CommitedOrders;
+using RepositoryContract.DataKeyLocation;
+using System.Transactions;
 
 namespace AzureTableRepository.CommitedOrders
 {
@@ -17,26 +19,32 @@ namespace AzureTableRepository.CommitedOrders
 
         public async Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items)
         {
-            await tableStorageService.PrepareDelete(items.ToList()).ExecuteBatch();
-            CacheManager<DispozitieLivrareEntry>.Bust();
+            var toRemove = tableStorageService.PrepareDelete(items.ToList());
+            await toRemove.ExecuteBatch();
+
+            CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, true, null);
+            CacheManager.RemoveFromCache(typeof(DispozitieLivrareEntry).Name, toRemove.items.Select(t => t.Entity).ToList());
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Func<DispozitieLivrareEntry, bool> expr)
         {
-            return CacheManager<DispozitieLivrareEntry>.GetAll(() => tableStorageService.Query<DispozitieLivrareEntry>(t => !t.Livrata).ToList())
+            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp >= from && !t.Livrata).ToList())
                 .Where(t => expr(t) && !t.Livrata && t.StatusName == "Final").ToList();
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
         {
-            return CacheManager<DispozitieLivrareEntry>.GetAll(() => tableStorageService.Query<DispozitieLivrareEntry>(t => !t.Livrata).ToList())
+            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp >= from && !t.Livrata).ToList())
                 .Where(t => !t.Livrata && t.StatusName == "Final").ToList();
         }
 
         public async Task InsertCommitedOrder(DispozitieLivrareEntry sample)
         {
+            var offset = DateTimeOffset.Now;
             await tableStorageService.Insert(sample);
-            CacheManager<DispozitieLivrareEntry>.Bust();
+
+            CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, false, offset);
+            CacheManager.UpsertCache(typeof(DispozitieLivrareEntry).Name, [sample]);
         }
 
         public async Task ImportCommitedOrders(IList<DispozitieLivrare> items)
@@ -49,7 +57,7 @@ namespace AzureTableRepository.CommitedOrders
                 var oldEntries = tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == groupedEntries.Key).ToList();
                 if (oldEntries.Count > 0 && oldEntries.Any(t => t.Livrata)) continue;
 
-                (IEnumerable<TableTransactionAction> items, TableStorageService self) transaction = ([], tableStorageService);
+                (List<TableTransactionAction> items, TableStorageService self) transaction = ([], tableStorageService);
                 transaction = transaction.Concat(tableStorageService.PrepareDelete(oldEntries.ToList()));
 
                 foreach (var group in groupedEntries.Value.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
@@ -58,12 +66,18 @@ namespace AzureTableRepository.CommitedOrders
                 };
 
                 if (transaction.items.Any())
+                {
                     await transaction.ExecuteBatch();
+                    CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, false, null);
+                    CacheManager.RemoveFromCache(typeof(DispozitieLivrareEntry).Name,
+                        transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
+                    CacheManager.UpsertCache(typeof(DispozitieLivrareEntry).Name,
+                        transaction.items.Where(t => t.ActionType != TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
+                }
             }
 
             var latest = newEntries.ElementAt(newEntries.Count / 2).Value.ElementAt(0).DataDocument;
-            blobAccessStorageService.SetMetadata("sync_control/LastSyncDate", new() { { "data_sync", latest.ToUniversalTime().ToShortDateString() } });
-            CacheManager<DispozitieLivrareEntry>.Bust();
+            blobAccessStorageService.SetMetadata("sync_control/LastSyncDate", null, new Dictionary<string, string>() { { "data_sync", latest.ToUniversalTime().ToShortDateString() } });
         }
 
         public async Task SetDelivered(int internalNumber)
@@ -71,21 +85,16 @@ namespace AzureTableRepository.CommitedOrders
             var entries = tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == internalNumber.ToString()).ToList();
             foreach (var entry in entries) entry.Livrata = true;
 
-            await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
-            foreach (var cached in (await GetCommitedOrders()).Where(t => t.PartitionKey == internalNumber.ToString()))
-            {
-                var entry = entries.FirstOrDefault(t => t.RowKey == cached.RowKey);
-                if (entry != null)
-                {
-                    cached.Livrata = true;
-                    cached.ETag = entry.ETag;
-                }
-            }
+            var transactions = tableStorageService.PrepareUpsert(entries);
+            await transactions.ExecuteBatch();
+
+            CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, false, null);
+            CacheManager.UpsertCache(typeof(DispozitieLivrareEntry).Name, transactions.items.Select(t => t.Entity).ToList());
         }
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            blobAccessStorageService.Check("sync_control/LastSyncDate");
+            blobAccessStorageService.SetMetadata("sync_control/LastSyncDate", null);
             var metadata = blobAccessStorageService.GetMetadata("sync_control/LastSyncDate");
 
             if (metadata.ContainsKey("data_sync"))

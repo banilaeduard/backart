@@ -14,7 +14,6 @@ namespace WebApi.Controllers
     using global::WebApi.Models;
     using System.Security.Claims;
     using Microsoft.Extensions.Caching.Memory;
-    using Pegasus.Common;
 
     public class UsersController : WebApiController2
     {

@@ -2,7 +2,6 @@
 using EntityDto;
 using Microsoft.Extensions.Logging;
 using RepositoryContract.Orders;
-using System.Linq.Expressions;
 
 namespace AzureTableRepository.Orders
 {
@@ -15,12 +14,14 @@ namespace AzureTableRepository.Orders
         }
         public async Task<List<ComandaVanzareEntry>> GetOrders(string? table = null)
         {
-            return tableStorageService.Query<ComandaVanzareEntry>(t => true, table).ToList();
+            table = table ?? typeof(ComandaVanzareEntry).Name;
+            return CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => t.Timestamp > from).ToList(), table).ToList();
         }
 
-        public async Task<List<ComandaVanzareEntry>> GetOrders(Expression<Func<ComandaVanzareEntry, bool>> expr, string? table = null)
+        public async Task<List<ComandaVanzareEntry>> GetOrders(Func<ComandaVanzareEntry, bool> expr, string? table = null)
         {
-            return tableStorageService.Query(expr, table).ToList();
+            table = table ?? typeof(ComandaVanzareEntry).Name;
+            return CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => expr(t) && t.Timestamp > from).ToList(), table).ToList();
         }
 
         public async Task ImportOrders(IList<ComandaVanzare> items)
@@ -61,6 +62,8 @@ namespace AzureTableRepository.Orders
                                         .Concat(tableStorageService.PrepareInsert(exceptAdd))
                                         .Concat(tableStorageService.PrepareDelete(exceptDelete))
                                         .ExecuteBatch();
+
+                CacheManager.InvalidateOurs(typeof(ComandaVanzareEntry).Name);
             }
         }
 

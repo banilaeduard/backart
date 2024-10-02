@@ -5,8 +5,8 @@ namespace WorkSheetServices
 {
     public static class WorkbookReportsService
     {
-        public static byte[] GenerateReport(List<DispozitieLivrare> dispozitii, 
-            Func<DispozitieLivrare, string> keyResolver, 
+        public static byte[] GenerateReport(List<DispozitieLivrare> dispozitii,
+            Func<DispozitieLivrare, string> keyResolver,
             Func<DispozitieLivrare, string> grouping1,
             Func<DispozitieLivrare, string> grouping2,
             string pageOrientation = "landscape")
@@ -35,10 +35,11 @@ namespace WorkSheetServices
                     worksheet.Cell(3, 2).Value = "Nume Produs";
                     worksheet.Cell(3, 3).Value = "Q";
                     worksheet.Cell(3, 4).Value = "Stoc";
-                    
+
                     var firstEmptyCol = 5;
                     var lastColCountIndex = firstEmptyCol + ids.Count() - 1;
 
+                    var extraInfo = dispozitii.GroupBy(keyResolver).ToDictionary(t => t.Key);
                     for (var z = 0; z < ids.Count(); z++)
                     {
                         worksheet.Cell(3, firstEmptyCol + z).Value = ids[z];
@@ -53,7 +54,10 @@ namespace WorkSheetServices
                         z_sheet.Cell(1, 1).Value = "Cod Produs";
                         z_sheet.Cell(1, 2).Value = "Nume Produs";
                         z_sheet.Cell(1, 3).Value = "Q";
-                        rowCounter[ids[z]] = 2;
+                        z_sheet.Cell(1, 4).Value = "Numar Comanda";
+                        z_sheet.Range("A:D").Row(2).Merge();
+                        z_sheet.Cell(2, 1).Value = string.Join(";", extraInfo[ids[z]].DistinctBy(t => t.NumarComanda).Select(t => t.NumarComanda));
+                        rowCounter[ids[z]] = 3;
                     }
                     workbook.FullCalculationOnLoad = true;
                     int i = 4;
@@ -82,6 +86,7 @@ namespace WorkSheetServices
                                     z_sheet.Cell(row_count, 1).Value = item.CodProdus;
                                     z_sheet.Cell(row_count, 2).Value = item.NumeProdus;
                                     z_sheet.Cell(row_count, 3).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
+                                    z_sheet.Cell(row_count, 4).Value = item.NumarComanda;
                                     worksheet.Cell(i, firstEmptyCol + z).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
                                     worksheet.Cell(i, firstEmptyCol + z).Style.Font.FontSize = 10;
                                     rowCounter[ids[z]]++;
@@ -99,7 +104,8 @@ namespace WorkSheetServices
                             worksheet.Cell(i, 3).FormulaR1C1 = string.Format("=SUM(R{0}C4:R{1}C{2})", grp_i, i - 1, lastColCountIndex);
                             worksheet.Cell(i, 3).Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
                             i++;
-                        } else
+                        }
+                        else
                         {
                             worksheet.Row(i - 1).Cells("1:3").Style.Fill.SetBackgroundColor(XLColor.LightCyan);
                         }
@@ -111,7 +117,7 @@ namespace WorkSheetServices
                         {
                             var range = worksheet.Range(4, firstEmptyCol + ids.Count() + z + 3, i, firstEmptyCol + z + ids.Count() + 3);
                             range.FormulaR1C1 = string.Format("=IFERROR(@INDEX('{0}'!A2:C{1}, MATCH(RC1, '{0}'!A2:A{1}, 0),3), \"\")", ids[z].ToString(), rowCounter[ids[z]] + 1);
-                            z_sheet.Columns("1:3").AdjustToContents();
+                            z_sheet.Columns("1:4").AdjustToContents();
                             z_sheet.Rows().AdjustToContents();
                         }
                     }
@@ -131,7 +137,7 @@ namespace WorkSheetServices
                     worksheet.PageSetup.Margins.SetBottom(0);
                     worksheet.PageSetup.PagesWide = 1;
                     worksheet.PageSetup.CenterHorizontally = true;
-                 
+
                     worksheet.PageSetup.Header.Center.AddText(XLHFPredefinedText.PageNumber, XLHFOccurrence.AllPages);
                     worksheet.PageSetup.Header.Center.AddText(" / ", XLHFOccurrence.AllPages);
                     worksheet.PageSetup.Header.Center.AddText(XLHFPredefinedText.NumberOfPages, XLHFOccurrence.AllPages);

@@ -1,5 +1,6 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Services.Storage;
 
 namespace AzureServices
@@ -31,26 +32,18 @@ namespace AzureServices
             client.UploadBlob(fName, file);
         }
 
-        public DateTime Check(string fName)
-        {
-            var blob = client.GetBlobClient(fName);
-            BlobContentInfo bCon = null;
-
-            if (!blob.Exists())
-            {
-                bCon = client.UploadBlob(fName, new BinaryData([])).Value;
-                return bCon.LastModified.UtcDateTime;
-            }
-            return blob.GetProperties().Value.LastModified.UtcDateTime;
-        }
-        public void SetMetadata(string fName, Dictionary<string, string> metadata = null)
+        public void SetMetadata(string fName, string leaseId, IDictionary<string, string> metadata = null)
         {
             var blob = client.GetBlobClient(fName);
             BlobContentInfo bCon = null;
 
             if (blob.Exists())
             {
-                blob.SetMetadata(metadata ?? new Dictionary<string, string>() { { "busted", DateTime.UtcNow.ToString() } });
+                blob.SetMetadata(metadata ?? new Dictionary<string, string>() { { "busted", DateTime.UtcNow.ToString() } }
+                , string.IsNullOrEmpty(leaseId) ? null : new BlobRequestConditions()
+                {
+                    LeaseId = leaseId
+                });
             }
             else
             {
@@ -58,10 +51,14 @@ namespace AzureServices
             }
         }
 
+        public BlobLeaseClient GetLease(string fName)
+        {
+            return client.GetBlobClient(fName).GetBlobLeaseClient();
+        }
+
         public IDictionary<string, string> GetMetadata(string fName)
         {
             var blob = client.GetBlobClient(fName);
-
             if (blob.Exists())
             {
                 return blob.GetProperties().Value.Metadata;
