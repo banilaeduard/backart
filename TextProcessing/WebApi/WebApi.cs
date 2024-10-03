@@ -54,7 +54,7 @@ namespace WebApi
                     new KestrelCommunicationListener(serviceContext, endpoint,
                     (url, listener) =>
                     {
-                        ServiceEventSource.Current.ServiceMessage(serviceContext, $"Starting Kestrel on {url}");
+                        //ServiceEventSource.Current.ServiceMessage(serviceContext, $"Starting Kestrel on {url}");
 
                         var builder = WebApplication.CreateBuilder();
                         builder.Services.AddSingleton(serviceContext);
@@ -103,7 +103,7 @@ namespace WebApi
                         app.UseExceptionHandler(cfg => cfg.Run(async context => {
                             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
                             var exception = exceptionHandlerPathFeature.Error;
-                            ServiceEventSource.Current.ServiceMessage(serviceContext, "Non-Event. {0}", exception.Message);
+                            ServiceEventSource.Current.ServiceMessage(serviceContext, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
                         }));
 
                         //app.Services.GetRequiredService<IServiceScopeFactory>()

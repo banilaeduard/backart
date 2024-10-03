@@ -30,7 +30,7 @@
         public string StatusName { get; set; }
         public string DetaliiLinie { get; set; }
         public string DetaliiDoc { get; set; }
-        public DateTime DataDocumentBaza { get; set; }
+        public DateTime? DataDocumentBaza { get; set; }
         public bool Livrata { get; set; }
     }
 }

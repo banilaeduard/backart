@@ -34,7 +34,7 @@ namespace WebApi.Controllers
             return Ok(new
             {
                 count = complaints.Count,
-                complaints = complaints.Skip((page - 1) * pageSize).Take(pageSize)
+                complaints = complaints.OrderByDescending(t => t.CreatedDate).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(t => TicketSeriesModel.from(t, Encoding.UTF8.GetString(storageService.Access(t.Description, out var contentType))))
             });
         }

@@ -94,7 +94,7 @@ namespace AzureTableRepository
                             }
                         }
 
-                        return content.ToList();
+                        return cache[tableName].Cast<T>().ToList();
                     }
                     finally
                     {

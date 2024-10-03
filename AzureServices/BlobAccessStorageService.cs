@@ -32,10 +32,9 @@ namespace AzureServices
             client.UploadBlob(fName, file);
         }
 
-        public void SetMetadata(string fName, string leaseId, IDictionary<string, string> metadata = null)
+        public void SetMetadata(string fName, string? leaseId, IDictionary<string, string> metadata = null)
         {
             var blob = client.GetBlobClient(fName);
-            BlobContentInfo bCon = null;
 
             if (blob.Exists())
             {

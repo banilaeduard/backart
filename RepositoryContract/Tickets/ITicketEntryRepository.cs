@@ -7,7 +7,7 @@ namespace RepositoryContract.Tickets
         Task<IList<TicketEntity>> GetAll(int page, int pageSize);
         Task Save(AttachmentEntry entry);
         Task Save(TicketEntity entry);
-        Task Delete<T>(string partitionKey, string rowKey) where T : ITableEntity;
-        Task<bool> Exists<T>(string partitionKey, string rowKey) where T : ITableEntity;
+        Task Delete<T>(string partitionKey, string rowKey) where T : class, ITableEntity;
+        Task<bool> Exists<T>(string partitionKey, string rowKey) where T : class, ITableEntity;
     }
 }

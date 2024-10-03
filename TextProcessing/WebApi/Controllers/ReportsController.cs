@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
 using RepositoryContract.ProductCodes;
-using Services.Storage;
 using WorkSheetServices;
 
 namespace WebApi.Controllers
@@ -13,20 +12,17 @@ namespace WebApi.Controllers
     public class ReportsController : WebApiController2
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        private IStorageService storageService;
         private ICommitedOrdersRepository commitedOrdersRepository;
         private IOrdersRepository ordersRepository;
         private IProductCodeRepository productCodeRepository;
 
         public ReportsController(
             ILogger<ReportsController> logger,
-            IStorageService storageService,
             ICommitedOrdersRepository commitedOrdersRepository,
             IProductCodeRepository productCodeRepository,
             IOrdersRepository ordersRepository) : base(logger)
         {
             this.productCodeRepository = productCodeRepository;
-            this.storageService = storageService;
             this.commitedOrdersRepository = commitedOrdersRepository;
             this.ordersRepository = ordersRepository;
         }
@@ -45,36 +41,13 @@ namespace WebApi.Controllers
                 }
             }
 
-            //var keys = items.GroupBy(t => t.NumarIntern).Select(t => t.Key).ToDictionary(t => t);
-            var fileName = string.Format("DispozitiiMP_{0}/{1}_{2}.{3}", DateTime.Now.ToString("ddMMyy"),
-                string.Join("_", items.Select(t => t.NumeLocatie).Distinct().Take(3)),
-                DateTime.Now.ToString("HHmm"),
-                "xlsx");
-
-            //foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie }))
-            //{
-            //    var sample = group.ElementAt(0);
-
-            //    if (keys.ContainsKey(sample.NumarIntern))
-            //    {
-            //        var old_entries = await commitedOrdersRepository.GetCommitedOrders(t => sample.NumarIntern == t.PartitionKey);
-            //        keys.Remove(sample.NumarIntern);
-            //        await commitedOrdersRepository.DeleteCommitedOrders(old_entries.ToList());
-            //    }
-
-            //    var az = DispozitieLivrareEntry.create(sample, group.Sum(t => t.Cantitate));
-            //    az.AggregatedFileNmae = fileName;
-            //    await commitedOrdersRepository.InsertCommitedOrder(az);
-            //}
-
             var reportData = WorkbookReportsService.GenerateReport(
                 items,
                 t => string.Format("{0} - {1}", t.NumarIntern.ToString(), t.NumeLocatie),
                 t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
                 t => t.CodProdus);
 
-            storageService.WriteTo(fileName, new BinaryData(reportData));
-            return File(reportData, contentType, fileName);
+            return File(reportData, contentType);
         }
 
         [HttpPost("orderColete")]

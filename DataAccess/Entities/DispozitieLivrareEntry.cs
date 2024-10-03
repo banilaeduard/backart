@@ -20,7 +20,7 @@ namespace DataAccess.Entities
         public string CodEan { get; set; }
         public string NumarComanda { get; set; }
         public string StatusName { get; set; }
-        public DateTime DataDocumentBaza { get; set; }
+        public DateTime? DataDocumentBaza { get; set; }
         public bool Livrata { get; set; }
     }
 }

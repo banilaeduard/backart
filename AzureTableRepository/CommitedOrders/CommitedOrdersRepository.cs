@@ -3,8 +3,6 @@ using AzureServices;
 using EntityDto;
 using Microsoft.Extensions.Logging;
 using RepositoryContract.CommitedOrders;
-using RepositoryContract.DataKeyLocation;
-using System.Transactions;
 
 namespace AzureTableRepository.CommitedOrders
 {
@@ -67,8 +65,9 @@ namespace AzureTableRepository.CommitedOrders
 
                 if (transaction.items.Any())
                 {
+                    var offset = DateTimeOffset.Now;
                     await transaction.ExecuteBatch();
-                    CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, false, null);
+                    CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Any(), offset);
                     CacheManager.RemoveFromCache(typeof(DispozitieLivrareEntry).Name,
                         transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
                     CacheManager.UpsertCache(typeof(DispozitieLivrareEntry).Name,
@@ -86,15 +85,16 @@ namespace AzureTableRepository.CommitedOrders
             foreach (var entry in entries) entry.Livrata = true;
 
             var transactions = tableStorageService.PrepareUpsert(entries);
+
+            var offset = DateTimeOffset.Now;
             await transactions.ExecuteBatch();
 
-            CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, false, null);
+            CacheManager.Bust(typeof(DispozitieLivrareEntry).Name, false, offset);
             CacheManager.UpsertCache(typeof(DispozitieLivrareEntry).Name, transactions.items.Select(t => t.Entity).ToList());
         }
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            blobAccessStorageService.SetMetadata("sync_control/LastSyncDate", null);
             var metadata = blobAccessStorageService.GetMetadata("sync_control/LastSyncDate");
 
             if (metadata.ContainsKey("data_sync"))

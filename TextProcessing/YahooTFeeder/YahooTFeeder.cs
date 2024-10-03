@@ -65,7 +65,7 @@ namespace YahooTFeeder
         {
             // TODO: Replace the following sample code with your own logic 
             //       or remove this RunAsync override if it's not needed in your service.
-            ServiceEventSource.Current.ServiceMessage(this.Context, "Service name is {0}. Listen address is {1}", Context.ServiceName.ToString(), Context.ListenAddress);
+            //ServiceEventSource.Current.ServiceMessage(this.Context, "Service name is {0}. Listen address is {1}", Context.ServiceName.ToString(), Context.ListenAddress);
             await Task.Delay(TimeSpan.FromHours(3));
             while (true)
             {
@@ -103,7 +103,7 @@ namespace YahooTFeeder
         async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
         {
             var ticketEntryRepository = new TicketEntryRepository(null);
-
+            ServiceEventSource.Current.ServiceMessage(this.Context, "Executing task mails. {0}", DateTime.Now);
             using (ImapClient client = new ImapClient())
             {
                 await client.ConnectAsync(
@@ -158,6 +158,7 @@ namespace YahooTFeeder
                         finally
                         {
                             folder.Close(cancellationToken: cancellationToken);
+                            ServiceEventSource.Current.ServiceMessage(this.Context, "Finished Executing task mails. {0}", DateTime.Now);
                         }
                     }
                 }

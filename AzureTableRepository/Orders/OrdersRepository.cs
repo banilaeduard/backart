@@ -62,7 +62,7 @@ namespace AzureTableRepository.Orders
                                         .Concat(tableStorageService.PrepareInsert(exceptAdd))
                                         .Concat(tableStorageService.PrepareDelete(exceptDelete))
                                         .ExecuteBatch();
-
+                CacheManager.Bust(typeof(ComandaVanzareEntry).Name, true, null);
                 CacheManager.InvalidateOurs(typeof(ComandaVanzareEntry).Name);
             }
         }
