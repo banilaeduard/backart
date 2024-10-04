@@ -10,6 +10,7 @@ namespace WebApi.Controllers
     using RepositoryContract.Tickets;
     using global::WebApi.Models;
     using global::Services.Storage;
+    using System.Collections.Generic;
     using System.Text;
 
     [Authorize(Roles = "partener, admin")]
@@ -30,20 +31,38 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetAll(int page, int pageSize)
         {
             var complaints = await ticketEntryRepository.GetAll(page, pageSize);
+            complaints = [..complaints.Where(t => !t.IsDeleted)];
+
+            var result = complaints.GroupBy(T => T.ThreadId);
+            var paged = result.OrderByDescending(t => t.Max(t => t.CreatedDate))
+                               .Skip((page - 1) * pageSize)
+                               .Take(pageSize)
+                               .Select(t => TicketSeriesModel.from([.. t]))
+                               .ToList();
+
+            foreach (var ticket in paged.SelectMany(t => t.Tickets))
+            {
+                ticket.OriginalBody = Encoding.UTF8.GetString(storageService.AccessIfExists(ticket.OriginalBody!, out var _));
+            }
 
             return Ok(new
             {
-                count = complaints.Count,
-                complaints = complaints.OrderByDescending(t => t.CreatedDate).Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(t => TicketSeriesModel.from(t, Encoding.UTF8.GetString(storageService.Access(t.Description, out var contentType))))
+                count = result.Count(),
+                complaints = paged
             });
         }
 
-        [HttpDelete("delete/{partitionKey}/{rowKey}")]
-        public async Task<IActionResult> Delete(string partitionKey, string rowKey)
+        [HttpPost("delete")]
+        public async Task<IActionResult> Delete(TicketModel[] tickets)
         {
-            await ticketEntryRepository.Delete<TicketEntity>(partitionKey, rowKey);
-            return Ok();
+            var items = (await ticketEntryRepository.GetAll(0, 0)).Where(t => tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
+            foreach (var item in items)
+            {
+                item.IsDeleted = true;
+                await ticketEntryRepository.Save(item);
+            }
+            
+            return Ok(await ticketEntryRepository.GetAll(0, 0));
         }
 
         [HttpPost]

@@ -129,8 +129,6 @@ namespace WebApi
             var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
             services.AddSingleton(new MailSettings()
             {
-                Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
-                From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
                 DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
                 Password = Environment.GetEnvironmentVariable("Password")!,
                 User = Environment.GetEnvironmentVariable("User")!

@@ -28,13 +28,18 @@ namespace AzureServices
 
         public void WriteTo(string fName, BinaryData file)
         {
-            client.DeleteBlobIfExists(fName);
+            if (client.GetBlobClient(fName).Exists()) return;
             client.UploadBlob(fName, file);
         }
 
-        public void SetMetadata(string fName, string? leaseId, IDictionary<string, string> metadata = null)
+        public bool Exists(string fName)
         {
-            var blob = client.GetBlobClient(fName);
+            return client.GetBlobClient(fName).Exists();
+        }
+
+        public void SetMetadata(string fName, string? leaseId, IDictionary<string, string> metadata = null, params string[] args)
+        {
+            var blob = client.GetBlobClient(args != null ? string.Format(fName, args) : fName);
 
             if (blob.Exists())
             {
@@ -46,25 +51,46 @@ namespace AzureServices
             }
             else
             {
-                client.UploadBlob(fName, new BinaryData([]));
-                SetMetadata(fName, leaseId, metadata);
+                client.UploadBlob(args != null ? string.Format(fName, args) : fName, new BinaryData([]));
+                SetMetadata(args != null ? string.Format(fName, args) : fName, leaseId, metadata);
             }
         }
 
-        public BlobLeaseClient GetLease(string fName)
+        public BlobLeaseClient GetLease(string fName, params string[] args)
         {
-            return client.GetBlobClient(fName).GetBlobLeaseClient();
+            var blob = client.GetBlobClient(args != null ? string.Format(fName, args) : fName);
+            if (blob.Exists())
+            {
+                return blob.GetBlobLeaseClient();
+            }
+            else
+            {
+                client.UploadBlob(args != null ? string.Format(fName, args) : fName, new BinaryData([]));
+                return client.GetBlobClient(args != null ? string.Format(fName, args) : fName).GetBlobLeaseClient();
+            }
         }
 
-        public IDictionary<string, string> GetMetadata(string fName)
+        public IDictionary<string, string> GetMetadata(string fName, params string[] args)
         {
-            var blob = client.GetBlobClient(fName);
+            var blob = client.GetBlobClient(args != null ? string.Format(fName,args) : fName);
             if (blob.Exists())
             {
                 return blob.GetProperties().Value.Metadata;
             }
 
             return new Dictionary<string, string>();
+        }
+
+        public byte[] AccessIfExists(string fName, out string contentType)
+        {
+            contentType = "";
+            var blob = client.GetBlobClient(fName);
+
+            if (!blob.Exists()) return [];
+
+            var content = blob.DownloadContent();
+            contentType = content.Value.Details.ContentType;
+            return content.Value.Content.ToArray();
         }
     }
 }

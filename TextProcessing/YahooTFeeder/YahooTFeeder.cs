@@ -1,6 +1,8 @@
 using System.Fabric;
+using System.Text;
 using System.Text.RegularExpressions;
 using AzureServices;
+using AzureTableRepository.MailSettings;
 using AzureTableRepository.Tickets;
 using MailExtrasExtractor;
 using MailKit;
@@ -24,6 +26,7 @@ namespace YahooTFeeder
     /// </summary>
     internal sealed class YahooTFeeder : StatelessService, IYahooFeeder
     {
+        private static readonly string syncPrefix = "sync_control/ymailtickets${0}";
         private static Regex regexHtml = new Regex(@"(<br />|<br/>|</ br>|</br>)|<br>");
         private static readonly TokenizerService tokService = new();
         private ServiceProxyFactory serviceProxy;
@@ -49,8 +52,6 @@ namespace YahooTFeeder
         {
             await ReadMails(new MailSettings()
             {
-                Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
-                From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
                 DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
                 Password = Environment.GetEnvironmentVariable("Password")!,
                 User = Environment.GetEnvironmentVariable("User")!
@@ -73,8 +74,6 @@ namespace YahooTFeeder
 
                 await ReadMails(new MailSettings()
                 {
-                    Folders = Environment.GetEnvironmentVariable("y_folders")!.Split(";", StringSplitOptions.TrimEntries),
-                    From = Environment.GetEnvironmentVariable("y_from")!.Split(";", StringSplitOptions.TrimEntries),
                     DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
                     Password = Environment.GetEnvironmentVariable("Password")!,
                     User = Environment.GetEnvironmentVariable("User")!
@@ -102,8 +101,11 @@ namespace YahooTFeeder
 
         async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
         {
+            var blob = new BlobAccessStorageService();
             var ticketEntryRepository = new TicketEntryRepository(null);
-            ServiceEventSource.Current.ServiceMessage(this.Context, "Executing task mails. {0}", DateTime.Now);
+            var mailSettings = new MailSettingsRepository(null);
+
+            ServiceEventSource.Current.ServiceMessage(Context, "Executing task mails. {0}", DateTime.Now);
             using (ImapClient client = new ImapClient())
             {
                 await client.ConnectAsync(
@@ -111,39 +113,58 @@ namespace YahooTFeeder
                     993,
                     true, cancellationToken); //For SSL
                 await client.AuthenticateAsync(settings.User, settings.Password, cancellationToken);
+                var mSettings = await mailSettings.GetMailSetting();
 
-                foreach (var folder in GetFolders(client, settings.Folders, cancellationToken))
+                foreach (var setting in mSettings)
                 {
-                    foreach (var from in settings.From)
+                    var meta = blob.GetMetadata(syncPrefix, setting.PartitionKey + setting.RowKey);
+
+                    DateTimeOffset? fromDate = null;
+                    if (meta.TryGetValue("sync_data", out var date))
+                    {
+                        fromDate = DateTimeOffset.Parse(date);
+                    }
+                    fromDate = fromDate ?? DateTime.Now.AddDays(-settings.DaysBefore);
+                    DateTimeOffset? syncDate = fromDate.Value!;
+
+                    foreach (var folder in GetFolders(client, setting.Folders.Split(";", StringSplitOptions.TrimEntries), cancellationToken))
                     {
                         try
                         {
+                            var from_entries = setting.From.Split(";", StringSplitOptions.TrimEntries);
+                            BinarySearchQuery query = SearchQuery.FromContains(from_entries[0]).Or(SearchQuery.FromContains(from_entries[0]));
+                            for (var i = 1; i < from_entries.Length; i++)
+                            {
+                                query = query.Or(SearchQuery.FromContains(from_entries[i]));
+                            }
+
                             IList<UniqueId> uids;
-                            DateTime fromDate = DateTime.Now.AddDays(-settings.DaysBefore);
 
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
                             uids = folder.Search(
-                                SearchQuery.DeliveredAfter(fromDate).And(
-                                  SearchQuery.FromContains(from)
+                                SearchQuery.DeliveredAfter(fromDate.Value.DateTime).And(
+                                  query
                                 )
                             , cancellationToken);
 
-                            foreach (var uid in uids)
+                            foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.UniqueId
+                                | MessageSummaryItems.InternalDate
+                                | MessageSummaryItems.Envelope
+                                | MessageSummaryItems.EmailId
+                                | MessageSummaryItems.ThreadId
+                                | MessageSummaryItems.References
+                                | MessageSummaryItems.BodyStructure)
+                                )
                             {
                                 try
                                 {
-                                    var message = folder.GetMessage(uid, cancellationToken);
-
-                                    var body = await getBody(message);
-
-                                    var extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
-
-                                    if (await ticketEntryRepository.Exists<TicketEntity>(message.Date.Date.ToString("MMyy"), uid.ToString()))
+                                    if (await ticketEntryRepository.Exists<TicketEntity>(GetPartitionKey(messageSummary), GetRowKey(messageSummary)))
                                         continue;
 
-                                    var ticket = await AddComplaint(message, extras, from, uid, ticketEntryRepository);
-                                    await SaveAttachments(message, ticket, ticketEntryRepository);
+                                    var ticket = await AddComplaint(messageSummary, ticketEntryRepository);
+                                    await SaveAttachments(messageSummary, ticket, ticketEntryRepository);
+                                    syncDate = messageSummary.InternalDate > syncDate ? messageSummary.InternalDate : syncDate;
                                 }
                                 catch (Exception ex)
                                 {
@@ -161,78 +182,127 @@ namespace YahooTFeeder
                             ServiceEventSource.Current.ServiceMessage(this.Context, "Finished Executing task mails. {0}", DateTime.Now);
                         }
                     }
+                    meta["sync_data"] = syncDate.Value.AddDays(-1).ToString();
+                    blob.SetMetadata(syncPrefix, null, meta, setting.PartitionKey + setting.RowKey);
                 }
                 client.Disconnect(true, cancellationToken);
             }
         }
 
-        private async Task<TicketEntity> AddComplaint(MimeMessage message, Extras extras, string from, UniqueId uid, ITicketEntryRepository ticketEntryRepository)
+        private async Task<TicketEntity> AddComplaint(IMessageSummary message, ITicketEntryRepository ticketEntryRepository)
         {
             BlobAccessStorageService storageService = new();
-            var body = !string.IsNullOrWhiteSpace(message.HtmlBody) ? regexHtml.Replace(message.HtmlBody, " ") : message.TextBody;
+            Extras extras = null;
+            string contentId = "";
+
+            string file_name = message.UniqueId.ToString();
+            string extension = message.HtmlBody != null ? "html" : "txt";
+            var fname = $"attachments/{message.Date.Date.ToString("yy")}/{message.UniqueId}/{file_name}.{extension}";
+
+            string body = "";
+            if (storageService.Exists(fname))
+            {
+                body = Encoding.UTF8.GetString(storageService.Access(fname, out var contentType));
+            }
+            else
+            {
+                var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.HtmlBody ?? message.TextBody ?? message.Body);
+                using (var stream = new MemoryStream())
+                {
+                    contentId = bodyPart.ContentId;
+                    if (bodyPart is MessagePart)
+                    {
+                        var rfc822 = (MessagePart)bodyPart;
+                        rfc822.Message.WriteTo(stream);
+                    }
+                    else
+                    {
+                        var part = (MimePart)bodyPart;
+                        part.Content.DecodeTo(stream);
+                    }
+                    storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
+                    stream.Seek(0, SeekOrigin.Begin);
+                    body = Encoding.UTF8.GetString(stream.ToArray());
+                }
+            }
+
+            body = message.HtmlBody != null ? await tokService.HtmlStrip(regexHtml.Replace(body, " ")) : body.Trim() ?? "";
+            extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
 
             var ticket = new TicketEntity()
             {
-                From = extras.Addreses.Length > 0 ? string.Join(";", extras.Addreses) : message.From.FirstOrDefault()!.Name,
+                Sender = message.Envelope.Sender?.FirstOrDefault()?.Name,
+                From = string.Join(";", message.Envelope.From?.Select(t => t.Name) ?? []),
+                Locations = string.Join(";", extras.Addreses ?? []),
                 CreatedDate = message.Date.Date.ToUniversalTime(),
-                NrComanda = extras.NumarComanda ?? "",
+                NrComanda = extras.NumarComanda,
                 TicketSource = "Mail",
-                PartitionKey = message.Date.Date.ToString("MMyy"),
-                RowKey = uid.ToString(),
-                InReplyTo = message.InReplyTo,
-                MessageId = message.MessageId,
-                ResentReplyTo = string.Join(";", message.ResentReplyTo.Select(t => t.Name)),
-                From2 = string.Join(";", message.From.Select(t => t.Name)),
-                ResentFrom = string.Join(";", message.ResentFrom.Select(t => t.Name)),
+                PartitionKey = GetPartitionKey(message),
+                RowKey = GetRowKey(message),
+                InReplyTo = message.Envelope.InReplyTo,
+                MessageId = message.Envelope.MessageId,
+                References = string.Join(";", message.References),
+                Subject = message.NormalizedSubject,
+                Description = message.PreviewText ?? body.Substring(0, body.Length - 1 > 256 ? 256 : body.Length - 1),
+                ThreadId = message.ThreadId,
+                EmailId = message.EmailId,
+                ContentId = contentId,
+                Uid = (int)message.UniqueId.Id
             };
-
-            var extension = string.IsNullOrWhiteSpace(message.HtmlBody) ? "txt" : "html";
-            var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}/body.{extension}";
-            storageService.WriteTo(fname, new BinaryData(System.Text.Encoding.UTF8.GetBytes(body)));
-            ticket.Description = fname;
+            ticket.OriginalBodyPath = fname;
 
             await ticketEntryRepository.Save(ticket);
             return ticket;
         }
 
-        private async Task SaveAttachments(MimeMessage message, TicketEntity ticket, ITicketEntryRepository ticketEntryRepository)
+        private async Task SaveAttachments(IMessageSummary message, TicketEntity ticket, ITicketEntryRepository ticketEntryRepository)
         {
             BlobAccessStorageService storageService = new();
 
             if (message.Attachments?.Count() > 0)
             {
-                foreach (var attachment in message.Attachments)
+                foreach (var attachmentPart in message.Attachments)
                 {
-                    using (var stream = new MemoryStream())
+                    MimeTypes.TryGetExtension(attachmentPart.ContentType?.MimeType, out var extension);
+                    var fName = (attachmentPart.FileName ?? attachmentPart.ContentMd5).Replace("-", "").ToLowerInvariant();
+                    var fname = $"attachments/{message.Date.Date.ToString("yy")}/{message.UniqueId}/{fName}.{extension ?? "txt"}";
+
+                    if (!storageService.Exists(fname))
                     {
-                        if (attachment is MessagePart)
+                        var attachment = message.Folder.GetBodyPart(message.UniqueId, attachmentPart);
+                        using (var stream = new MemoryStream())
                         {
-                            var part = (MessagePart)attachment;
-                            await part.Message.WriteToAsync(stream);
+
+                            if (attachment is MessagePart)
+                            {
+                                var part = (MessagePart)attachment;
+                                await part.Message.WriteToAsync(stream);
+                            }
+                            else
+                            {
+                                var part = (MimePart)attachment;
+                                await part.Content.DecodeToAsync(stream);
+                            }
+                            storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
                         }
-                        else
-                        {
-                            var part = (MimePart)attachment;
-                            await part.Content.DecodeToAsync(stream);
-                        }
-
-                        MimeTypes.TryGetExtension(attachment.ContentType.MimeType, out var extension);
-                        var fname = $"attachments/{DateTime.Now.ToString("MMyy")}/{ticket.RowKey}/{Guid.NewGuid()}.{extension ?? "txt"}";
-
-                        storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
-
-                        await ticketEntryRepository.Save(new AttachmentEntry()
-                        {
-                            PartitionKey = ticket.RowKey,
-                            RowKey = Guid.NewGuid().ToString(),
-                            Data = fname,
-                            ContentType = attachment.ContentType.MimeType,
-                            RefPartition = ticket.PartitionKey,
-                            RefKey = ticket.RowKey,
-                        });
                     }
+
+                    await ticketEntryRepository.Save(new AttachmentEntry()
+                    {
+                        PartitionKey = ticket.RowKey,
+                        RowKey = Guid.NewGuid().ToString(),
+                        Data = fname,
+                        ContentType = attachmentPart.ContentType?.MimeType,
+                        RefPartition = ticket.PartitionKey,
+                        RefKey = ticket.RowKey,
+                        ContentId = attachmentPart.ContentId
+                    });
+
                 }
             }
         }
+
+        private string GetPartitionKey(IMessageSummary id) => (id.UniqueId.Id.GetHashCode() % 100).ToString();
+        private string GetRowKey(IMessageSummary id) => string.IsNullOrEmpty(id.EmailId) ? (id.UniqueId.Id.ToString() + "_" + id.UniqueId.Validity) : id.EmailId;
     }
 }

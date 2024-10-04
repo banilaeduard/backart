@@ -46,7 +46,7 @@ namespace WebApi.Controllers
         [HttpPost("sync"), DisableRequestSizeLimit]
         public async Task<IActionResult> SyncOrders()
         {
-            var sourceOrders = await importsRepository.GetImportOrders();
+            var sourceOrders = await importsRepository.GetImportOrders(await ordersRepository.GetLastSyncDate());
             await ordersRepository.ImportOrders(sourceOrders.Where(t => t.StatusName == "Final").ToList());
             var orders = await ordersRepository.GetOrders();
             return Ok(orders);

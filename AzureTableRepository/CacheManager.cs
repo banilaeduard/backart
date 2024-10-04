@@ -111,46 +111,50 @@ namespace AzureTableRepository
 
         public static void Bust(string tableName, bool invalidate, DateTimeOffset? stamp) // some sort of merge strategy on domain
         {
-            BlobAccessStorageService blobAccessStorageService = new();
-            var lease = blobAccessStorageService.GetLease($"cache_control/{tableName}");
-            lease.Acquire(TimeSpan.FromSeconds(15));
-
-            var metaData = blobAccessStorageService.GetMetadata($"cache_control/{tableName}");
-            try
+            lock (lastModified)
             {
-                if (invalidate)
+                BlobAccessStorageService blobAccessStorageService = new();
+
+                var lease = blobAccessStorageService.GetLease($"cache_control/{tableName}");
+                lease.Acquire(TimeSpan.FromSeconds(15), new RequestConditions());
+
+                var metaData = blobAccessStorageService.GetMetadata($"cache_control/{tableName}");
+                try
                 {
-                    if (metaData.TryGetValue("token", out var tokenSync))
+                    if (invalidate)
                     {
-                        if (tokenSync != null && tokenSync != tokens.GetOrAdd(tableName, (x) => ""))
+                        if (metaData.TryGetValue("token", out var tokenSync))
                         {
-                            // means we got invalidated by some other guy. We update the token with our invalidation
-                            // but we also invalidate our cache
-                            lastModified.AddOrUpdate(tableName, minValueForAzure, (x, y) => minValueForAzure);
+                            if (tokenSync != null && tokenSync != tokens.GetOrAdd(tableName, (x) => ""))
+                            {
+                                // means we got invalidated by some other guy. We update the token with our invalidation
+                                // but we also invalidate our cache
+                                lastModified.AddOrUpdate(tableName, minValueForAzure, (x, y) => minValueForAzure);
+                            }
+                        }
+                        metaData["token"] = Guid.NewGuid().ToString();
+                        tokens.AddOrUpdate(tableName, metaData["token"], (x, y) => metaData["token"]);
+
+                        blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
+                    }
+                    else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
+                    {
+                        if (stamp > dateSync)
+                        {
+                            metaData["timestamp"] = (stamp ?? dateSync).ToString();
+                            blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
                         }
                     }
-                    metaData["token"] = Guid.NewGuid().ToString();
-                    tokens.AddOrUpdate(tableName, metaData["token"], (x, y) => metaData["token"]);
-
-                    blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
-                }
-                else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
-                {
-                    if (stamp > dateSync)
+                    else if (stamp.HasValue)
                     {
-                        metaData["timestamp"] = (stamp ?? dateSync).ToString();
+                        metaData["timestamp"] = stamp.Value.ToString();
                         blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
                     }
                 }
-                else if (stamp.HasValue)
+                finally
                 {
-                    metaData["timestamp"] = stamp.Value.ToString();
-                    blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
+                    lease.Release();
                 }
-            }
-            finally
-            {
-                lease.Release();
             }
         }
 

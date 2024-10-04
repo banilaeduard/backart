@@ -8,5 +8,6 @@ namespace RepositoryContract.Orders
         Task ImportOrders(IList<ComandaVanzare> items);
         Task<List<ComandaVanzareEntry>> GetOrders(Func<ComandaVanzareEntry, bool> expr, string? table = null);
         Task<List<ComandaVanzareEntry>> GetOrders(string? table = null);
+        Task<DateTime?> GetLastSyncDate();
     }
 }

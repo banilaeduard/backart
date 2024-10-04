@@ -8,6 +8,7 @@ namespace AzureTableRepository.CommitedOrders
 {
     public class CommitedOrdersRepository : ICommitedOrdersRepository
     {
+        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(DispozitieLivrareEntry).Name}";
         static BlobAccessStorageService blobAccessStorageService = new();
         TableStorageService tableStorageService;
         public CommitedOrdersRepository(ILogger<TableStorageService> logger)
@@ -74,9 +75,19 @@ namespace AzureTableRepository.CommitedOrders
                         transaction.items.Where(t => t.ActionType != TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
                 }
             }
+            var notDelivered = await GetCommitedOrders();
+            DateTime? latest = null;
 
-            var latest = newEntries.ElementAt(newEntries.Count / 2).Value.ElementAt(0).DataDocument;
-            blobAccessStorageService.SetMetadata("sync_control/LastSyncDate", null, new Dictionary<string, string>() { { "data_sync", latest.ToUniversalTime().ToShortDateString() } });
+            if (notDelivered.Any())
+            {
+                latest = notDelivered.Min(t => t.DataDocument);
+            }
+            else
+            {
+                latest = newEntries.ElementAt(newEntries.Count / 2).Value.ElementAt(0).DataDocument;
+            }
+
+            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", latest.Value.ToUniversalTime().ToShortDateString() } });
         }
 
         public async Task SetDelivered(int internalNumber)
@@ -95,7 +106,7 @@ namespace AzureTableRepository.CommitedOrders
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var metadata = blobAccessStorageService.GetMetadata("sync_control/LastSyncDate");
+            var metadata = blobAccessStorageService.GetMetadata(syncName);
 
             if (metadata.ContainsKey("data_sync"))
             {

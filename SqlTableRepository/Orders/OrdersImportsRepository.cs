@@ -38,7 +38,7 @@ namespace SqlTableRepository.Orders
             var blob = storageService.Access("QImport/orders.txt", out var contentType);
             var sql = Encoding.UTF8.GetString(blob);
 
-            var items = importsDbContext.ComandaVanzare.FromSqlRaw(sql).Where(t => t.DataDoc > ro).ToList();
+            var items = importsDbContext.ComandaVanzare.FromSqlRaw(sql).Where(t => t.DataDoc >= ro).ToList();
             return items.Select(mapper.Map<ComandaVanzare>).ToList();
         }
 

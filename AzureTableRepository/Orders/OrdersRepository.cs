@@ -7,6 +7,8 @@ namespace AzureTableRepository.Orders
 {
     public class OrdersRepository : IOrdersRepository
     {
+        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(ComandaVanzareEntry).Name}";
+        static BlobAccessStorageService blobAccessStorageService = new();
         TableStorageService tableStorageService;
         public OrdersRepository(ILogger<TableStorageService> logger)
         {
@@ -26,6 +28,7 @@ namespace AzureTableRepository.Orders
 
         public async Task ImportOrders(IList<ComandaVanzare> items)
         {
+            if (items.Count == 0) return;
             var newEntries = items.Select(ComandaVanzareEntry.create).GroupBy(ComandaVanzareEntry.PKey).ToDictionary(t => t.Key, MergeByHash);
 
             foreach (var item in newEntries)
@@ -65,6 +68,7 @@ namespace AzureTableRepository.Orders
                 CacheManager.Bust(typeof(ComandaVanzareEntry).Name, true, null);
                 CacheManager.InvalidateOurs(typeof(ComandaVanzareEntry).Name);
             }
+            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", items.Min(t => t.DataDoc)!.Value.ToUniversalTime().ToShortDateString() } });
         }
 
         private IEnumerable<ComandaVanzareEntry> MergeByHash(IEnumerable<ComandaVanzareEntry> list)
@@ -77,6 +81,17 @@ namespace AzureTableRepository.Orders
                 if (items.Distinct(comparer).Count() > 1) throw new Exception("We fucked boyzs");
                 yield return sample;
             }
+        }
+
+        public async Task<DateTime?> GetLastSyncDate()
+        {
+            var metadata = blobAccessStorageService.GetMetadata(syncName);
+
+            if (metadata.ContainsKey("data_sync"))
+            {
+                return DateTime.Parse(metadata["data_sync"]);
+            }
+            return null;
         }
     }
 }

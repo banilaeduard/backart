@@ -10,7 +10,7 @@
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public List<TicketModel> Tickets { get; set; }
-        public string NrComanda { get; set; }
+        public string? NrComanda { get; set; }
 
         public DateTime? Created { get; set; }
 
@@ -20,23 +20,32 @@
 
         [JsonConstructor]
         private TicketSeriesModel() { }
-        private TicketSeriesModel(TicketEntity complaint, string content)
+        private TicketSeriesModel(TicketEntity[] complaints)
         {
+            var complaint = complaints.MaxBy(t => t.CreatedDate);
+
             PartitionKey = complaint.PartitionKey;
             RowKey = complaint.RowKey;
-            Tickets = [new TicketModel()
+            Tickets = [..complaints.OrderByDescending(t => t.References?.Length).Select(t => new TicketModel()
             {
-                Description = content,
-                CodeValue = complaint.RowKey
-            }];
+                Description = t.Description,
+                CodeValue = t.Subject ?? "",
+                Location = t.Locations ?? "",
+                RowKey = t.RowKey,
+                PartitionKey = t.PartitionKey,
+                From = t.From ?? "",
+                Subject = t.Subject ?? "",
+                Created = t.CreatedDate,
+                OriginalBody = t.OriginalBodyPath
+            })];
             Created = complaint.CreatedDate;
-            NrComanda = complaint.NrComanda;
+            NrComanda = complaint.NrComanda ?? "";
             Status = complaint.From;
         }
 
-        public static TicketSeriesModel from(TicketEntity dbModel, string content)
+        public static TicketSeriesModel from(TicketEntity[] dbModel)
         {
-            return new TicketSeriesModel(dbModel, content);
+            return new TicketSeriesModel(dbModel);
         }
     }
 }
