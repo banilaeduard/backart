@@ -24,11 +24,9 @@ namespace DataAccess
             return;
         }
 
-        public static IServiceCollection configureDataAccess(this IServiceCollection services, string defaultConnection, string externalConnection)
+        public static IServiceCollection configureDataAccess(this IServiceCollection services, string defaultConnection)
         {
             services.AddDbContext<AppIdentityDbContext>(options => configureConnectionString(defaultConnection, options));
-            services.AddDbContext<ImportsDbContext>(options => options.UseSqlServer(externalConnection, s => { }));
-
             return services;
         }
     }

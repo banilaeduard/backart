@@ -1,8 +1,8 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
-
-namespace DataAccess.Entities
+﻿namespace RepositoryContract.Imports
 {
+    using System;
+    using System.ComponentModel.DataAnnotations;
+
     public class DispozitieLivrareEntry
     {
         [Key]

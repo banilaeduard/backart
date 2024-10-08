@@ -10,8 +10,6 @@ namespace WebApi.Controllers
     using RepositoryContract.Tickets;
     using global::WebApi.Models;
     using global::Services.Storage;
-    using System.Collections.Generic;
-    using System.Text;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -30,7 +28,7 @@ namespace WebApi.Controllers
         [HttpGet("{page}/{pageSize}")]
         public async Task<IActionResult> GetAll(int page, int pageSize)
         {
-            var complaints = await ticketEntryRepository.GetAll(page, pageSize);
+            var complaints = await ticketEntryRepository.GetAll();
             complaints = [..complaints.Where(t => !t.IsDeleted)];
 
             var result = complaints.GroupBy(T => T.ThreadId);
@@ -39,11 +37,6 @@ namespace WebApi.Controllers
                                .Take(pageSize)
                                .Select(t => TicketSeriesModel.from([.. t]))
                                .ToList();
-
-            foreach (var ticket in paged.SelectMany(t => t.Tickets))
-            {
-                ticket.OriginalBody = Encoding.UTF8.GetString(storageService.AccessIfExists(ticket.OriginalBody!, out var _));
-            }
 
             return Ok(new
             {
@@ -55,14 +48,13 @@ namespace WebApi.Controllers
         [HttpPost("delete")]
         public async Task<IActionResult> Delete(TicketModel[] tickets)
         {
-            var items = (await ticketEntryRepository.GetAll(0, 0)).Where(t => tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
+            var items = (await ticketEntryRepository.GetAll()).Where(t => tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
             foreach (var item in items)
             {
                 item.IsDeleted = true;
-                await ticketEntryRepository.Save(item);
             }
-            
-            return Ok(await ticketEntryRepository.GetAll(0, 0));
+            await ticketEntryRepository.Save([.. items]);
+            return Ok(await ticketEntryRepository.GetAll());
         }
 
         [HttpPost]

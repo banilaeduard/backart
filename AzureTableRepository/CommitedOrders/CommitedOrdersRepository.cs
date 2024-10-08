@@ -27,14 +27,12 @@ namespace AzureTableRepository.CommitedOrders
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Func<DispozitieLivrareEntry, bool> expr)
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from && !t.Livrata).ToList())
-                .Where(t => expr(t) && !t.Livrata && t.StatusName == "Final").ToList();
+            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()).ToList();
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from && !t.Livrata).ToList())
-                .Where(t => !t.Livrata && t.StatusName == "Final").ToList();
+            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()).ToList();
         }
 
         public async Task InsertCommitedOrder(DispozitieLivrareEntry sample)

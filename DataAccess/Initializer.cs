@@ -24,8 +24,6 @@ namespace DataAccess
                 {
                     var appIdentityDbContex = provider.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
 
-                    var importsDbContext = provider.ServiceProvider.GetRequiredService<ImportsDbContext>();
-
                     // we ensure roles are created
                     var roleManager = provider.ServiceProvider.GetRequiredService<RoleManager<AppIdentityRole>>();
                     AppIdentityRole role = null;

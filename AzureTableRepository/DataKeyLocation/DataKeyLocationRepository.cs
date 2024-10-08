@@ -13,11 +13,11 @@ namespace AzureTableRepository.DataKeyLocation
             tableStorageService = new TableStorageService(logger);
         }
 
-        public async Task DeleteLocation(DataKeyLocationEntry entry)
+        public async Task DeleteLocation(DataKeyLocationEntry[] entries)
         {
-            await tableStorageService.Delete(entry);
+            await tableStorageService.PrepareDelete(entries).ExecuteBatch();
             CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, null);
-            CacheManager.RemoveFromCache(typeof(DataKeyLocationEntry).Name, [entry]);
+            CacheManager.RemoveFromCache(typeof(DataKeyLocationEntry).Name, entries);
         }
 
         public async Task<IList<DataKeyLocationEntry>> GetLocations()
@@ -27,22 +27,26 @@ namespace AzureTableRepository.DataKeyLocation
                     ).ToList();
         }
 
-        public async Task UpdateLocation(DataKeyLocationEntry entry)
+        public async Task UpdateLocation(DataKeyLocationEntry[] entries)
         {
             DateTimeOffset from = DateTimeOffset.Now;
-            await tableStorageService.Update(entry);
+            await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
             CacheManager.Bust(typeof(DataKeyLocationEntry).Name, false, from);
-            CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, [entry]);
+            CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
         }
 
-        public async Task InsertLocation(DataKeyLocationEntry entry)
+        public async Task<DataKeyLocationEntry[]> InsertLocation(DataKeyLocationEntry[] entries)
         {
             DateTimeOffset from = DateTimeOffset.Now;
-            entry.PartitionKey = "All";
-            entry.RowKey = Guid.NewGuid().ToString();
-            await tableStorageService.Insert(entry);
+            foreach (var entry in entries)
+            {
+                entry.PartitionKey = "All";
+                entry.RowKey = Guid.NewGuid().ToString();
+            }
+            await tableStorageService.PrepareInsert(entries).ExecuteBatch();
             CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, from);
-            CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, [entry]);
+            CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
+            return entries;
         }
     }
 }

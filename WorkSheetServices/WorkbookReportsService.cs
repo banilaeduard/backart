@@ -45,7 +45,9 @@ namespace WorkSheetServices
                         worksheet.Cell(3, firstEmptyCol + z).Value = ids[z];
                         worksheet.Cell(3, firstEmptyCol + ids.Count() + z + 3).Value = ids[z];
                         worksheet.Cell(3, firstEmptyCol + z).Style.Font.FontSize = 10;
-                        var z_sheet = workbook.AddWorksheet(ids[z].ToString());
+
+                        var name = ids[z].ToString();
+                        var z_sheet = workbook.AddWorksheet(name.Length > 30 ? name.Substring(0, 30) : name);
                         if (z % 2 == 0)
                             worksheet.Cell(3, 5 + z).Style.Fill.SetBackgroundColor(XLColor.LightGray);
 

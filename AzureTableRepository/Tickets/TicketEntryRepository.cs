@@ -21,9 +21,9 @@ namespace AzureTableRepository.Tickets
             CacheManager.RemoveFromCache(typeof(T).Name, [TableEntity.From(partitionKey, rowKey)]);
         }
 
-        public async Task<IList<TicketEntity>> GetAll(int page, int pageSize)
+        public async Task<IList<TicketEntity>> GetAll()
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList()).ToList();
+            return CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList()).Where(t => !t.IsDeleted).ToList();
         }
 
         public async Task Save(AttachmentEntry entry)
@@ -34,12 +34,12 @@ namespace AzureTableRepository.Tickets
             CacheManager.UpsertCache(typeof(AttachmentEntry).Name, [entry]);
         }
 
-        public async Task Save(TicketEntity entry)
+        public async Task Save(TicketEntity[] entries)
         {
             var from = DateTimeOffset.Now;
-            await tableStorageService.Upsert(entry);
+            await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
             CacheManager.Bust(typeof(TicketEntity).Name, false, from);
-            CacheManager.UpsertCache(typeof(TicketEntity).Name, [entry]);
+            CacheManager.UpsertCache(typeof(TicketEntity).Name, entries);
         }
 
         public async Task<bool> Exists<T>(string partitionKey, string rowKey) where T : class, ITableEntity

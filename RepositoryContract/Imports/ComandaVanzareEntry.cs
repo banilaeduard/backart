@@ -1,7 +1,6 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace DataAccess.Entities
+namespace RepositoryContract.Imports
 {
     public class ComandaVanzareEntry
     {

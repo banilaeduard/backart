@@ -5,7 +5,7 @@ namespace RepositoryContract.Tickets
 {
     public class TicketEntity : ITableEntity
     {
-        public int Uid { get; set; }
+        public string Uid { get; set; }
         public string? From { get; set; }
         public string? NrComanda { get; set; }
         public string TicketSource { get; set; }
@@ -26,5 +26,8 @@ namespace RepositoryContract.Tickets
         public string ThreadId { get; set; }
         public bool IsDeleted { get; set; }
         public string ContentId { get; set; }
+        public string LocationCode { get; set; }
+        public string LocationPartitionKey { get; set; }
+        public string LocationRowKey { get; set; }
     }
 }
