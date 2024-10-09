@@ -1,6 +1,7 @@
 using System.Fabric;
 using System.Text;
 using AzureServices;
+using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.MailSettings;
 using AzureTableRepository.Tickets;
 using MailExtrasExtractor;
@@ -13,6 +14,7 @@ using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
+using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tickets;
 using Tokenizer;
 using YahooFeeder;
@@ -130,7 +132,13 @@ namespace YahooTFeeder
                                 query = query.Or(SearchQuery.FromContains(from_entries[i]));
                             }
 
-                            IList<UniqueId> uids;
+                            BinarySearchQuery query2 = SearchQuery.ToContains(from_entries[0]).Or(SearchQuery.ToContains(from_entries[0]));
+                            for (var i = 1; i < from_entries.Length; i++)
+                            {
+                                query2 = query2.Or(SearchQuery.ToContains(from_entries[i]));
+                            }
+
+                            List<UniqueId> uids;
 
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
@@ -138,7 +146,15 @@ namespace YahooTFeeder
                                 SearchQuery.DeliveredAfter(fromDate.Value.DateTime).And(
                                   query
                                 )
+                            , cancellationToken).ToList();
+
+                            var uids2 = folder.Search(
+                                SearchQuery.DeliveredAfter(fromDate.Value.DateTime).And(
+                                  SearchQuery.FromContains(settings.User).And(query2)
+                                )
                             , cancellationToken);
+
+                            uids.AddRange(uids2);
 
                             List<IMessageSummary> toProcess = new();
                             if (uids?.Any() == true)
@@ -159,7 +175,7 @@ namespace YahooTFeeder
                         }
                         catch (Exception ex)
                         {
-                            ServiceEventSource.Current.ServiceMessage(Context, ex.Message);
+                            LogError(ex);
                         }
                         finally
                         {
@@ -167,7 +183,7 @@ namespace YahooTFeeder
                             ServiceEventSource.Current.ServiceMessage(Context, "Finished Executing task mails. {0}", DateTime.Now);
                         }
                     }
-                    meta["sync_data"] = syncDate.Value.AddDays(-1).ToString();
+                    meta["sync_data"] = syncDate.Value.ToString();
                     blob.SetMetadata(syncPrefix, null, meta, setting.PartitionKey + setting.RowKey);
                 }
                 client.Disconnect(true, cancellationToken);
@@ -177,6 +193,7 @@ namespace YahooTFeeder
         private async Task AddComplaint(IList<IMessageSummary> messages, ITicketEntryRepository ticketEntryRepository, IMailFolder folder)
         {
             BlobAccessStorageService storageService = new();
+            DataKeyLocationRepository locationRepository = new(null);
             messages = await folder.FetchAsync([.. messages.Select(t => t.UniqueId)],
                          MessageSummaryItems.UniqueId
                                         | MessageSummaryItems.InternalDate
@@ -193,51 +210,91 @@ namespace YahooTFeeder
                 Extras extras = null;
                 string contentId = "";
 
-                string file_name = message.UniqueId.ToString();
+                string file_name = message.UniqueId.Id + "_" + message.UniqueId.Validity;
                 string extension = message.HtmlBody != null ? "html" : "txt";
-                var fname = $"attachments/{message.Date.Date.ToString("yy")}/{message.UniqueId}/{file_name}.{extension}";
+                var fname = $"attachments/{message.Date.Date.ToString("yy")}/{file_name}/{file_name}.{extension}";
 
                 string body = "";
-                if (storageService.Exists(fname))
+                try
                 {
-                    body = Encoding.UTF8.GetString(storageService.Access(fname, out var contentType));
-                    extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
-                    body = body.Length > 512 ? body.Substring(0, 512) : body;
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(message.PreviewText))
+                    if (storageService.Exists(fname))
                     {
-                        using (var stream = new MemoryStream())
-                        {
-                            storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(message.PreviewText)));
-                            body = message.PreviewText;
-                            extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
-                        }
+                        body = Encoding.UTF8.GetString(storageService.Access(fname, out var contentType));
+                        extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
+                        body = body.Length > 512 ? body.Substring(0, 512) : body;
                     }
                     else
                     {
-                        var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.TextBody ?? message.HtmlBody ?? message.Body);
-                        using (var stream = new MemoryStream())
+                        if (!string.IsNullOrEmpty(message.PreviewText))
                         {
-                            contentId = bodyPart.ContentId;
-                            if (bodyPart is MessagePart)
+                            using (var stream = new MemoryStream())
                             {
-                                var rfc822 = (MessagePart)bodyPart;
-                                rfc822.Message.WriteTo(stream);
+                                storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(message.PreviewText)));
+                                body = message.PreviewText;
+                                extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
                             }
-                            else
-                            {
-                                var part = (MimePart)bodyPart;
-                                part.Content.DecodeTo(stream);
-                            }
-                            storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
-                            stream.Seek(0, SeekOrigin.Begin);
-                            body = Encoding.UTF8.GetString(stream.ToArray());
                         }
-                        body = body.Trim().Replace("__", "") ?? "";
-                        extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
-                        body = body.Length > 512 ? body.Substring(0, 512) : body;
+                        else
+                        {
+                            var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.TextBody ?? message.HtmlBody ?? message.Body);
+                            using (var stream = new MemoryStream())
+                            {
+                                if (bodyPart is MultipartAlternative)
+                                {
+                                    bodyPart = ((MultipartAlternative)bodyPart).Last();
+                                }
+                                else if (bodyPart is Multipart)
+                                {
+                                    bodyPart = ((Multipart)bodyPart).Where(t => !t.IsAttachment).FirstOrDefault();
+                                }
+                                if (bodyPart == null) break;
+
+                                contentId = bodyPart.ContentId;
+                                if (bodyPart is MessagePart)
+                                {
+                                    var rfc822 = (MessagePart)bodyPart;
+                                    rfc822.Message.WriteTo(stream);
+                                }
+                                else
+                                {
+                                    var part = (MimePart)bodyPart;
+                                    part.Content?.DecodeTo(stream);
+                                }
+                                storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
+                                stream.Seek(0, SeekOrigin.Begin);
+                                body = Encoding.UTF8.GetString(stream.ToArray());
+                            }
+                            body = body.Trim().Replace("__", "") ?? "";
+                            extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
+                            body = body.Length > 512 ? body.Substring(0, 512) : body;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex);
+                    body = "Error";
+                }
+
+                var froms = message.Envelope.From?.Select(t => t.ToString()).ToArray();
+                DataKeyLocationEntry? location = null;
+                DataKeyLocationEntry? locationMain = null;
+                if (froms?.Any() == true)
+                {
+                    var locations = await locationRepository.GetLocations();
+                    location = locations.FirstOrDefault(loc => froms.Any(frm => loc.LocationName == frm));
+                    if (location == null)
+                    {
+                        location = (await locationRepository.InsertLocation([new DataKeyLocationEntry()
+                        {
+                            LocationName = froms[0],
+                            LocationCode = froms[0],
+                            TownName = string.Join(";", extras.Addreses ?? froms ?? []),
+                        }]))[0];
+                    }
+                    else if ((locationMain = locations.FirstOrDefault(loc => loc.LocationCode == location.LocationCode && loc.MainLocation)) != null)
+                    {
+                        location = locationMain;
                     }
                 }
 
@@ -245,9 +302,9 @@ namespace YahooTFeeder
                 {
                     Sender = message.Envelope.Sender?.FirstOrDefault()?.ToString(),
                     From = string.Join(";", message.Envelope.From?.Select(t => t.ToString()) ?? []),
-                    Locations = string.Join(";", extras.Addreses ?? []),
+                    Locations = string.Join(";", extras?.Addreses ?? []),
                     CreatedDate = message.Date.Date.ToUniversalTime(),
-                    NrComanda = extras.NumarComanda,
+                    NrComanda = extras?.NumarComanda,
                     TicketSource = "Mail",
                     PartitionKey = GetPartitionKey(message),
                     RowKey = GetRowKey(message),
@@ -256,10 +313,14 @@ namespace YahooTFeeder
                     References = string.Join(";", message.References),
                     Subject = message.NormalizedSubject,
                     Description = body,
-                    ThreadId = message.ThreadId,
+                    ThreadId = message.ThreadId + "_" + message.UniqueId.Validity,
                     EmailId = message.EmailId,
                     ContentId = contentId,
-                    Uid = (int)message.UniqueId.Id
+                    Uid = message.UniqueId.Id + "_" + message.UniqueId.Validity,
+                    OriginalBodyPath = fname,
+                    LocationCode = location?.LocationCode,
+                    LocationRowKey = location?.RowKey,
+                    LocationPartitionKey = location?.PartitionKey
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
@@ -314,5 +375,9 @@ namespace YahooTFeeder
 
         private string GetPartitionKey(IMessageSummary id) => id.InternalDate.Value.ToString("yyMM");
         private string GetRowKey(IMessageSummary id) => string.IsNullOrEmpty(id.EmailId) ? (id.UniqueId.Id.ToString() + "_" + id.UniqueId.Validity) : id.EmailId;
+        private void LogError(Exception ex)
+        {
+            ServiceEventSource.Current.ServiceMessage(Context, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
+        }
     }
 }

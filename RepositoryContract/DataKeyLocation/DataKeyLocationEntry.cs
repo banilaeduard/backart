@@ -3,14 +3,10 @@ using Azure.Data.Tables;
 
 namespace RepositoryContract.DataKeyLocation
 {
-    public class DataKeyLocationEntry: ITableEntity
+    public class DataKeyLocationEntry: DataKeyLocationBase, ITableEntity
     {
-        public string LocationName { get; set; }
-        public string LocationCode { get; set; }
-        public string TownName { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
-        public bool MainLocation { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
 

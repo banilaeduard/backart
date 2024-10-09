@@ -27,7 +27,7 @@ namespace AzureTableRepository.CommitedOrders
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Func<DispozitieLivrareEntry, bool> expr)
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()).ToList();
+            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()).Where(expr).ToList();
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
@@ -73,12 +73,12 @@ namespace AzureTableRepository.CommitedOrders
                         transaction.items.Where(t => t.ActionType != TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
                 }
             }
-            var notDelivered = await GetCommitedOrders();
+            var its = (await GetCommitedOrders()).Where(t => t.DataDocument >= DateTime.Now.AddDays(-14) && !t.Livrata);
             DateTime? latest = null;
 
-            if (notDelivered.Any())
+            if (its.Any())
             {
-                latest = notDelivered.Min(t => t.DataDocument);
+                latest = its.Min(t => t.DataDocument);
             }
             else
             {

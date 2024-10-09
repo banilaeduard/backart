@@ -23,23 +23,23 @@ namespace WebApi.Controllers
         }
 
         [HttpPatch]
-        public async Task<IActionResult> UpdateLocation([FromBody] DataKeyLocationEntry location)
+        public async Task<IActionResult> UpdateLocation([FromBody] DataKeyLocationEntry[] locations)
         {
-            await dataKeyLocationRepository.UpdateLocation(location);
-            return Ok(location);
+            await dataKeyLocationRepository.UpdateLocation(locations);
+            return Ok();
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddLocation([FromBody] DataKeyLocationEntry location)
+        public async Task<IActionResult> AddLocation([FromBody] DataKeyLocationEntry[] locations)
         {
-            await dataKeyLocationRepository.InsertLocation(location);
-            return Ok(location);
+            await dataKeyLocationRepository.InsertLocation(locations);
+            return Ok();
         }
 
         [HttpDelete("{partitionKey}/{rowKey}")]
         public async Task<IActionResult> DeleteLocation(string partitionKey, string rowKey)
         {
-            await dataKeyLocationRepository.DeleteLocation(new() { PartitionKey = partitionKey, RowKey = rowKey });
+            await dataKeyLocationRepository.DeleteLocation([new() { PartitionKey = partitionKey, RowKey = rowKey }]);
             return Ok();
         }
     }

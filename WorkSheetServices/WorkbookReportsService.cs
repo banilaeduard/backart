@@ -82,7 +82,8 @@ namespace WorkSheetServices
                             for (var z = 0; z < ids.Count(); z++)
                             {
                                 var item = x.Where(t => keyResolver(t) == ids[z]).FirstOrDefault();
-                                if (workbook.TryGetWorksheet(ids[z].ToString(), out var z_sheet) && item != null)
+                                var sheetName = ids[z].Length > 30 ? ids[z].Substring(0, 30) : ids[z];
+                                if (workbook.TryGetWorksheet(sheetName, out var z_sheet) && item != null)
                                 {
                                     var row_count = rowCounter[ids[z]];
                                     z_sheet.Cell(row_count, 1).Value = item.CodProdus;

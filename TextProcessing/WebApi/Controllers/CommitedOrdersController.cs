@@ -2,8 +2,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
+using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
+using RepositoryContract.Tickets;
 using Services.Storage;
 using WebApi.Models;
 using WorkSheetServices;
@@ -19,35 +21,35 @@ namespace WebApi.Controllers
         private ICommitedOrdersRepository commitedOrdersRepository;
         private IOrdersRepository ordersRepository;
         private IImportsRepository importsRepository;
+        private ITicketEntryRepository ticketEntryRepository;
+        private IDataKeyLocationRepository keyLocationRepository;
 
         public CommitedOrdersController(
             ILogger<CommitedOrdersController> logger,
             IStorageService storageService,
             ICommitedOrdersRepository commitedOrdersRepository,
             IImportsRepository importsRepository,
+            ITicketEntryRepository ticketEntryRepository,
+            IDataKeyLocationRepository keyLocationRepository,
             IOrdersRepository ordersRepository) : base(logger)
         {
             this.storageService = storageService;
             this.commitedOrdersRepository = commitedOrdersRepository;
             this.ordersRepository = ordersRepository;
             this.importsRepository = importsRepository;
+            this.ticketEntryRepository = ticketEntryRepository;
+            this.keyLocationRepository = keyLocationRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCommitedOrders()
         {
-            var orders = await commitedOrdersRepository.GetCommitedOrders();
-            return Ok(CommitedOrdersResponse.From(orders));
-        }
+            var orders = await commitedOrdersRepository.GetCommitedOrders(t => t.DataDocument >= DateTime.Now.AddDays(-14) || !t.Livrata);
 
-        [HttpPost("sync"), DisableRequestSizeLimit]
-        public async Task<IActionResult> SyncCommitedOrders()
-        {
-            var sourceOrders = await importsRepository.GetImportCommitedOrders(await commitedOrdersRepository.GetLastSyncDate());
-            await commitedOrdersRepository.ImportCommitedOrders(sourceOrders);
-            var orders = await commitedOrdersRepository.GetCommitedOrders();
+            var tickets = await ticketEntryRepository.GetAll();
+            var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
 
-            return Ok(CommitedOrdersResponse.From(orders));
+            return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations));
         }
 
         [HttpPost("delivered/{internalNumber}")]

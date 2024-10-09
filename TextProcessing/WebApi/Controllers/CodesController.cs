@@ -7,19 +7,15 @@ namespace WebApi.Controllers
     using global::WebApi.Models;
     using RepositoryContract.ProductCodes;
     using AzureSerRepositoryContract.ProductCodesvices;
-    using DataAccess.Context;
 
     public class CodesController : WebApiController2
     {
         private IProductCodeRepository productCodeRepository;
-        private ImportsDbContext imports;
         public CodesController(
             IProductCodeRepository productCodeRepository,
-            ImportsDbContext imports,
             ILogger<CodesController> logger) : base(logger)
         {
             this.productCodeRepository = productCodeRepository;
-            this.imports = imports;
         }
 
         [HttpGet]

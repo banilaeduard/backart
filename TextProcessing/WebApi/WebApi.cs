@@ -124,7 +124,7 @@ namespace WebApi
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"), Environment.GetEnvironmentVariable("external_sql_server"));
+            services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"));
 
             var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
             services.AddSingleton(new MailSettings()

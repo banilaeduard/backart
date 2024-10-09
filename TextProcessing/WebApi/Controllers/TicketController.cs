@@ -10,33 +10,33 @@ namespace WebApi.Controllers
     using RepositoryContract.Tickets;
     using global::WebApi.Models;
     using global::Services.Storage;
+    using RepositoryContract.DataKeyLocation;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
     {
         private ITicketEntryRepository ticketEntryRepository;
+        private IDataKeyLocationRepository dataKeyLocationRepository;
         private IStorageService storageService;
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
+            IDataKeyLocationRepository dataKeyLocationRepository,
             IStorageService storageService,
             ILogger<TicketController> logger) : base(logger)
         {
             this.ticketEntryRepository = ticketEntryRepository;
             this.storageService = storageService;
+            this.dataKeyLocationRepository = dataKeyLocationRepository;
         }
 
-        [HttpGet("{page}/{pageSize}")]
-        public async Task<IActionResult> GetAll(int page, int pageSize)
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
         {
             var complaints = await ticketEntryRepository.GetAll();
-            complaints = [..complaints.Where(t => !t.IsDeleted)];
 
             var result = complaints.GroupBy(T => T.ThreadId);
-            var paged = result.OrderByDescending(t => t.Max(t => t.CreatedDate))
-                               .Skip((page - 1) * pageSize)
-                               .Take(pageSize)
-                               .Select(t => TicketSeriesModel.from([.. t]))
-                               .ToList();
+            var paged = result.Select(t => TicketSeriesModel.from([.. t]))
+                              .ToList();
 
             return Ok(new
             {
@@ -54,13 +54,42 @@ namespace WebApi.Controllers
                 item.IsDeleted = true;
             }
             await ticketEntryRepository.Save([.. items]);
-            return Ok(await ticketEntryRepository.GetAll());
+            return Ok();
         }
 
         [HttpPost]
-        public async Task<IActionResult> SaveComplaint(TicketSeriesModel complaint)
+        public async Task<IActionResult> Save(TicketSeriesModel complaint)
         {
-            //await ticketEntryRepository.Save(complaint);
+            await ticketEntryRepository.Save([..complaint.Tickets.Select(t => new TicketEntity()
+            {
+                CreatedDate = DateTime.Now.ToUniversalTime(),
+                Description = t.Description,
+                From = t.From,
+                NrComanda = complaint.NrComanda,
+                TicketSource = "Manual",
+                PartitionKey = t.PartitionKey,
+                RowKey = t.RowKey,
+                IsDeleted = false,
+                ThreadId = t.RowKey
+            })]);
+            return Ok();
+        }
+
+        [HttpPost("saveLocation/{partitionKey}/{rowKey}")]
+        public async Task<IActionResult> SaveComplaintLocation(TicketSeriesModel complaint, string partitionKey, string rowKey)
+        {
+            var locations = await dataKeyLocationRepository.GetLocations();
+            var location = locations.First(t => t.PartitionKey == partitionKey && t.RowKey == rowKey);
+
+            var items = (await ticketEntryRepository.GetAll()).Where(t => complaint.Tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
+            foreach (var item in items)
+            {
+                item.LocationCode = location.LocationCode;
+                item.LocationPartitionKey = location.PartitionKey;
+                item.LocationRowKey = location.RowKey;
+            }
+
+            await ticketEntryRepository.Save([.. items]);
             return Ok();
         }
     }

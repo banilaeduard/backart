@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+using RepositoryContract.CommitedOrders;
+using RepositoryContract.Imports;
+using RepositoryContract.Orders;
 using System.Fabric;
 using YahooFeeder;
 
@@ -10,6 +13,10 @@ namespace WebApi.Controllers
     {
         private MailSettings mailSettings;
         private StatelessServiceContext context;
+        private IOrdersRepository ordersRepository;
+        private ICommitedOrdersRepository commitedOrdersRepository;
+        private IImportsRepository importsRepository;
+
         private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
         {
             return new FabricTransportServiceRemotingClientFactory();
@@ -18,10 +25,16 @@ namespace WebApi.Controllers
         public JobsController(
             ILogger<JobsController> logger,
             StatelessServiceContext context,
+            IOrdersRepository ordersRepository,
+            ICommitedOrdersRepository commitedOrdersRepository,
+            IImportsRepository importsRepository,
             MailSettings settings) : base(logger)
         {
             this.mailSettings = settings;
             this.context = context;
+            this.commitedOrdersRepository = commitedOrdersRepository;
+            this.ordersRepository = ordersRepository;
+            this.importsRepository = importsRepository;
         }
 
         [HttpGet()]
@@ -51,6 +64,25 @@ namespace WebApi.Controllers
                 await proxy.Get();
 
                 return Ok();
+            }
+            catch (Exception ex)
+            {
+                ServiceEventSource.Current.ServiceMessage(this.context, ex.Message);
+                return Ok(ex);
+            }
+        }
+
+        [HttpGet("orders")]
+        public async Task<IActionResult> TriggerOrders()
+        {
+            try
+            {
+                var sourceOrders = await importsRepository.GetImportCommitedOrders(await commitedOrdersRepository.GetLastSyncDate(), await ordersRepository.GetLastSyncDate());
+
+                await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.commited);
+                await ordersRepository.ImportOrders(sourceOrders.orders);
+
+                return Ok(new { orders = sourceOrders.orders.Count, commited = sourceOrders.commited.Count });
             }
             catch (Exception ex)
             {

@@ -7,8 +7,8 @@
 
     public class TicketSeriesModel
     {
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
+        public string? PartitionKey { get; set; }
+        public string? RowKey { get; set; }
         public List<TicketModel> Tickets { get; set; }
         public string? NrComanda { get; set; }
 
@@ -18,6 +18,10 @@
 
         public string? Status { get; set; }
 
+        public string? LocationPartitionKey { get; set; }
+
+        public string? LocationRowKey { get; set; }
+
         [JsonConstructor]
         private TicketSeriesModel() { }
         private TicketSeriesModel(TicketEntity[] complaints)
@@ -26,7 +30,7 @@
 
             PartitionKey = complaint.PartitionKey;
             RowKey = complaint.RowKey;
-            Tickets = [..complaints.OrderByDescending(t => t.References?.Length).Select(t => new TicketModel()
+            Tickets = [..complaints.OrderByDescending(t => t.CreatedDate).Select(t => new TicketModel()
             {
                 Description = t.Description,
                 CodeValue = t.Subject ?? "",
@@ -41,6 +45,9 @@
             Created = complaint.CreatedDate;
             NrComanda = complaint.NrComanda ?? "";
             Status = complaint.From;
+            DataKey = complaint.LocationCode ?? complaint.Locations;
+            LocationPartitionKey = complaint.LocationPartitionKey;
+            LocationRowKey = complaint.LocationRowKey;
         }
 
         public static TicketSeriesModel from(TicketEntity[] dbModel)
