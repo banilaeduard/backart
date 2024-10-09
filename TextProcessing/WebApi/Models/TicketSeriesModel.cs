@@ -34,7 +34,7 @@
             {
                 Description = t.Description,
                 CodeValue = t.Subject ?? "",
-                Location = t.Locations ?? "",
+                Location = t.LocationCode ?? t.Locations ?? "",
                 RowKey = t.RowKey,
                 PartitionKey = t.PartitionKey,
                 From = t.From ?? "",

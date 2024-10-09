@@ -29,6 +29,8 @@ using RepositoryContract.Tickets;
 using AzureTableRepository.Tickets;
 using RepositoryContract.Imports;
 using SqlTableRepository.Orders;
+using RepositoryContract.Tasks;
+using SqlTableRepository.Tasks;
 
 namespace WebApi
 {
@@ -142,6 +144,7 @@ namespace WebApi
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
             services.AddScoped<IImportsRepository, OrdersImportsRepository>();
+            services.AddScoped<ITaskRepository, TaskRepository>();
 
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()
