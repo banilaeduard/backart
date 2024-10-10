@@ -11,10 +11,18 @@
     <Parameter Name="feeder_User" DefaultValue="" />
     <Parameter Name="feeder_Password" DefaultValue="" />
     <Parameter Name="storage_connection" DefaultValue="" />
+    <Parameter Name="external_sql_server" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
        ServiceManifest.xml file. -->
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="PollerRecurringJobPkg" ServiceManifestVersion="1.0.0" />
+    <EnvironmentOverrides CodePackageRef="code">
+      <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
+      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+    </EnvironmentOverrides>
+  </ServiceManifestImport>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="YahooTFeederPkg" ServiceManifestVersion="1.0.0" />
     <ConfigOverrides />
@@ -46,6 +54,7 @@
       <EnvironmentVariable Name="User" Value="[feeder_User]" />
       <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
+      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
 </ApplicationManifest>

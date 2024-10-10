@@ -26,7 +26,7 @@ namespace AzureTableRepository.Orders
             return CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => expr(t) && t.Timestamp > from).ToList(), table).ToList();
         }
 
-        public async Task ImportOrders(IList<ComandaVanzare> items)
+        public async Task ImportOrders(IList<ComandaVanzare> items, DateTime when)
         {
             if (items.Count == 0) return;
             var newEntries = items.Select(ComandaVanzareEntry.create).GroupBy(ComandaVanzareEntry.PKey).ToDictionary(t => t.Key, MergeByHash);
@@ -68,7 +68,7 @@ namespace AzureTableRepository.Orders
                 CacheManager.Bust(typeof(ComandaVanzareEntry).Name, true, null);
                 CacheManager.InvalidateOurs(typeof(ComandaVanzareEntry).Name);
             }
-            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", items.Min(t => t.DataDoc)!.Value.ToUniversalTime().ToShortDateString() } });
+            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
         private IEnumerable<ComandaVanzareEntry> MergeByHash(IEnumerable<ComandaVanzareEntry> list)

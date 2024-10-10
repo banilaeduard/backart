@@ -44,7 +44,7 @@ namespace AzureTableRepository.CommitedOrders
             CacheManager.UpsertCache(typeof(DispozitieLivrareEntry).Name, [sample]);
         }
 
-        public async Task ImportCommitedOrders(IList<DispozitieLivrare> items)
+        public async Task ImportCommitedOrders(IList<DispozitieLivrare> items, DateTime when)
         {
             if (items.Count == 0) return;
             var newEntries = items.GroupBy(t => t.NumarIntern).ToDictionary(t => t.Key);
@@ -74,18 +74,8 @@ namespace AzureTableRepository.CommitedOrders
                 }
             }
             var its = (await GetCommitedOrders()).Where(t => t.DataDocument >= DateTime.Now.AddDays(-14) && !t.Livrata);
-            DateTime? latest = null;
 
-            if (its.Any())
-            {
-                latest = its.Min(t => t.DataDocument);
-            }
-            else
-            {
-                latest = newEntries.ElementAt(newEntries.Count / 2).Value.ElementAt(0).DataDocument;
-            }
-
-            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", latest.Value.ToUniversalTime().ToShortDateString() } });
+            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
         public async Task SetDelivered(int internalNumber)

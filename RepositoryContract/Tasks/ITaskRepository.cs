@@ -4,7 +4,7 @@ namespace RepositoryContract.Tasks
 {
     public interface ITaskRepository
     {
-        public Task InsertNew(TaskEntry entry);
+        public Task<IList<TaskEntry>> GetActiveTasks();
 
         public Task<TaskEntry> InsertFromTicketEntries(TicketEntity[] tickets);
     }

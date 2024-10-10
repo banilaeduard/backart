@@ -34,8 +34,8 @@ namespace WebApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTasks()
         {
-            await taskRepository.InsertNew(null);
-            return Ok();
+            var taskLists = await taskRepository.GetActiveTasks();
+            return Ok(taskLists);
         }
 
         [HttpPost("tickets")]

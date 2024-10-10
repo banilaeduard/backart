@@ -7,6 +7,27 @@ namespace SqlTableRepository.Tasks
 {
     public class TaskRepository : ITaskRepository
     {
+        public async Task<IList<TaskEntry>> GetActiveTasks()
+        {
+            IList<TaskEntry> tasks;
+            IList<TaskAction> actions;
+            IList<ExternalReferenceEntry> externalRef;
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            {
+                string taskSql = "SELECT * FROM dbo.TaskEntry WHERE IsClosed = 0";
+                string taskAction = "SELECT * FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE t.IsClosed = 0";
+                string taskExternalReferenceEntry = "SELECT * FROM dbo.ExternalReferenceEntry er JOIN dbo.TaskEntry t on er.TaskId = t.Id WHERE t.IsClosed = 0";
+
+                var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};{taskExternalReferenceEntry};");
+
+                tasks = [.. multi.Read<TaskEntry>()];
+                actions = [.. multi.Read<TaskAction>()];
+                externalRef = [.. multi.Read<ExternalReferenceEntry>()];
+            }
+
+            return [.. tasks.Select(task => TaskEntry.From(task, actions, externalRef))];
+        }
+
         public async Task<TaskEntry> InsertFromTicketEntries(TicketEntity[] tickets)
         {
             DynamicParameters dParam = new();
@@ -42,14 +63,6 @@ namespace SqlTableRepository.Tasks
             }
 
             return taskEntry;
-        }
-
-        public async Task InsertNew(TaskEntry entry)
-        {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
-            {
-                var items = await connection.QueryAsync<TaskEntry>("Select * from dbo.TaskEntry");
-            }
         }
     }
 }

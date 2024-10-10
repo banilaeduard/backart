@@ -77,10 +77,15 @@ namespace WebApi.Controllers
         {
             try
             {
-                var sourceOrders = await importsRepository.GetImportCommitedOrders(await commitedOrdersRepository.GetLastSyncDate(), await ordersRepository.GetLastSyncDate());
+                var commitedD = await commitedOrdersRepository.GetLastSyncDate();
+                var orderD = await ordersRepository.GetLastSyncDate();
+                var sourceOrders = await importsRepository.GetImportCommitedOrders(commitedD, orderD);
 
-                await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.commited);
-                await ordersRepository.ImportOrders(sourceOrders.orders);
+                commitedD = commitedD ?? (sourceOrders.commited?.MaxBy(t => t.DataDocument).DataDocument);
+                orderD = orderD ?? (sourceOrders.orders?.MaxBy(t => t.DataDoc).DataDoc);
+
+                await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.commited, commitedD.Value);
+                await ordersRepository.ImportOrders(sourceOrders.orders, orderD.Value);
 
                 return Ok(new { orders = sourceOrders.orders.Count, commited = sourceOrders.commited.Count });
             }

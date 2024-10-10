@@ -10,6 +10,6 @@ namespace RepositoryContract.CommitedOrders
         Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items);
         Task InsertCommitedOrder(DispozitieLivrareEntry item);
         Task SetDelivered(int internalNumber);
-        Task ImportCommitedOrders(IList<DispozitieLivrare> items);
+        Task ImportCommitedOrders(IList<DispozitieLivrare> items, DateTime when);
     }
 }

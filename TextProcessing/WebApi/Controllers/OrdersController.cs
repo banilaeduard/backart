@@ -31,7 +31,7 @@ namespace WebApi.Controllers
             using (var stream = file.OpenReadStream())
             {
                 var items = WorkbookReader.ReadWorkBook<ComandaVanzare>(stream, 4);
-                await ordersRepository.ImportOrders(items);
+                await ordersRepository.ImportOrders(items, DateTime.Now);
             }
 
             return Ok();
