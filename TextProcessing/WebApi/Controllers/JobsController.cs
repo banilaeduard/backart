@@ -79,7 +79,7 @@ namespace WebApi.Controllers
             {
                 var commitedD = await commitedOrdersRepository.GetLastSyncDate();
                 var orderD = await ordersRepository.GetLastSyncDate();
-                var sourceOrders = await importsRepository.GetImportCommitedOrders(commitedD, orderD);
+                var sourceOrders = await importsRepository.GetImportCommitedOrders(commitedD, new DateTime(2024,5,5));
 
                 commitedD = commitedD ?? (sourceOrders.commited?.MaxBy(t => t.DataDocument).DataDocument);
                 orderD = orderD ?? (sourceOrders.orders?.MaxBy(t => t.DataDoc).DataDoc);

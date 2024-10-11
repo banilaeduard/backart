@@ -8,6 +8,7 @@ namespace RepositoryContract.Tasks
 
         [ColumnAttribute("Name")]
         public string Name { get; set; }
+        public string LocationCode { get; set; }
         public string Details { get; set; }
         public bool IsClosed { get; set; }
         public DateTime Created { get; set; }

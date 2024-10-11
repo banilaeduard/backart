@@ -1,3 +1,4 @@
+using Microsoft.Diagnostics.EventFlow.ServiceFabric;
 using Microsoft.ServiceFabric.Actors.Runtime;
 
 namespace PollerRecurringJob
@@ -15,11 +16,13 @@ namespace PollerRecurringJob
                 // The contents of your ServiceManifest.xml and ApplicationManifest.xml files
                 // are automatically populated when you build this project.
                 // For more information, see https://aka.ms/servicefabricactorsplatform
-
-                ActorRuntime.RegisterActorAsync<PollerRecurringJob>(
+                using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-PollerRecurringJob"))
+                {
+                    ActorRuntime.RegisterActorAsync<PollerRecurringJob>(
                    (context, actorType) => new ScheduledActorService<PollerRecurringJob>(context, actorType)).GetAwaiter().GetResult();
 
-                Thread.Sleep(Timeout.Infinite);
+                    Thread.Sleep(Timeout.Infinite);
+                }
             }
             catch (Exception e)
             {

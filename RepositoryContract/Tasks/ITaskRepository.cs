@@ -7,5 +7,7 @@ namespace RepositoryContract.Tasks
         public Task<IList<TaskEntry>> GetActiveTasks();
 
         public Task<TaskEntry> InsertFromTicketEntries(TicketEntity[] tickets);
+
+        public Task DeleteTask(int Id);
     }
 }

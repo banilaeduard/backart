@@ -1,5 +1,6 @@
 ﻿namespace WebApi.Models
 {
+    using RepositoryContract.Tickets;
     using System;
     public class TicketModel
     {
@@ -14,5 +15,21 @@
         public string? Subject { get; set; }
         public string? OriginalBody { get; set; }
         public string? ThreadId { get; set; }
+
+        public static TicketModel FromEntry(TicketEntity t)
+        {
+            return new TicketModel()
+            {
+                Description = t.Description,
+                CodeValue = t.Subject ?? "",
+                Location = t.LocationCode ?? t.Locations ?? "",
+                RowKey = t.RowKey,
+                PartitionKey = t.PartitionKey,
+                From = t.From ?? "",
+                Subject = t.Subject ?? "",
+                Created = t.CreatedDate,
+                OriginalBody = t.OriginalBodyPath
+            };
+        }
     }
 }

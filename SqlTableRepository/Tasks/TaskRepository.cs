@@ -7,6 +7,18 @@ namespace SqlTableRepository.Tasks
 {
     public class TaskRepository : ITaskRepository
     {
+        public async Task DeleteTask(int Id)
+        {
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            {
+                string taskSql = $"DELETE FROM dbo.TaskEntry WHERE Id = {Id}";
+                string taskAction = $"DELETE FROM dbo.TaskAction WHERE TaskId = {Id}";
+                string taskExternalReferenceEntry = $"DELETE FROM dbo.ExternalReferenceEntry WHERE TaskId = {Id}";
+
+                await connection.ExecuteAsync($"BEGIN TRANSACTION; {taskExternalReferenceEntry}; {taskAction}; {taskSql} COMMIT;");
+            }
+        }
+
         public async Task<IList<TaskEntry>> GetActiveTasks()
         {
             IList<TaskEntry> tasks;
@@ -40,10 +52,10 @@ namespace SqlTableRepository.Tasks
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
             {
                 taskEntry = await connection.QuerySingleAsync<TaskEntry>($"" +
-                                      $"INSERT INTO dbo.TaskEntry(Name, Details) " +
+                                      $"INSERT INTO dbo.TaskEntry(Name, Details, LocationCode) " +
                                       $"OUTPUT INSERTED.*" +
-                                      $"VALUES(@Name, @Details);"
-                                      , new { Name = tickets[0].LocationCode, Details = tickets[0].Description });
+                                      $"VALUES(@Name, @Details, @LocationCode);"
+                                      , new { Name = tickets[0].From, Details = tickets[0].Description, LocationCode = tickets[0].LocationCode });
 
                 taskAction = await connection.QuerySingleAsync<TaskAction>($"" +
                                       $"INSERT INTO dbo.TaskAction([TaskId],[ActionId],[Description])" +

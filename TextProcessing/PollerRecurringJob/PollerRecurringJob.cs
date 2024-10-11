@@ -43,19 +43,25 @@ namespace PollerRecurringJob
 
             if (latest.order > lastOrder && latest.commited > lastCommited)
             {
-                var sourceOrders = await ordersImportsRepository.GetImportCommitedOrders(lastCommited, lastOrder);
+                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetching orders {latest.order} and commited {latest.commited}");
+                var sourceOrders = await ordersImportsRepository.GetImportCommitedOrders(lastCommited, new DateTime(2024, 5, 5));
                 await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.commited, latest.commited);
                 await ordersRepository.ImportOrders(sourceOrders.orders, latest.order);
+                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetched orders {sourceOrders.orders.Count} and commited {sourceOrders.commited.Count}");
             }
             else if (latest.order > lastOrder)
             {
-                var sourceOrders = await ordersImportsRepository.GetImportOrders(lastOrder);
+                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetching orders {latest.order}");
+                var sourceOrders = await ordersImportsRepository.GetImportOrders(new DateTime(2024, 5, 5));
                 await ordersRepository.ImportOrders(sourceOrders, latest.order);
+                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetched orders {sourceOrders.Count}");
             }
             else if (latest.commited > lastCommited)
             {
+                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetching commited {latest.commited}");
                 var commited = await ordersImportsRepository.GetImportCommited(lastCommited);
                 await commitedOrdersRepository.ImportCommitedOrders(commited, latest.commited);
+                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetched commited {commited.Count}");
             }
             await StateManager.AddOrUpdateStateAsync("order", latest.order, (_, _) => latest.order);
             await StateManager.AddOrUpdateStateAsync("commited", latest.commited, (_, _) => latest.commited);
@@ -70,7 +76,7 @@ namespace PollerRecurringJob
             }
             catch (ReminderNotFoundException) { }
 
-            var reminderRegistration = await RegisterReminderAsync("Reminder1", null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(1));
+            var reminderRegistration = await RegisterReminderAsync("Reminder1", null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(3));
         }
 
         public async Task Sync()
@@ -89,8 +95,8 @@ namespace PollerRecurringJob
             var ordersRepository = new OrdersRepository(null);
             var commitDate = await commitedOrdersRepository.GetLastSyncDate();
             var oderDate = await ordersRepository.GetLastSyncDate();
-            await StateManager.AddStateAsync("commited", commitDate);
-            await StateManager.AddStateAsync("order", oderDate);
+            await StateManager.AddStateAsync("commited", commitDate ?? new DateTime(2024, 9, 1));
+            await StateManager.AddStateAsync("order", oderDate ?? new DateTime(2024, 5, 5));
 
             await RegisterReminder();
         }

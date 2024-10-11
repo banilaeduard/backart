@@ -30,18 +30,7 @@
 
             PartitionKey = complaint.PartitionKey;
             RowKey = complaint.RowKey;
-            Tickets = [..complaints.OrderByDescending(t => t.CreatedDate).Select(t => new TicketModel()
-            {
-                Description = t.Description,
-                CodeValue = t.Subject ?? "",
-                Location = t.LocationCode ?? t.Locations ?? "",
-                RowKey = t.RowKey,
-                PartitionKey = t.PartitionKey,
-                From = t.From ?? "",
-                Subject = t.Subject ?? "",
-                Created = t.CreatedDate,
-                OriginalBody = t.OriginalBodyPath
-            })];
+            Tickets = [..complaints.OrderByDescending(t => t.CreatedDate).Select(TicketModel.FromEntry)];
             Created = complaint.CreatedDate;
             NrComanda = complaint.NrComanda ?? "";
             Status = complaint.From;
