@@ -28,7 +28,8 @@
                 From = t.From ?? "",
                 Subject = t.Subject ?? "",
                 Created = t.CreatedDate,
-                OriginalBody = t.OriginalBodyPath
+                OriginalBody = t.OriginalBodyPath,
+                ThreadId = t.ThreadId,
             };
         }
     }

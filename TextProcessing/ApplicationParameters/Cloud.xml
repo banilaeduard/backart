@@ -5,10 +5,12 @@
     <Parameter Name="WebApi_Secret" Value="aehfdriojuas432qG.wE3CoDUtS02eQjvgt7k0Ktw.DGHKFKrq5_-zNPd9TFtllrHKJda-CAQrZ-ECjjsTJeo8912@" />
     <Parameter Name="WebApi_ConnectionString" Value="Server=tcp:datdat.database.windows.net,1433;Initial Catalog=backart;Persist Security Info=False;User ID=root_admin;Password=123EWQasd!@#;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;" />
     <Parameter Name="WebApi_SengridKey" Value="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" />
-    <Parameter Name="feeder_y_folders" Value="Inbox" />
-    <Parameter Name="feeder_y_from" Value="dedeman.ro;2-10 DEDEMAN" />
-    <Parameter Name="feeder_days_before" Value="100" />
+    <Parameter Name="feeder_y_folders" Value="Inbox;" />
+    <Parameter Name="feeder_y_from" Value="mariansimpromm@gmail.com" />
+    <Parameter Name="feeder_days_before" Value="25" />
     <Parameter Name="feeder_User" Value="tehninvest@yahoo.com" />
     <Parameter Name="feeder_Password" Value="xhfwxsovcuykpjwo" />
+    <Parameter Name="storage_connection" Value="DefaultEndpointsProtocol=https;AccountName=sfdgbartazeu24483;AccountKey=Isgoys0JUF0zNTcKwb7OBbk7gkKEDDORSMd9dOH3Gtga1jcQCtkYzP638JOCT1C0CT6p2fgAyGKS+AStwEF6NA==;EndpointSuffix=core.windows.net" />
+    <Parameter Name="external_sql_server" Value="Server=mastersrv,1433;Database=tehninvest_tfs;User Id=sa;Password=da711r!@#;TrustServerCertificate=True;" />
   </Parameters>
 </Application>
