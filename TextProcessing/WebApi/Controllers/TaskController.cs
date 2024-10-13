@@ -49,24 +49,24 @@ namespace WebApi.Controllers
             return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveTask(TaskModel task)
+        {
+            await taskRepository.SaveTask(task.ToTaskEntry());
+            return Ok();
+        }
+
         [HttpDelete("{taskId}")]
-        public async Task<IActionResult> deleteTasks(int taskId)
+        public async Task<IActionResult> DeleteTasks(int taskId)
         {
             await taskRepository.DeleteTask(taskId);
             return Ok();
         }
 
-        [HttpPost("tickets")]
-        public async Task<IActionResult> CreateFromTickets(TicketModel[] tickets)
+        [HttpPatch]
+        public async Task<IActionResult> UpdateTask(TaskModel task)
         {
-            await taskRepository.InsertFromTicketEntries([..tickets.Select(t => new TicketEntity()
-            {
-                LocationCode = t.Location ?? "",
-                Description = t.Description,
-                PartitionKey = t.PartitionKey,
-                RowKey = t.RowKey,
-                From = t.From
-            })]);
+            //await taskRepository.DeleteTask(taskId);
             return Ok();
         }
     }

@@ -9,8 +9,33 @@ namespace WebApi.Models
         public int? Id { get; set; }
         public string Name { get; set; }
         public string Details { get; set; }
+        public string LocationCode { get; set; }
         public DateTime Created { get; set; }
         public IEnumerable<TicketSeriesModel> ExternalMailReferences { get; set; }
+
+        public TaskEntry ToTaskEntry()
+        {
+            var taskModel = new TaskEntry()
+            {
+                Created = Created,
+                Details = Details,
+                Id = Id ?? 0,
+                Name = Name,
+                LocationCode = LocationCode
+            };
+
+            taskModel.ExternalReferenceEntries = ExternalMailReferences.SelectMany(t => t.Tickets).Select(t => new ExternalReferenceEntry()
+            {
+                ExternalGroupId = t.ThreadId,
+                PartitionKey = t.PartitionKey,
+                RowKey = t.RowKey,
+                TableReferenceName = typeof(TicketEntity).Name,
+                IsRemoved = false
+            }).ToList();
+
+            return taskModel;
+        }
+
         public static IEnumerable<TaskModel> From(IEnumerable<TaskEntry> tasks, IEnumerable<TicketEntity> tickets, IEnumerable<DataKeyLocationEntry> locations)
         {
             List<TaskModel> result = new();
@@ -21,7 +46,8 @@ namespace WebApi.Models
                     Created = task.Created,
                     Details = task.Details,
                     Id = task.Id,
-                    Name = task.Name
+                    Name = task.Name,
+                    LocationCode = task.LocationCode
                 };
                 result.Add(taskModel);
 
