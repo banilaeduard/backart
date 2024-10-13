@@ -93,10 +93,10 @@ namespace PollerRecurringJob
             ActorEventSource.Current.ActorMessage(this, "Polling Actor activated.");
             var commitedOrdersRepository = new CommitedOrdersRepository(null);
             var ordersRepository = new OrdersRepository(null);
-            var commitDate = await commitedOrdersRepository.GetLastSyncDate();
-            var oderDate = await ordersRepository.GetLastSyncDate();
-            await StateManager.AddStateAsync("commited", commitDate ?? new DateTime(2024, 9, 1));
-            await StateManager.AddStateAsync("order", oderDate ?? new DateTime(2024, 5, 5));
+            var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
+            var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
+            await StateManager.AddOrUpdateStateAsync("commited", commitDate, (x, y) => commitDate);
+            await StateManager.AddOrUpdateStateAsync("order", oderDate, (x, y) => oderDate);
 
             await RegisterReminder();
         }
