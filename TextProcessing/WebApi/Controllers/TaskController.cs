@@ -46,7 +46,7 @@ namespace WebApi.Controllers
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
 
-            return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
+            return Ok(TaskModel.From(taskLists, tickets));
         }
 
         [HttpPost]
@@ -66,8 +66,8 @@ namespace WebApi.Controllers
         [HttpPatch]
         public async Task<IActionResult> UpdateTask(TaskModel task)
         {
-            //await taskRepository.DeleteTask(taskId);
-            return Ok();
+            var newTask = await taskRepository.UpdateTask(task.ToTaskEntry());
+            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll()));
         }
     }
 }

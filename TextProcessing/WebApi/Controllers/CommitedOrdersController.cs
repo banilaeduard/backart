@@ -5,6 +5,7 @@ using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
+using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using Services.Storage;
 using WebApi.Models;
@@ -23,6 +24,7 @@ namespace WebApi.Controllers
         private IImportsRepository importsRepository;
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
+        private ITaskRepository taskRepository;
 
         public CommitedOrdersController(
             ILogger<CommitedOrdersController> logger,
@@ -31,6 +33,7 @@ namespace WebApi.Controllers
             IImportsRepository importsRepository,
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
+            ITaskRepository taskRepository,
             IOrdersRepository ordersRepository) : base(logger)
         {
             this.storageService = storageService;
@@ -39,6 +42,7 @@ namespace WebApi.Controllers
             this.importsRepository = importsRepository;
             this.ticketEntryRepository = ticketEntryRepository;
             this.keyLocationRepository = keyLocationRepository;
+            this.taskRepository = taskRepository;
         }
 
         [HttpGet]
@@ -48,8 +52,9 @@ namespace WebApi.Controllers
 
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
+            var tasks = await taskRepository.GetActiveTasks();
 
-            return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations));
+            return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations, tasks));
         }
 
         [HttpPost("delivered/{internalNumber}")]

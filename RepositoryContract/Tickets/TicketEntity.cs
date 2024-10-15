@@ -29,5 +29,6 @@ namespace RepositoryContract.Tickets
         public string LocationCode { get; set; }
         public string LocationPartitionKey { get; set; }
         public string LocationRowKey { get; set; }
+        public bool HasAttachments { get; set; }
     }
 }

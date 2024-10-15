@@ -4,8 +4,8 @@
     <Parameter Name="YahooTFeeder_InstanceCount" DefaultValue="-1" />
     <Parameter Name="MailExtrasExtractor_InstanceCount" DefaultValue="-1" />
     <Parameter Name="WebApi_InstanceCount" DefaultValue="-1" />
-    <Parameter Name="PollerRecurringJobActorService_PartitionCount" DefaultValue="10" />
-    <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" DefaultValue="3" />
+    <Parameter Name="PollerRecurringJobActorService_PartitionCount" DefaultValue="1" />
+    <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" DefaultValue="1" />
     <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" DefaultValue="1" />
   </Parameters>
   <Services>

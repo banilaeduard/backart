@@ -3,7 +3,7 @@
   <Parameters>
     <Parameter Name="WebApi_ASPNETCORE_ENVIRONMENT" Value="Development" />
     <Parameter Name="WebApi_Secret" Value="aehfdriojuas432qG.wE3CoDUtS02eQjvtgt7k0Kw.DGHKFKrq5_-zNPd9TFtllrHKJda-CAQrZ-ECjjsTJeo8912@" />
-    <Parameter Name="WebApi_ConnectionString" Value="Server=localhost;Port=3306;Database=backart;Uid=root;Pwd=123EWQasd!@#;" />
+    <Parameter Name="WebApi_ConnectionString" Value="Server=tcp:datdat.database.windows.net,1433;Initial Catalog=backart;Persist Security Info=False;User ID=root_admin;Password=123EWQasd!@#;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;" />
     <Parameter Name="WebApi_SengridKey" Value="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" />
     <Parameter Name="feeder_y_folders" Value="Inbox;2-10 DEDEMAN;2-12 DEDEM RECLAM NEREZOLVATE" />
     <Parameter Name="feeder_y_from" Value="dedeman.ro;larixmobila.ro;magazinelems.ro;naturlich.ro;aredamentimobili@yahoo.ro;mariansimpromm@gmail.com" />

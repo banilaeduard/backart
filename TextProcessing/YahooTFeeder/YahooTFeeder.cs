@@ -67,7 +67,7 @@ namespace YahooTFeeder
             // TODO: Replace the following sample code with your own logic 
             //       or remove this RunAsync override if it's not needed in your service.
             //ServiceEventSource.Current.ServiceMessage(this.Context, "Service name is {0}. Listen address is {1}", Context.ServiceName.ToString(), Context.ListenAddress);
-            await Task.Delay(TimeSpan.FromHours(3));
+            await Task.Delay(TimeSpan.FromHours(1));
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -79,7 +79,7 @@ namespace YahooTFeeder
                     User = Environment.GetEnvironmentVariable("User")!
                 }, cancellationToken);
 
-                await Task.Delay(TimeSpan.FromHours(12));
+                await Task.Delay(TimeSpan.FromHours(3));
             }
         }
 
@@ -213,7 +213,7 @@ namespace YahooTFeeder
                 string file_name = message.UniqueId.Id + "_" + message.UniqueId.Validity;
                 string extension = message.HtmlBody != null ? "html" : "txt";
                 var fname = $"attachments/{message.Date.Date.ToString("yy")}/{file_name}/{file_name}.{extension}";
-
+                
                 string body = "";
                 try
                 {
@@ -320,7 +320,8 @@ namespace YahooTFeeder
                     OriginalBodyPath = fname,
                     LocationCode = location?.LocationCode,
                     LocationRowKey = location?.RowKey,
-                    LocationPartitionKey = location?.PartitionKey
+                    LocationPartitionKey = location?.PartitionKey,
+                    HasAttachments = message.Attachments?.Any() == true
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);

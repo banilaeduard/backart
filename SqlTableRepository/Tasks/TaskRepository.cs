@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 
@@ -7,6 +8,8 @@ namespace SqlTableRepository.Tasks
 {
     public class TaskRepository : ITaskRepository
     {
+        private static MemoryCache _taskCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromMinutes(2) });
+
         public async Task DeleteTask(int Id)
         {
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
@@ -14,71 +17,44 @@ namespace SqlTableRepository.Tasks
                 string taskSql = $"DELETE FROM dbo.TaskEntry WHERE Id = {Id}";
                 string taskAction = $"DELETE FROM dbo.TaskAction WHERE TaskId = {Id}";
                 string taskExternalReferenceEntry = $"DELETE FROM dbo.ExternalReferenceEntry WHERE TaskId = {Id}";
-                await connection.ExecuteAsync($"BEGIN TRANSACTION; {taskExternalReferenceEntry}; {taskAction}; {taskSql} COMMIT;");
+                await connection.ExecuteAsync($"{taskExternalReferenceEntry}; {taskAction}; {taskSql}");
             }
+            _taskCache.Clear();
         }
 
         public async Task<IList<TaskEntry>> GetActiveTasks()
         {
-            IList<TaskEntry> tasks;
-            IList<TaskAction> actions;
-            IList<ExternalReferenceEntry> externalRef;
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            return await GetActiveTasksInternal();
+        }
+
+        public async Task<IList<ExternalReferenceEntry>> GetExternalReferences()
+        {
+            var key = $"GetExternalReferences";
+            if (!_taskCache.TryGetValue(key, out IList<ExternalReferenceEntry>? tasksExternalCache) || tasksExternalCache == null)
             {
-                string taskSql = "SELECT * FROM dbo.TaskEntry WHERE IsClosed = 0";
-                string taskAction = "SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE t.IsClosed = 0";
-                string taskExternalReferenceEntry = $@"SELECT er.*, erg.* FROM dbo.ExternalReferenceEntry er
-                    JOIN dbo.TaskEntry t on er.TaskId = t.Id
-                    JOIN dbo.ExternalReferenceGroup erg on er.GroupId = erg.G_Id";
-
-                var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};");
-
-                tasks = [.. multi.Read<TaskEntry>()];
-                actions = [.. multi.Read<TaskAction>()];
-
-                externalRef = (await connection.QueryAsync<dynamic, dynamic, ExternalReferenceEntry>(taskExternalReferenceEntry,
-                    (d, eg) => new ExternalReferenceEntry()
-                    {
-                        Created = d.Created,
-                        TableReferenceName = eg.TableName,
-                        ExternalGroupId = eg.ExternalGroupId,
-                        GroupId = d.GroupId,
-                        Id = eg.G_Id,
-                        IsRemoved = d.IsRemoved,
-                        PartitionKey = eg.PartitionKey,
-                        RowKey = eg.RowKey,
-                        TaskActionId = d.TaskActionId,
-                        TaskId = d.TaskId
-                    }
-                    ,
-                    splitOn: "G_Id")).ToList();
+                string taskExternalReferenceEntry = $@"SELECT * FROM dbo.ExternalReferenceGroup WHERE Ref_count > 0";
+                using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+                {
+                    var list = (await connection.QueryAsync<ExternalReferenceEntry>(taskExternalReferenceEntry)).ToList();
+                    if (list.Any())
+                        return _taskCache.Set(key, list, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
+                    return [];
+                }
             }
-
-            return [.. tasks.Select(task => TaskEntry.From(task, actions, externalRef))];
+            return tasksExternalCache;
         }
 
         public async Task<TaskEntry> SaveTask(TaskEntry task)
         {
-            DynamicParameters dParam = new();
             var count = task.ExternalReferenceEntries.Count();
-            string fromSql = "";
-            if (count > 0)
-            {
-                fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId);
-            }
+
             TaskEntry taskEntry;
             TaskAction taskAction;
-            List<ExternalReferenceEntry>? externalRef = null;         
+            List<ExternalReferenceEntry>? externalRef = null;
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
             {
-                var result = await connection.QueryMultipleAsync(
-                                      $@"INSERT INTO dbo.TaskEntry(Name, Details, LocationCode)
-                                      OUTPUT INSERTED.*
-                                      VALUES(@Name, @Details, @LocationCode)
-                                      INSERT INTO dbo.TaskAction([TaskId],[Description])
-                                      OUTPUT INSERTED.*
-                                      SELECT SCOPE_IDENTITY(), 'Created from tickets[' + @Count + ']';"
+                var result = await connection.QueryMultipleAsync(TaskSql.InsertTask
                                       , param: new
                                       {
                                           Count = count.ToString(),
@@ -91,52 +67,73 @@ namespace SqlTableRepository.Tasks
 
                 if (count > 0)
                 {
-                    var upsertExternalGroup = $@"WITH dif as (
-                                            SELECT @TableReferenceName as TableName, tickets.PartitionKey, tickets.RowKey, tickets.ExternalGroupId
-                                            FROM {fromSql}
-                                            LEFT JOIN [dbo].[ExternalReferenceGroup] erg on tickets.PartitionKey = erg.PartitionKey AND tickets.RowKey = erg.RowKey AND erg.TableName = @TableReferenceName
-                                            WHERE erg.G_Id IS NULL
-                                        ) INSERT INTO [dbo].[ExternalReferenceGroup](TableName, PartitionKey, RowKey, ExternalGroupId)
-                                          select * from dif";
-
-                    dParam.Add($"@TableReferenceName", typeof(TicketEntity).Name);
-                    await connection.ExecuteAsync(upsertExternalGroup, dParam);
-
-                    var sql = $@"INSERT INTO dbo.ExternalReferenceEntry([TaskId], [TaskActionId], [GroupId], [IsRemoved])
-                    select st.*, erg.G_Id, 0 
-                    FROM {fromSql}
-                        JOIN (values (@TaskId, @TaskActionId)) as st(taskId, taskActionId) on 1 = 1
-                        JOIN [dbo].[ExternalReferenceGroup] erg on tickets.PartitionKey = erg.PartitionKey AND tickets.RowKey = erg.RowKey AND erg.TableName = @TableReferenceName";
-
+                    DynamicParameters dParam = new();
+                    dParam.Add($"@TableReferenceName", nameof(TicketEntity));
                     dParam.Add($"@TaskId", taskAction.TaskId);
                     dParam.Add($"@TaskActionId", taskAction.Id);
 
-                    await connection.ExecuteAsync(sql, dParam);
+                    string fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date);
 
-                    string taskExternalReferenceEntry = $@"SELECT er.*, erg.* FROM dbo.ExternalReferenceEntry er
-                    JOIN dbo.TaskEntry t on er.TaskId = t.Id
-                    JOIN dbo.ExternalReferenceGroup erg on er.GroupId = erg.G_Id
-                    WHERE t.Id = @TaskId";
-
-                    externalRef = (await connection.QueryAsync<dynamic, dynamic, ExternalReferenceEntry>(taskExternalReferenceEntry,
-                        (d, eg) => new ExternalReferenceEntry()
-                        {
-                            Created = d.Created,
-                            TableReferenceName = eg.TableName,
-                            ExternalGroupId = eg.ExternalGroupId,
-                            GroupId = d.GroupId,
-                            Id = eg.G_Id,
-                            IsRemoved = d.IsRemoved,
-                            PartitionKey = eg.PartitionKey,
-                            RowKey = eg.RowKey,
-                            TaskActionId = d.TaskActionId,
-                            TaskId = d.TaskId
-                        }
-                        ,
-                        splitOn: "G_Id", param: new { TaskId = taskEntry.Id })).ToList();
+                    externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE t.Id = @TaskId",
+                        TaskSql.ExternalRefs.mapper
+                        , param: dParam
+                        , splitOn: TaskSql.ExternalRefs.splitOn)
+                        ).ToList();
                 }
             }
+            _taskCache.Clear();
             return TaskEntry.From(task, [taskAction], externalRef);
+        }
+
+        public async Task<TaskEntry> UpdateTask(TaskEntry task)
+        {
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            {
+                string updateTask = $"UPDATE dbo.TaskEntry SET Name = @Name, Details = @Details OUTPUT INSERTED.*, DELETED.Details as old_details, DELETED.Name as old_name WHERE Id = @TaskId";
+                var taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details });
+
+                if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name)
+                {
+                    string insertAction = $"INSERT INTO dbo.TaskAction(TaskId, Description) OUTPUT INSERTED.* VALUES (@TaskId, @Description)";
+                    await connection.ExecuteAsync(insertAction, new { TaskId = task.Id, Description = $"Updated Task Properties. Old values: Name: {taskResult.old_name} Description: {taskResult.old_details}" });
+                }
+            }
+            _taskCache.Clear();
+            return (await GetActiveTasksInternal(task.Id))[0];
+        }
+
+        private async Task<IList<TaskEntry>> GetActiveTasksInternal(int? TaskId = null)
+        {
+            var key = $"GetActiveTasksInternal_{TaskId ?? -1}";
+            if (!_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
+            {
+                IList<TaskEntry> tasks;
+                IList<TaskAction> actions;
+                IList<ExternalReferenceEntry> externalRef;
+                using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+                {
+                    string taskSql = $"SELECT * FROM dbo.TaskEntry WHERE IsClosed = 0 AND {(TaskId.HasValue ? "Id = @TaskId" : "@TaskId = @TaskId")}";
+                    string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE t.IsClosed = 0 AND {(TaskId.HasValue ? "t.Id = @TaskId" : "@TaskId = @TaskId")}";
+                    var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId = TaskId ?? -1 });
+
+                    tasks = [.. multi.Read<TaskEntry>()];
+                    actions = [.. multi.Read<TaskAction>()];
+
+                    externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE {(TaskId.HasValue ? "t.Id = @TaskId" : "@TaskId = @TaskId")}",
+                        TaskSql.ExternalRefs.mapper,
+                        splitOn: TaskSql.ExternalRefs.splitOn,
+                        param: new { TaskId = TaskId ?? -1 })).ToList();
+                }
+                var taskList = tasks.Select(task => TaskEntry.From(task, actions, externalRef)).ToList();
+
+                if (taskList.Any())
+                {
+                    return _taskCache.Set(key, taskList, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
+                }
+                return [];
+            }
+
+            return tasksCache;
         }
     }
 }

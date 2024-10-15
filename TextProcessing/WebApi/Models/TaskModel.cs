@@ -29,14 +29,16 @@ namespace WebApi.Models
                 ExternalGroupId = t.ThreadId,
                 PartitionKey = t.PartitionKey,
                 RowKey = t.RowKey,
-                TableReferenceName = typeof(TicketEntity).Name,
-                IsRemoved = false
+                TableName = nameof(TicketEntity),
+                IsRemoved = false,
+                Date = t.Created ?? DateTime.Now
+                
             }).ToList();
 
             return taskModel;
         }
 
-        public static IEnumerable<TaskModel> From(IEnumerable<TaskEntry> tasks, IEnumerable<TicketEntity> tickets, IEnumerable<DataKeyLocationEntry> locations)
+        public static IEnumerable<TaskModel> From(IEnumerable<TaskEntry> tasks, IEnumerable<TicketEntity> tickets)
         {
             List<TaskModel> result = new();
             foreach (var task in tasks)
@@ -52,10 +54,10 @@ namespace WebApi.Models
                 result.Add(taskModel);
 
                 var relatedTickets = tickets.Where(t => task.ExternalReferenceEntries?.Any(
-                    er => er.TableReferenceName == nameof(TicketEntity)
+                    er => er.TableName == nameof(TicketEntity)
                             && er.PartitionKey == t.PartitionKey && er.RowKey == t.RowKey) == true)
                     .GroupBy(T => T.ThreadId)
-                    .Select(t => TicketSeriesModel.from([.. t]))
+                    .Select(t => TicketSeriesModel.from([.. t], null))
                     .ToList();
 
                 taskModel.ExternalMailReferences = relatedTickets ?? [];

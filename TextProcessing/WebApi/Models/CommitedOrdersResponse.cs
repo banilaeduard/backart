@@ -1,5 +1,6 @@
 ﻿using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
+using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 
 namespace WebApi.Models
@@ -8,9 +9,12 @@ namespace WebApi.Models
     {
         public List<DispozitieLivrareEntry> Entry { get; set; }
         public List<TicketSeriesModel> Tickets { get; set; }
+        public List<TaskModel> Tasks { get; set; }
 
-        public static IEnumerable<CommitedOrdersResponse> From(IList<DispozitieLivrareEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations)
+        public static IEnumerable<CommitedOrdersResponse> From(IList<DispozitieLivrareEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations, IList<TaskEntry> tasks)
         {
+            var externalRefs = tasks.SelectMany(t => t.ExternalReferenceEntries).DistinctBy(t => new { t.PartitionKey, t.RowKey }).ToList();
+
             foreach (var ticket in tickets)
             {
                 if (string.IsNullOrEmpty(ticket.LocationCode))
@@ -31,12 +35,14 @@ namespace WebApi.Models
             foreach (var group in entries.GroupBy(t => t.NumarIntern).OrderByDescending(t => t.Key))
             {
                 var sample = group.First();
-                var groupTickets = tickets.Where(t => t.LocationCode == sample.CodLocatie).GroupBy(t => t.ThreadId);
+                var groupTickets = tickets.Where(t => t.LocationCode == sample.CodLocatie);
+                var groupedTasks = tasks.Where(t => t.LocationCode == sample.CodLocatie);
 
                 yield return new CommitedOrdersResponse()
                 {
                     Entry = group.Select(t => DispozitieLivrareEntry.create(t, t.Cantitate)).OrderBy(t => t.DataDocumentBaza).ToList(),
-                    Tickets = groupTickets.Select(grp => TicketSeriesModel.from([.. grp])).ToList(),
+                    Tickets = [.. groupTickets.GroupBy(t => t.ThreadId).Select(grp => TicketSeriesModel.from([.. grp], externalRefs)).Where(t => !t.HasTasks)],
+                    Tasks = [.. TaskModel.From(groupedTasks, groupTickets)]
                 };
             }
         }

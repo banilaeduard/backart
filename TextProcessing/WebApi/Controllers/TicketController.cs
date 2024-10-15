@@ -11,6 +11,7 @@ namespace WebApi.Controllers
     using global::WebApi.Models;
     using global::Services.Storage;
     using RepositoryContract.DataKeyLocation;
+    using RepositoryContract.Tasks;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -18,15 +19,19 @@ namespace WebApi.Controllers
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository dataKeyLocationRepository;
         private IStorageService storageService;
+        private ITaskRepository taskRepository;
+
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository dataKeyLocationRepository,
             IStorageService storageService,
+            ITaskRepository taskRepository,
             ILogger<TicketController> logger) : base(logger)
         {
             this.ticketEntryRepository = ticketEntryRepository;
             this.storageService = storageService;
             this.dataKeyLocationRepository = dataKeyLocationRepository;
+            this.taskRepository = taskRepository;
         }
 
         [HttpGet]
@@ -35,7 +40,9 @@ namespace WebApi.Controllers
             var complaints = await ticketEntryRepository.GetAll();
 
             var result = complaints.GroupBy(T => T.ThreadId);
-            var paged = result.Select(t => TicketSeriesModel.from([.. t]))
+
+            var externalRefs = await taskRepository.GetExternalReferences();
+            var paged = result.Select(t => TicketSeriesModel.from([.. t], externalRefs))
                               .ToList();
 
             return Ok(new

@@ -1,5 +1,4 @@
 ﻿using Dapper;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -54,8 +53,12 @@ namespace SqlTableRepository
 
         private static string GetExpressionName<T>(Expression<Func<T, object>> selector)
         {
-            var expression = (MemberExpression)selector.Body;
-            return expression.Member.Name;
+            var body = selector.Body as MemberExpression;
+            if (body == null)
+            {
+                body = ((UnaryExpression)selector.Body).Operand as MemberExpression;
+            }
+            return body.Member.Name;
         }
     }
 }

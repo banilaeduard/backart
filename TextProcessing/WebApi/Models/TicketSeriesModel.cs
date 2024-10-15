@@ -4,6 +4,7 @@
     using System.Text.Json.Serialization;
     using System;
     using RepositoryContract.Tickets;
+    using RepositoryContract.Tasks;
 
     public class TicketSeriesModel
     {
@@ -22,9 +23,11 @@
 
         public string? LocationRowKey { get; set; }
 
+        public bool HasTasks { get; set; }
+
         [JsonConstructor]
         private TicketSeriesModel() { }
-        private TicketSeriesModel(TicketEntity[] complaints)
+        private TicketSeriesModel(TicketEntity[] complaints, IList<ExternalReferenceEntry>? externalRefs)
         {
             var complaint = complaints.MaxBy(t => t.CreatedDate);
 
@@ -37,11 +40,12 @@
             DataKey = complaint.LocationCode ?? complaint.Locations;
             LocationPartitionKey = complaint.LocationPartitionKey;
             LocationRowKey = complaint.LocationRowKey;
+            HasTasks = externalRefs?.Any(t => complaints.Any(c => t.TableName == nameof(TicketEntity) && t.PartitionKey == c.PartitionKey && t.RowKey == c.RowKey)) == true;
         }
 
-        public static TicketSeriesModel from(TicketEntity[] dbModel)
+        public static TicketSeriesModel from(TicketEntity[] dbModel, IList<ExternalReferenceEntry>? externalRefs)
         {
-            return new TicketSeriesModel(dbModel);
+            return new TicketSeriesModel(dbModel, externalRefs);
         }
     }
 }

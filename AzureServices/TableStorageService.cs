@@ -67,11 +67,7 @@ namespace AzureServices
             tableClient.CreateIfNotExists();
             foreach (var batch in Batch(transactionActions))
                 if (batch.Any())
-                {
-                    var resp = await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
-                    var items = resp.Value.ToList();
-                    var x = 1;
-                }
+                    await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
         }
 
         public (List<TableTransactionAction> items, TableStorageService self) PrepareInsert<T>(IEnumerable<T> entries) where T : class, ITableEntity
