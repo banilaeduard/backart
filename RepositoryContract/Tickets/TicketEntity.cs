@@ -5,7 +5,8 @@ namespace RepositoryContract.Tickets
 {
     public class TicketEntity : ITableEntity
     {
-        public string Uid { get; set; }
+        public int Uid { get; set; }
+        public int Validity { get; set; }
         public string? From { get; set; }
         public string? NrComanda { get; set; }
         public string TicketSource { get; set; }

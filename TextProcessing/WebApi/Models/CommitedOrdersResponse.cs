@@ -42,7 +42,7 @@ namespace WebApi.Models
                 {
                     Entry = group.Select(t => DispozitieLivrareEntry.create(t, t.Cantitate)).OrderBy(t => t.DataDocumentBaza).ToList(),
                     Tickets = [.. groupTickets.GroupBy(t => t.ThreadId).Select(grp => TicketSeriesModel.from([.. grp], externalRefs)).Where(t => !t.HasTasks)],
-                    Tasks = [.. TaskModel.From(groupedTasks, groupTickets)]
+                    Tasks = [.. TaskModel.From(groupedTasks, groupTickets, synonimLocations)]
                 };
             }
         }

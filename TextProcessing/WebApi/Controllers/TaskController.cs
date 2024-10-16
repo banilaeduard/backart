@@ -46,13 +46,22 @@ namespace WebApi.Controllers
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
 
-            return Ok(TaskModel.From(taskLists, tickets));
+            return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
         }
 
         [HttpPost]
         public async Task<IActionResult> SaveTask(TaskModel task)
         {
             await taskRepository.SaveTask(task.ToTaskEntry());
+            return Ok();
+        }
+
+        [HttpPost("close")]
+        public async Task<IActionResult> MarkAsClosed(TaskModel task)
+        {
+            var tEntry = task.ToTaskEntry();
+            tEntry.IsClosed = true;
+            await taskRepository.UpdateTask(task.ToTaskEntry());
             return Ok();
         }
 
@@ -67,7 +76,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> UpdateTask(TaskModel task)
         {
             var newTask = await taskRepository.UpdateTask(task.ToTaskEntry());
-            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll()));
+            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]));
         }
     }
 }

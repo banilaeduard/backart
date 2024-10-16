@@ -89,13 +89,18 @@ namespace SqlTableRepository.Tasks
         {
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
             {
-                string updateTask = $"UPDATE dbo.TaskEntry SET Name = @Name, Details = @Details OUTPUT INSERTED.*, DELETED.Details as old_details, DELETED.Name as old_name WHERE Id = @TaskId";
-                var taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details });
+                string updateTask = $"UPDATE dbo.TaskEntry SET Name = @Name, Details = @Details, IsClosed = @IsClosed " +
+                    $"OUTPUT INSERTED.*, DELETED.Details as old_details, DELETED.Name as old_name, DELETED.IsClosed as old_isclosed " +
+                    $"WHERE Id = @TaskId";
+                var taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details, task.IsClosed });
 
-                if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name)
+                if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name || taskResult.IsClosed != taskResult.old_isclosed)
                 {
                     string insertAction = $"INSERT INTO dbo.TaskAction(TaskId, Description) OUTPUT INSERTED.* VALUES (@TaskId, @Description)";
-                    await connection.ExecuteAsync(insertAction, new { TaskId = task.Id, Description = $"Updated Task Properties. Old values: Name: {taskResult.old_name} Description: {taskResult.old_details}" });
+                    string descriptionStart = taskResult.IsClosed != taskResult.old_isclosed ? "Mark as closed" : "Update task properties";
+                    string name = taskResult.Name != taskResult.old_name ? $"Name: {taskResult.old_name}" : "";
+                    string details = taskResult.Details != taskResult.old_details ? $"Details: {taskResult.old_details}" : "";
+                    await connection.ExecuteAsync(insertAction, new { TaskId = task.Id, Description = $"{descriptionStart}. {name}; {details}" });
                 }
             }
             _taskCache.Clear();

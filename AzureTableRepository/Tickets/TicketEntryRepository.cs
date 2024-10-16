@@ -1,6 +1,7 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
 using Microsoft.Extensions.Logging;
+using RepositoryContract;
 using RepositoryContract.Tickets;
 
 namespace AzureTableRepository.Tickets
@@ -18,7 +19,7 @@ namespace AzureTableRepository.Tickets
         {
             await tableStorageService.Delete(partitionKey, rowKey, typeof(T).Name);
             CacheManager.Bust(typeof(T).Name, true, null);
-            CacheManager.RemoveFromCache(typeof(T).Name, [TableEntity.From(partitionKey, rowKey)]);
+            CacheManager.RemoveFromCache(typeof(T).Name, [TableEntityPK.From(partitionKey, rowKey)]);
         }
 
         public async Task<IList<TicketEntity>> GetAll()
@@ -42,12 +43,13 @@ namespace AzureTableRepository.Tickets
             CacheManager.UpsertCache(typeof(TicketEntity).Name, entries);
         }
 
-        public async Task<bool> Exists<T>(string partitionKey, string rowKey) where T : class, ITableEntity
+        public async Task<T?> GetIfExists<T>(string partitionKey, string rowKey) where T : class, ITableEntity
         {
             var tableName = typeof(T).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            return tableClient.GetEntityIfExists<T>(partitionKey, rowKey).HasValue;
+            var resp = tableClient.GetEntityIfExists<T>(partitionKey, rowKey);
+            return resp.HasValue ? resp.Value! : null;
         }
     }
 }

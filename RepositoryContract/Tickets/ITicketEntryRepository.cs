@@ -8,6 +8,6 @@ namespace RepositoryContract.Tickets
         Task Save(AttachmentEntry entry);
         Task Save(TicketEntity[] entry);
         Task Delete<T>(string partitionKey, string rowKey) where T : class, ITableEntity;
-        Task<bool> Exists<T>(string partitionKey, string rowKey) where T : class, ITableEntity;
+        Task<T?> GetIfExists<T>(string partitionKey, string rowKey) where T : class, ITableEntity;
     }
 }

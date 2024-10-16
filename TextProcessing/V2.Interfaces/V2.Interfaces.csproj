@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.ServiceFabric.Services.Remoting" Version="7.1.2175" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\RepositoryContract\RepositoryContract.csproj" />
+  </ItemGroup>
+
 </Project>

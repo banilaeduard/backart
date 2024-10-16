@@ -10,6 +10,7 @@ namespace WebApi.Models
         public string Name { get; set; }
         public string Details { get; set; }
         public string LocationCode { get; set; }
+        public string? LocationName { get; set; }
         public DateTime Created { get; set; }
         public IEnumerable<TicketSeriesModel> ExternalMailReferences { get; set; }
 
@@ -38,18 +39,21 @@ namespace WebApi.Models
             return taskModel;
         }
 
-        public static IEnumerable<TaskModel> From(IEnumerable<TaskEntry> tasks, IEnumerable<TicketEntity> tickets)
+        public static IEnumerable<TaskModel> From(IEnumerable<TaskEntry> tasks, IEnumerable<TicketEntity> tickets, IEnumerable<DataKeyLocationEntry> locations)
         {
             List<TaskModel> result = new();
             foreach (var task in tasks)
             {
+                var mainLocation = locations.Where(t => t.LocationCode == task.LocationCode).OrderByDescending(t => t.MainLocation).FirstOrDefault();
+
                 var taskModel = new TaskModel()
                 {
                     Created = task.Created,
                     Details = task.Details,
                     Id = task.Id,
                     Name = task.Name,
-                    LocationCode = task.LocationCode
+                    LocationCode = task.LocationCode,
+                    LocationName = mainLocation?.LocationName
                 };
                 result.Add(taskModel);
 

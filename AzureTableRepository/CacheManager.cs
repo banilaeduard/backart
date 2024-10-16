@@ -1,6 +1,7 @@
 ﻿using Azure;
 using Azure.Data.Tables;
 using AzureServices;
+using RepositoryContract;
 using System.Collections.Concurrent;
 
 namespace AzureTableRepository
@@ -166,7 +167,7 @@ namespace AzureTableRepository
             {
                 var entries = cache.GetOrAdd(tableName, s => []);
 
-                var xcept = new ConcurrentBag<ITableEntity>(entries.Except(entities, new TableEntity()));
+                var xcept = new ConcurrentBag<ITableEntity>(entries.Except(entities, new TableEntityPK()));
 
                 cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
             }
@@ -180,8 +181,8 @@ namespace AzureTableRepository
             {
                 var entries = cache.GetOrAdd(tableName, s => []);
 
-                entries.Except(entities, new TableEntity());
-                var xcept = new ConcurrentBag<ITableEntity>(entries.Except(entities, new TableEntity()));
+                entries.Except(entities, new TableEntityPK());
+                var xcept = new ConcurrentBag<ITableEntity>(entries.Except(entities, new TableEntityPK()));
                 foreach (var entry in entities)
                 {
                     xcept.Add(entry);
@@ -189,41 +190,6 @@ namespace AzureTableRepository
 
                 cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
             }
-        }
-    }
-
-    internal class TableEntity : IEqualityComparer<ITableEntity>, ITableEntity
-    {
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public DateTimeOffset? Timestamp { get; set; }
-        public ETag ETag { get; set; }
-        public static TableEntity From(string partitionKey, string rowKey)
-        {
-            return new TableEntity()
-            {
-                PartitionKey = partitionKey,
-                RowKey = rowKey
-            };
-        }
-        public bool Equals(ITableEntity x, ITableEntity y)
-        {
-            if (ReferenceEquals(x, y)) return true;
-
-            if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
-                return false;
-
-            if (x.PartitionKey == y.PartitionKey && x.RowKey == y.RowKey)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        public int GetHashCode(ITableEntity other)
-        {
-            return other.PartitionKey.GetHashCode() ^ other.RowKey.GetHashCode();
         }
     }
 }

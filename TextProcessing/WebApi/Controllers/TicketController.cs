@@ -12,6 +12,10 @@ namespace WebApi.Controllers
     using global::Services.Storage;
     using RepositoryContract.DataKeyLocation;
     using RepositoryContract.Tasks;
+    using Microsoft.ServiceFabric.Services.Remoting.Client;
+    using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+    using YahooFeeder;
+    using RepositoryContract;
 
     [Authorize(Roles = "partener, admin")]
     public class TicketController : WebApiController2
@@ -20,6 +24,11 @@ namespace WebApi.Controllers
         private IDataKeyLocationRepository dataKeyLocationRepository;
         private IStorageService storageService;
         private ITaskRepository taskRepository;
+
+        private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
+        {
+            return new FabricTransportServiceRemotingClientFactory();
+        });
 
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
@@ -67,18 +76,12 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Save(TicketSeriesModel complaint)
         {
-            await ticketEntryRepository.Save([..complaint.Tickets.Select(t => new TicketEntity()
+            await taskRepository.SaveTask(new TaskEntry()
             {
-                CreatedDate = DateTime.Now.ToUniversalTime(),
-                Description = t.Description,
-                From = t.From,
-                NrComanda = complaint.NrComanda,
-                TicketSource = "Manual",
-                PartitionKey = t.PartitionKey,
-                RowKey = t.RowKey,
-                IsDeleted = false,
-                ThreadId = t.RowKey
-            })]);
+                Details = complaint.Tickets[0].Description,
+                Name = complaint.NrComanda,
+                LocationCode = complaint.DataKey
+            });
             return Ok();
         }
 
@@ -98,6 +101,21 @@ namespace WebApi.Controllers
 
             await ticketEntryRepository.Save([.. items]);
             return Ok();
+        }
+        [HttpPost("eml/{partitionKey}/{rowKey}")]
+        public async Task<IActionResult> GetEmlMessage(string partitionKey, string rowKey)
+        {
+            var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
+            var path = await proxy.DownloadAll([TableEntityPK.From(partitionKey, rowKey)]);
+
+            if (string.IsNullOrEmpty(path[0].Path))
+            {
+                return BadRequest();
+            }
+            else
+            {
+                return File(storageService.Access(path.First().Path, out var contentType), contentType);
+            }
         }
     }
 }

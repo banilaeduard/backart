@@ -95,8 +95,8 @@ namespace PollerRecurringJob
             var ordersRepository = new OrdersRepository(null);
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
-            await StateManager.AddOrUpdateStateAsync("commited", commitDate, (x, y) => commitDate);
-            await StateManager.AddOrUpdateStateAsync("order", oderDate, (x, y) => oderDate);
+            await StateManager.AddOrUpdateStateAsync("commited", commitDate, (x, y) => y);
+            await StateManager.AddOrUpdateStateAsync("order", oderDate, (x, y) => y);
 
             await RegisterReminder();
         }

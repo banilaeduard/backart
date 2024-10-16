@@ -75,7 +75,7 @@ namespace WebApi.Controllers
 
             var reportData = WorkbookReportsService.GenerateReport(
                 items.Cast<DispozitieLivrare>().ToList(),
-                t => string.Format("{0} - {1}", t.NumarIntern.ToString(), t.NumeLocatie),
+                t => t.NumarIntern.ToString(),
                 t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
                 t => t.CodProdus);
 

@@ -14,9 +14,11 @@ using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 using MimeKit;
+using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tickets;
 using Tokenizer;
+using V2.Interfaces;
 using YahooFeeder;
 using UniqueId = MailKit.UniqueId;
 
@@ -79,6 +81,7 @@ namespace YahooTFeeder
                     User = Environment.GetEnvironmentVariable("User")!
                 }, cancellationToken);
 
+                cancellationToken.ThrowIfCancellationRequested();
                 await Task.Delay(TimeSpan.FromHours(3));
             }
         }
@@ -100,13 +103,8 @@ namespace YahooTFeeder
             var mailSettings = new MailSettingsRepository(null);
 
             ServiceEventSource.Current.ServiceMessage(Context, "Executing task mails. {0}", DateTime.Now);
-            using (ImapClient client = new ImapClient())
+            using (ImapClient client = await ConnectAsync(settings, cancellationToken))
             {
-                await client.ConnectAsync(
-                    "imap.mail.yahoo.com",
-                    993,
-                    true, cancellationToken); //For SSL
-                await client.AuthenticateAsync(settings.User, settings.Password, cancellationToken);
                 var mSettings = await mailSettings.GetMailSetting();
 
                 foreach (var setting in mSettings)
@@ -160,7 +158,7 @@ namespace YahooTFeeder
                             if (uids?.Any() == true)
                                 foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.InternalDate | MessageSummaryItems.EmailId | MessageSummaryItems.UniqueId))
                                 {
-                                    if (await ticketEntryRepository.Exists<TicketEntity>(GetPartitionKey(messageSummary), GetRowKey(messageSummary)))
+                                    if (await ticketEntryRepository.GetIfExists<TicketEntity>(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null)
                                         continue;
 
                                     toProcess.Add(messageSummary);
@@ -169,7 +167,6 @@ namespace YahooTFeeder
                             {
                                 await AddComplaint(toProcess, ticketEntryRepository, folder);
                                 var sample = toProcess.OrderByDescending(t => t.InternalDate).First().InternalDate;
-                                //await SaveAttachments(messageSummary, ticket, ticketEntryRepository);
                                 syncDate = sample > syncDate ? sample : syncDate;
                             }
                         }
@@ -180,7 +177,6 @@ namespace YahooTFeeder
                         finally
                         {
                             folder.Close(cancellationToken: cancellationToken);
-                            ServiceEventSource.Current.ServiceMessage(Context, "Finished Executing task mails. {0}", DateTime.Now);
                         }
                     }
                     meta["sync_data"] = syncDate.Value.ToString();
@@ -210,10 +206,9 @@ namespace YahooTFeeder
                 Extras extras = null;
                 string contentId = "";
 
-                string file_name = message.UniqueId.Id + "_" + message.UniqueId.Validity;
                 string extension = message.HtmlBody != null ? "html" : "txt";
-                var fname = $"attachments/{message.Date.Date.ToString("yy")}/{file_name}/{file_name}.{extension}";
-                
+                var fname = $"attachments/{GetPartitionKey(message)}/{GetRowKey(message)}/body.{extension}";
+
                 string body = "";
                 try
                 {
@@ -316,12 +311,13 @@ namespace YahooTFeeder
                     ThreadId = message.ThreadId + "_" + message.UniqueId.Validity,
                     EmailId = message.EmailId,
                     ContentId = contentId,
-                    Uid = message.UniqueId.Id + "_" + message.UniqueId.Validity,
+                    Uid = Convert.ToInt32(message.UniqueId.Id),
+                    Validity = Convert.ToInt32(message.UniqueId.Validity),
                     OriginalBodyPath = fname,
                     LocationCode = location?.LocationCode,
                     LocationRowKey = location?.RowKey,
                     LocationPartitionKey = location?.PartitionKey,
-                    HasAttachments = message.Attachments?.Any() == true
+                    HasAttachments = message.Attachments?.Any() == true,
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
@@ -337,7 +333,7 @@ namespace YahooTFeeder
                 {
                     MimeTypes.TryGetExtension(attachmentPart.ContentType?.MimeType, out var extension);
                     var fName = (attachmentPart.FileName ?? attachmentPart.ContentMd5).Replace("-", "").ToLowerInvariant();
-                    var fname = $"attachments/{message.Date.Date.ToString("yy")}/{message.UniqueId}/{fName}.{extension ?? "txt"}";
+                    var fname = $"attachments/{GetPartitionKey(message)}/{GetRowKey(message)}/{fName}.{extension}";
 
                     if (!storageService.Exists(fname))
                     {
@@ -374,11 +370,86 @@ namespace YahooTFeeder
             }
         }
 
-        private string GetPartitionKey(IMessageSummary id) => id.InternalDate.Value.ToString("yyMM");
-        private string GetRowKey(IMessageSummary id) => string.IsNullOrEmpty(id.EmailId) ? (id.UniqueId.Id.ToString() + "_" + id.UniqueId.Validity) : id.EmailId;
+        private string GetPartitionKey(IMessageSummary id) => id.UniqueId.Validity.ToString();
+        private string GetRowKey(IMessageSummary id) => id.UniqueId.Id.ToString();
         private void LogError(Exception ex)
         {
             ServiceEventSource.Current.ServiceMessage(Context, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
+        }
+
+        public async Task<MailBody[]> DownloadAll(TableEntityPK[] uids)
+        {
+            var mailSettings = new MailSettingsRepository(null);
+            var ticketEntryRepository = new TicketEntryRepository(null);
+            var blob = new BlobAccessStorageService();
+            List<MailBody> result = new();
+
+            try
+            {
+                foreach (var uid in uids)
+                {
+                    var fname = $"attachments/{uid.PartitionKey}/{uid.RowKey}/body.eml";
+
+                    if (blob.Exists(fname))
+                    {
+                        result.Add(new() { TableEntity = uid, Path = fname });
+                        continue;
+                    }
+                }
+
+                if (result.Count == uids.Count()) return result.ToArray();
+
+                var missingUids = uids.Except(result.Select(t => t.TableEntity));
+                var tickets = (await ticketEntryRepository.GetAll()).Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey));
+                var allFolders = (await mailSettings.GetMailSetting()).SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries)).Distinct().ToArray();
+
+                using (var client = await ConnectAsync(new MailSettings()
+                {
+                    DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
+                    Password = Environment.GetEnvironmentVariable("Password")!,
+                    User = Environment.GetEnvironmentVariable("User")!
+                }, CancellationToken.None))
+                {
+                    foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                    {
+                        var uidsMissing = tickets.Select(t => new UniqueId((uint)t.Validity, (uint)t.Uid)).ToList();
+                        if (uidsMissing.Count == 0) return result.ToArray();
+                        await folder.OpenAsync(FolderAccess.ReadOnly);
+                        var found = folder.Search(SearchQuery.Uids(uidsMissing));
+
+                        foreach (var uid in found)
+                        {
+                            var entry = tickets.First(t => uid.Validity == t.Validity && uid.Id == t.Uid);
+                            var msg = folder.GetMessage(uid);
+                            var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
+
+                            using (var ms = new MemoryStream())
+                            {
+                                msg.WriteTo(FormatOptions.Default, ms);
+                                blob.WriteTo(fname, new BinaryData(ms.ToArray()));
+                            }
+                            var uu = missingUids.First(t => t.PartitionKey == entry.PartitionKey && t.RowKey == entry.RowKey);
+                            result.Add(new MailBody() { TableEntity = uu, Path = fname });
+                        }
+                        tickets = tickets.ExceptBy(found, t => new UniqueId((uint)t.Validity, (uint)t.Uid));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+                throw;
+            }
+
+            return result.ToArray();
+        }
+
+        private async Task<ImapClient> ConnectAsync(MailSettings settings, CancellationToken cancellationToken)
+        {
+            ImapClient client = new ImapClient();
+            await client.ConnectAsync("imap.mail.yahoo.com", 993, true, cancellationToken);
+            await client.AuthenticateAsync(settings.User, settings.Password, cancellationToken);
+            return client;
         }
     }
 }
