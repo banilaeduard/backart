@@ -46,7 +46,7 @@ namespace SqlTableRepository.Tasks
 
         public async Task<TaskEntry> SaveTask(TaskEntry task)
         {
-            var count = task.ExternalReferenceEntries.Count();
+            var count = task.ExternalReferenceEntries?.Count();
 
             TaskEntry taskEntry;
             TaskAction taskAction;
