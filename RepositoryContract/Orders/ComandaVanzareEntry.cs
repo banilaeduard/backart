@@ -36,7 +36,7 @@ namespace RepositoryContract.Orders
 
         public static string PKey(ComandaVanzare entry)
         {
-            return $"{entry.NumePartener}";
+            return $"{(entry.DocId / 100)}";
         }
 
         public static IEqualityComparer<ComandaVanzareEntry> GetEqualityComparer(bool includeQ = false)
@@ -73,18 +73,38 @@ namespace RepositoryContract.Orders
             public int GetHashCode(ComandaVanzareEntry other)
             {
                 // if (Object.ReferenceEquals(number, null)) return 0;
-                int hash1 = other.NumePartener.GetHashCode();
-                int hash2 = other.CodLocatie == null ? 0 : other.CodLocatie.GetHashCode();
-                int hash3 = other.DocId.GetHashCode();
-                int hash5 = other.CodArticol == null ? 0 : other.CodArticol.GetHashCode();
-                int hash6 = other.DetaliiDoc == null ? 0 : other.DetaliiDoc.GetHashCode();
-                int hash7 = other.DetaliiLinie == null ? 0 : other.DetaliiLinie.GetHashCode();
-                int hash9 = other.NumarComanda == null ? 0 : other.NumarComanda.GetHashCode();
-                int hash8 = other.Cantitate.GetHashCode();
+                int hash1 = GetStableHashCode(other.NumePartener);
+                int hash2 = GetStableHashCode(other.CodLocatie);
+                int hash3 = GetStableHashCode(other.DocId.ToString());
+                int hash5 = GetStableHashCode(other.CodArticol);
+                int hash6 = GetStableHashCode(other.DetaliiDoc);
+                int hash7 = GetStableHashCode(other.DetaliiLinie);
+                int hash9 = GetStableHashCode(other.NumarComanda);
+                int hash8 = GetStableHashCode(other.Cantitate.ToString());
 
                 if (includeQ)
                     return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9 ^ hash8;
                 return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9;
+            }
+        }
+
+        private static int GetStableHashCode(string? str)
+        {
+            if (str == null) return 0;
+            unchecked
+            {
+                int hash1 = 5381;
+                int hash2 = hash1;
+
+                for (int i = 0; i < str.Length && str[i] != '\0'; i += 2)
+                {
+                    hash1 = ((hash1 << 5) + hash1) ^ str[i];
+                    if (i == str.Length - 1 || str[i + 1] == '\0')
+                        break;
+                    hash2 = ((hash2 << 5) + hash2) ^ str[i + 1];
+                }
+
+                return hash1 + (hash2 * 1566083941);
             }
         }
     }
