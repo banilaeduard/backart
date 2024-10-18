@@ -25,4 +25,7 @@ packages
 .history/*
 TextProcessing/pkg/
 TextProcessing/ApplicationParameters/
+TextProcessing/StartupServiceParameters/
+TextProcessing/TextProcessing.sfproj
+TextProcessing/StartupServices.xml
 TextProcessing/PublishProfiles/
