@@ -18,7 +18,7 @@ namespace WebApi.Services
             fromName = "Adrian B.";
             this.logger = logger;
         }
-        public void SendEmail(string userEmail, string confirmationLink, string subject)
+        public async Task SendEmail(string userEmail, string confirmationLink, string subject)
         {
             var client = new SendGridClient(key);
             var msg = new SendGridMessage()
@@ -30,7 +30,7 @@ namespace WebApi.Services
 
             msg.AddTo(new EmailAddress(userEmail));
             msg.SetClickTracking(true, false);
-            client.SendEmailAsync(msg);
+            await client.SendEmailAsync(msg);
         }
     }
 }

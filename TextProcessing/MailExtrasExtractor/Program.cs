@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
 using Microsoft.ServiceFabric.Services.Runtime;
 
@@ -21,7 +22,8 @@ namespace MailExtrasExtractor
                 {
                     ServiceRuntime.RegisterServiceAsync("MailExtrasExtractorType",
                     context => new MailExtrasExtractor(context)).GetAwaiter().GetResult();
-
+                    CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+                    CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
                     ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(MailExtrasExtractor).Name);
 
                     // Prevents this host process from terminating so services keep running.

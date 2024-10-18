@@ -1,6 +1,7 @@
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
 using Microsoft.ServiceFabric.Services.Runtime;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace WebApi
 {
@@ -21,7 +22,8 @@ namespace WebApi
                 {
                     ServiceRuntime.RegisterServiceAsync("WebApiType",
                     context => new WebApi(context)).GetAwaiter().GetResult();
-
+                    CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+                    CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
                     ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(WebApi).Name);
                     // Prevents this host process from terminating so services keeps running. 
                     Thread.Sleep(Timeout.Infinite);

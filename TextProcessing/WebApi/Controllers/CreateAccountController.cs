@@ -44,7 +44,7 @@ namespace WebApi.Controllers
                         { "email", user.Email }
                     };
                 var confirmationLink = QueryHelpers.AddQueryString(confirmationUrl, param);
-                emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
+                await emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
             }
             else
             {

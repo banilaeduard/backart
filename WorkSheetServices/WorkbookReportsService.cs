@@ -23,19 +23,20 @@ namespace WorkSheetServices
                     var ids = dispozitii.Select(keyResolver).Distinct().Order().ToArray();
                     Dictionary<string, int> rowCounter = new();
 
-                    var extend = (char)('C' + ids.Count() - 1);
                     worksheet.Row(1).Style.Font.FontSize = 14;
-                    worksheet.Range($"A:{extend}").Row(1).Merge();
+                    worksheet.Range("A:D").Row(1).Merge();
                     worksheet.Cell(1, 1).Value = "Dispozitii Livrare:" + string.Join("; ", dispozitii.Select(t => t.NumarIntern).Distinct().Order().ToArray());
-                    worksheet.Range($"A:{extend}").Row(2).Merge();
+                    worksheet.Range("A:D").Row(2).Merge();
                     worksheet.Cell(2, 1).Value = string.Join("; ", dispozitii.Select(t => t.NumeLocatie).Distinct().Order().ToArray());
 
-                    worksheet.Row(3).Cells("1:2").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
+                    worksheet.Row(3).Cells("1:3").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
                     worksheet.Row(3).Style.Font.FontSize = 16;
-                    worksheet.Cell(3, 1).Value = "Nume Produs";
-                    worksheet.Cell(3, 2).Value = "Q";
+                    worksheet.Cell(3, 1).Value = "Cod Produs";
+                    worksheet.Cell(3, 2).Value = "Nume Produs";
+                    worksheet.Cell(3, 3).Value = "Q";
+                    worksheet.Cell(3, 4).Value = "Stoc";
 
-                    var firstEmptyCol = 3;
+                    var firstEmptyCol = 5;
                     var lastColCountIndex = firstEmptyCol + ids.Count() - 1;
 
                     var extraInfo = dispozitii.GroupBy(keyResolver).ToDictionary(t => t.Key);
@@ -52,10 +53,11 @@ namespace WorkSheetServices
 
                         z_sheet.Row(1).Cells("1:3").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
                         z_sheet.Row(1).Style.Font.FontSize = 14;
-                        z_sheet.Cell(1, 1).Value = "Nume Produs";
-                        z_sheet.Cell(1, 2).Value = "Q";
-                        z_sheet.Cell(1, 3).Value = "Numar Comanda";
-                        z_sheet.Range("A:C").Row(2).Merge();
+                        z_sheet.Cell(1, 1).Value = "Cod Produs";
+                        z_sheet.Cell(1, 2).Value = "Nume Produs";
+                        z_sheet.Cell(1, 3).Value = "Q";
+                        z_sheet.Cell(1, 4).Value = "Numar Comanda";
+                        z_sheet.Range("A:D").Row(2).Merge();
                         z_sheet.Cell(2, 1).Value = string.Join(";", extraInfo[ids[z]].DistinctBy(t => t.NumarComanda).Select(t => t.NumarComanda));
                         rowCounter[ids[z]] = 3;
                     }
@@ -73,8 +75,9 @@ namespace WorkSheetServices
                             {
                                 worksheet.Row(i).Cells(string.Format("1:{0}", lastColCountIndex)).Style.Fill.SetBackgroundColor(XLColor.LightGray);
                             }
-                            worksheet.Cell(i, 1).Value = x.First().NumeProdus;
-                            worksheet.Cell(i, 2).FormulaR1C1 = string.Format("=SUM(R{0}C3:R{0}C{1})", i, lastColCountIndex);
+                            worksheet.Cell(i, 1).Value = x.First().CodProdus;
+                            worksheet.Cell(i, 2).Value = x.First().NumeProdus;
+                            worksheet.Cell(i, 3).FormulaR1C1 = string.Format("=SUM(R{0}C4:R{0}C{1})", i, lastColCountIndex);
 
                             for (var z = 0; z < ids.Count(); z++)
                             {
@@ -83,9 +86,10 @@ namespace WorkSheetServices
                                 if (workbook.TryGetWorksheet(sheetName, out var z_sheet) && item != null)
                                 {
                                     var row_count = rowCounter[ids[z]];
-                                    z_sheet.Cell(row_count, 1).Value = item.NumeProdus;
-                                    z_sheet.Cell(row_count, 2).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
-                                    z_sheet.Cell(row_count, 3).Value = item.NumarComanda;
+                                    z_sheet.Cell(row_count, 1).Value = item.CodProdus;
+                                    z_sheet.Cell(row_count, 2).Value = item.NumeProdus;
+                                    z_sheet.Cell(row_count, 3).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
+                                    z_sheet.Cell(row_count, 4).Value = item.NumarComanda;
                                     worksheet.Cell(i, firstEmptyCol + z).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
                                     worksheet.Cell(i, firstEmptyCol + z).Style.Font.FontSize = 10;
                                     rowCounter[ids[z]]++;
@@ -96,12 +100,12 @@ namespace WorkSheetServices
 
                         if (ordered.Count() > 1)
                         {
-                            worksheet.Cell(i, 1).Value = string.Format("Total {0}:", GetDisplayName(grp.Key));
-                            worksheet.Cell(i, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
-                            worksheet.Cell(i, 1).Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
-
-                            worksheet.Cell(i, 2).FormulaR1C1 = string.Format("=SUM(R{0}C3:R{1}C{2})", grp_i, i - 1, lastColCountIndex);
+                            worksheet.Cell(i, 2).Value = string.Format("Total {0}:", GetDisplayName(grp.Key));
+                            worksheet.Cell(i, 2).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
                             worksheet.Cell(i, 2).Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
+
+                            worksheet.Cell(i, 3).FormulaR1C1 = string.Format("=SUM(R{0}C4:R{1}C{2})", grp_i, i - 1, lastColCountIndex);
+                            worksheet.Cell(i, 3).Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
                             i++;
                         }
                         else
@@ -115,17 +119,20 @@ namespace WorkSheetServices
                         if (workbook.TryGetWorksheet(ids[z].ToString(), out var z_sheet))
                         {
                             var range = worksheet.Range(4, firstEmptyCol + ids.Count() + z + 3, i, firstEmptyCol + z + ids.Count() + 3);
-                            range.FormulaR1C1 = string.Format("=IFERROR(@INDEX('{0}'!A2:C{1}, MATCH(RC1, '{0}'!A2:A{1}, 0),2), \"\")", ids[z].ToString(), rowCounter[ids[z]] + 1);
-                            z_sheet.Columns("1:2").AdjustToContents();
+                            range.FormulaR1C1 = string.Format("=IFERROR(@INDEX('{0}'!A2:C{1}, MATCH(RC1, '{0}'!A2:A{1}, 0),3), \"\")", ids[z].ToString(), rowCounter[ids[z]] + 1);
+                            z_sheet.Columns("1:4").AdjustToContents();
                             z_sheet.Rows().AdjustToContents();
                         }
                     }
+
+                    var table = worksheet.Range(3, 1, i - 1, 3).CreateTable();
+                    table.Theme = XLTableTheme.TableStyleLight1;
 
                     worksheet.Rows().AdjustToContents();
                     worksheet.Columns("1:" + lastColCountIndex).AdjustToContents();
 
                     worksheet.PageSetup.PrintAreas.Clear();
-                    worksheet.PageSetup.PrintAreas.Add(1, 1, i + 1, firstEmptyCol + ids.Count() - 1);
+                    worksheet.PageSetup.PrintAreas.Add(1, 1, i + 1, firstEmptyCol - 2);
                     worksheet.PageSetup.PageOrientation = XLPageOrientation.Landscape;// pageOrientation == "landscape" ? XLPageOrientation.Landscape : XLPageOrientation.Portrait;
                     worksheet.PageSetup.Margins.SetTop(1);
                     worksheet.PageSetup.Margins.SetLeft(0);

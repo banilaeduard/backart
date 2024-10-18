@@ -1,5 +1,6 @@
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
 using Microsoft.ServiceFabric.Actors.Runtime;
+using System.Globalization;
 
 namespace PollerRecurringJob
 {
@@ -20,7 +21,8 @@ namespace PollerRecurringJob
                 {
                     ActorRuntime.RegisterActorAsync<PollerRecurringJob>(
                    (context, actorType) => new ScheduledActorService<PollerRecurringJob>(context, actorType)).GetAwaiter().GetResult();
-
+                    CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+                    CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
                     Thread.Sleep(Timeout.Infinite);
                 }
             }

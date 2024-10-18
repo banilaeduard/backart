@@ -35,19 +35,19 @@ namespace WebApi.Controllers
         public async Task<IActionResult> createUser(UserModel userModel, [FromQuery] string resetUrl)
         {
             var identityUser = AppIdentityUserExtension.From(userModel);
-            var result = await this.userManager.CreateAsync(identityUser);
+            var result = await userManager.CreateAsync(identityUser);
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(identityUser, "basic");
-                await userManager.ConfirmEmailAsync(identityUser, await this.userManager.GenerateEmailConfirmationTokenAsync(identityUser));
+                await userManager.ConfirmEmailAsync(identityUser, await userManager.GenerateEmailConfirmationTokenAsync(identityUser));
 
-                var token = await this.userManager.GeneratePasswordResetTokenAsync(identityUser);
+                var token = await userManager.GeneratePasswordResetTokenAsync(identityUser);
                 var param = new Dictionary<string, string>() {
                         { "token", token },
                         { "email", identityUser.Email }
                     };
                 var resetLink = QueryHelpers.AddQueryString(resetUrl, param);
-                this.emailSender.SendEmail(identityUser.Email, resetLink, "Setati parola!");
+                await emailSender.SendEmail(identityUser.Email, resetLink, "Setati parola!");
                 return Ok(new UserModel().From(identityUser));
             }
             else
@@ -59,8 +59,8 @@ namespace WebApi.Controllers
         [HttpPatch]
         public async Task<IActionResult> updateUser(UserModel userModel)
         {
-            var identityUser = await this.userManager.FindByNameAsync(userModel.UserName);
-            var result = await this.userManager.UpdateAsync(identityUser.fromUserModel(userModel));
+            var identityUser = await userManager.FindByNameAsync(userModel.UserName);
+            var result = await userManager.UpdateAsync(identityUser.fromUserModel(userModel));
             if (result.Succeeded)
             {
                 return Ok(new UserModel().From(identityUser));
@@ -74,23 +74,23 @@ namespace WebApi.Controllers
         [HttpDelete("{username}")]
         public async Task<IActionResult> DeleteUserAsync(string username)
         {
-            var result = await this.userManager.DeleteAsync(await this.userManager.FindByNameAsync(username));
+            var result = await userManager.DeleteAsync(await userManager.FindByNameAsync(username));
             return result.Succeeded ? Ok() : BadRequest(result.Errors);
         }
 
         [HttpGet("{username}")]
         public async Task<IActionResult> GetUserAsync(string username)
         {
-            return Ok(new UserModel().From(await this.userManager.FindByNameAsync(username)));
+            return Ok(new UserModel().From(await userManager.FindByNameAsync(username)));
         }
 
         [HttpPost("add-to-role/{userName}")]
         public async Task<IActionResult> AddToRole(string userName, [FromQuery] RoleEnum role)
         {
-            var user = await this.userManager.FindByNameAsync(userName);
+            var user = await userManager.FindByNameAsync(userName);
 
-            await this.userManager.RemoveFromRolesAsync(user, await this.userManager.GetRolesAsync(user));
-            var result = await this.userManager.AddToRoleAsync(
+            await userManager.RemoveFromRolesAsync(user, await userManager.GetRolesAsync(user));
+            var result = await userManager.AddToRoleAsync(
                                                 user,
                                                 Enum.GetName(typeof(RoleEnum), role)
                                                 );
@@ -100,8 +100,8 @@ namespace WebApi.Controllers
         [HttpPost("remove-role/{userName}")]
         public async Task<IActionResult> RemoveRole(string userName, [FromQuery] RoleEnum role)
         {
-            var result = await this.userManager.RemoveFromRoleAsync(
-                                                await this.userManager.FindByNameAsync(userName),
+            var result = await userManager.RemoveFromRoleAsync(
+                                                await userManager.FindByNameAsync(userName),
                                                 Enum.GetName(typeof(RoleEnum), role)
                                                 );
             return result.Succeeded ? Ok() : BadRequest(result.Errors);
@@ -110,7 +110,7 @@ namespace WebApi.Controllers
         [HttpGet("roles/{userName}")]
         public async Task<IActionResult> GetUserRoles(string userName)
         {
-            var roles = await this.userManager.GetRolesAsync(await this.userManager.FindByNameAsync(userName));
+            var roles = await userManager.GetRolesAsync(await userManager.FindByNameAsync(userName));
             return Ok(roles);
         }
 
