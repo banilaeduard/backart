@@ -30,7 +30,8 @@ namespace WebApi.Services
 
             msg.AddTo(new EmailAddress(userEmail));
             msg.SetClickTracking(true, false);
-            await client.SendEmailAsync(msg);
+            var resp = await client.SendEmailAsync(msg);
+            var x = 1;
         }
     }
 }

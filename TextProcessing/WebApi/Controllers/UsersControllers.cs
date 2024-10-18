@@ -105,7 +105,7 @@ namespace WebApi.Controllers
                         { "email", user.Email }
                     };
             var passwordResetLink = QueryHelpers.AddQueryString(passwordResetUrl, param);
-            //_emailService.SendEmail(user.Email, passwordResetLink, "Resetati parola");
+            await _emailService.SendEmail(user.Email, passwordResetLink, "Resetati parola");
 
             return Ok();
         }
