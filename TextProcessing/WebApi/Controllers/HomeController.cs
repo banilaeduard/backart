@@ -3,12 +3,13 @@ namespace WebApi.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.Extensions.Logging;
+    using AutoMapper;
 
     [Route("/")]
     public class HomeController : WebApiController2
     {
         public HomeController(
-            ILogger<HomeController> logger) : base(logger)
+            ILogger<HomeController> logger, IMapper mapper) : base(logger, mapper)
         {
         }
 

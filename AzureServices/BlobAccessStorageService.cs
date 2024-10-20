@@ -84,6 +84,7 @@ namespace AzureServices
         public byte[] AccessIfExists(string fName, out string contentType)
         {
             contentType = "";
+            if (string.IsNullOrEmpty(fName)) return [];
             var blob = client.GetBlobClient(fName);
 
             if (!blob.Exists()) return [];

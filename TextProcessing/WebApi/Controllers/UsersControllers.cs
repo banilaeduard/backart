@@ -14,6 +14,7 @@ namespace WebApi.Controllers
     using global::WebApi.Models;
     using System.Security.Claims;
     using Microsoft.Extensions.Caching.Memory;
+    using AutoMapper;
 
     public class UsersController : WebApiController2
     {
@@ -26,8 +27,9 @@ namespace WebApi.Controllers
             IUserService userService,
             UserManager<AppIdentityUser> userManager,
             ILogger<UsersController> logger,
-            EmailSender emailService
-            ) : base(logger)
+            EmailSender emailService,
+            IMapper mapper
+            ) : base(logger, mapper)
         {
             _userService = userService;
             _userManager = userManager;

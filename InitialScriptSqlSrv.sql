@@ -133,10 +133,6 @@ CREATE INDEX IX_AspNetUsers_DataKeyLocationId ON AspNetUsers (DataKeyLocationId)
 CREATE UNIQUE INDEX UserNameIndex ON AspNetUsers (NormalizedUserName);
 
 
-CREATE INDEX IX_RefreshToken_AppIdentityUserId ON RefreshToken (AppIdentityUserId);
-
-
-
 CREATE TABLE CodeAttribute (
     InnerValue varchar(255) NOT NULL,
     Tag varchar(255) NOT NULL,

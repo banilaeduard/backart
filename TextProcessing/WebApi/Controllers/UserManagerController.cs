@@ -1,7 +1,6 @@
 namespace WebApi.Controllers
 {
     using System;
-    using System.Collections.Generic;
     using System.Threading.Tasks;
     using System.Linq;
 
@@ -10,11 +9,11 @@ namespace WebApi.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Identity;
-    using Microsoft.AspNetCore.WebUtilities;
 
     using DataAccess.Entities;
     using global::WebApi.Models;
     using global::WebApi.Services;
+    using AutoMapper;
 
     [Authorize(Roles = "admin")]
     public class UserManagerController : WebApiController2
@@ -24,8 +23,9 @@ namespace WebApi.Controllers
         public UserManagerController(
             ILogger<UserManagerController> logger,
             UserManager<AppIdentityUser> userManager,
-            EmailSender emailSender
-            ) : base(logger)
+            EmailSender emailSender,
+            IMapper mapper
+            ) : base(logger, mapper)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
@@ -35,19 +35,19 @@ namespace WebApi.Controllers
         public async Task<IActionResult> createUser(UserModel userModel, [FromQuery] string resetUrl)
         {
             var identityUser = AppIdentityUserExtension.From(userModel);
-            var result = await userManager.CreateAsync(identityUser);
+            var result = await userManager.CreateAsync(identityUser, "123ewqasd");
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(identityUser, "basic");
                 await userManager.ConfirmEmailAsync(identityUser, await userManager.GenerateEmailConfirmationTokenAsync(identityUser));
 
-                var token = await userManager.GeneratePasswordResetTokenAsync(identityUser);
-                var param = new Dictionary<string, string>() {
-                        { "token", token },
-                        { "email", identityUser.Email }
-                    };
-                var resetLink = QueryHelpers.AddQueryString(resetUrl, param);
-                await emailSender.SendEmail(identityUser.Email, resetLink, "Setati parola!");
+                //var token = await userManager.GeneratePasswordResetTokenAsync(identityUser);
+                //var param = new Dictionary<string, string>() {
+                //        { "token", token },
+                //        { "email", identityUser.Email }
+                //    };
+                //var resetLink = QueryHelpers.AddQueryString(resetUrl, param);
+                //await emailSender.SendEmail(identityUser.Email, resetLink, "Setati parola!");
                 return Ok(new UserModel().From(identityUser));
             }
             else

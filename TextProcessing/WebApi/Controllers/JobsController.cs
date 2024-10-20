@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.ServiceFabric.Actors.Client;
+using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using RepositoryContract.CommitedOrders;
@@ -6,9 +9,12 @@ using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using System.Fabric;
 using YahooFeeder;
+using PollerRecurringJob.Interfaces;
+using AutoMapper;
 
 namespace WebApi.Controllers
 {
+    [Authorize(Roles = "admin")]
     public class JobsController : WebApiController2
     {
         private MailSettings mailSettings;
@@ -28,7 +34,8 @@ namespace WebApi.Controllers
             IOrdersRepository ordersRepository,
             ICommitedOrdersRepository commitedOrdersRepository,
             IImportsRepository importsRepository,
-            MailSettings settings) : base(logger)
+            IMapper mapper,
+            MailSettings settings) : base(logger, mapper)
         {
             this.mailSettings = settings;
             this.context = context;
@@ -77,17 +84,10 @@ namespace WebApi.Controllers
         {
             try
             {
-                var commitedD = await commitedOrdersRepository.GetLastSyncDate();
-                var orderD = await ordersRepository.GetLastSyncDate();
-                var sourceOrders = await importsRepository.GetImportCommitedOrders(commitedD, new DateTime(2024,5,5));
+                var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(0), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+                await proxy.Sync();
 
-                commitedD = commitedD ?? (sourceOrders.commited?.MaxBy(t => t.DataDocument).DataDocument);
-                orderD = orderD ?? (sourceOrders.orders?.MaxBy(t => t.DataDoc).DataDoc);
-
-                await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.commited, commitedD.Value);
-                await ordersRepository.ImportOrders(sourceOrders.orders, orderD.Value);
-
-                return Ok(new { orders = sourceOrders.orders.Count, commited = sourceOrders.commited.Count });
+                return Ok();
             }
             catch (Exception ex)
             {

@@ -24,7 +24,7 @@ namespace SqlTableRepository.Tasks
 
         public async Task<IList<TaskEntry>> GetActiveTasks()
         {
-            return await GetActiveTasksInternal();
+            return await GetTasksInternal(TaskStatus.Open);
         }
 
         public async Task<IList<ExternalReferenceEntry>> GetExternalReferences()
@@ -100,14 +100,22 @@ namespace SqlTableRepository.Tasks
                     string descriptionStart = taskResult.IsClosed != taskResult.old_isclosed ? "Mark as closed" : "Update task properties";
                     string name = taskResult.Name != taskResult.old_name ? $"Name: {taskResult.old_name}" : "";
                     string details = taskResult.Details != taskResult.old_details ? $"Details: {taskResult.old_details}" : "";
-                    await connection.ExecuteAsync(insertAction, new { TaskId = task.Id, Description = $"{descriptionStart}. {name}; {details}" });
+
+                    string refCountUpdate = "";
+                    if (taskResult.IsClosed != taskResult.old_isclosed)
+                    {
+                        refCountUpdate = @$"UPDATE erg SET Ref_count = Ref_count + @Value 
+                                            FROM dbo.ExternalReferenceGroup erg JOIN ExternalReferenceEntry er ON erg.G_Id = er.GroupId WHERE er.TaskId = @TaskId";
+                    }
+
+                    await connection.ExecuteAsync($"{insertAction};{refCountUpdate}", new { TaskId = task.Id, Description = $"{descriptionStart}. {name}; {details}", Value = taskResult.IsClosed ? -1 : 1 });
                 }
             }
             _taskCache.Clear();
-            return (await GetActiveTasksInternal(task.Id))[0];
+            return (await GetTasksInternal(TaskStatus.All, task.Id))[0];
         }
 
-        private async Task<IList<TaskEntry>> GetActiveTasksInternal(int? TaskId = null)
+        private async Task<IList<TaskEntry>> GetTasksInternal(TaskStatus status, int? TaskId = null)
         {
             var key = $"GetActiveTasksInternal_{TaskId ?? -1}";
             if (!_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
@@ -117,8 +125,8 @@ namespace SqlTableRepository.Tasks
                 IList<ExternalReferenceEntry> externalRef;
                 using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
                 {
-                    string taskSql = $"SELECT * FROM dbo.TaskEntry WHERE IsClosed = 0 AND {(TaskId.HasValue ? "Id = @TaskId" : "@TaskId = @TaskId")}";
-                    string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE t.IsClosed = 0 AND {(TaskId.HasValue ? "t.Id = @TaskId" : "@TaskId = @TaskId")}";
+                    string taskSql = $"SELECT * FROM dbo.TaskEntry WHERE {GetTaskStatus(status)} AND {(TaskId.HasValue ? "Id = @TaskId" : "@TaskId = @TaskId")}";
+                    string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE {GetTaskStatus(status)} AND {(TaskId.HasValue ? "t.Id = @TaskId" : "@TaskId = @TaskId")}";
                     var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId = TaskId ?? -1 });
 
                     tasks = [.. multi.Read<TaskEntry>()];
@@ -140,5 +148,22 @@ namespace SqlTableRepository.Tasks
 
             return tasksCache;
         }
+
+        private string GetTaskStatus(TaskStatus status)
+        {
+            switch (status)
+            {
+                case TaskStatus.All: return "1 = 1";
+                case TaskStatus.Closed: return "IsClosed = 1";
+                case TaskStatus.Open: return "IsClosed = 0";
+            }
+            return "";
+        }
+    }
+
+    enum TaskStatus {
+        All = 3,
+        Closed = 1,
+        Open = 2
     }
 }

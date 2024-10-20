@@ -1,17 +1,16 @@
 namespace WebApi.Controllers
 {
     using System.Threading.Tasks;
-    using System.Collections.Generic;
     using Newtonsoft.Json.Linq;
 
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Identity;
     using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.WebUtilities;
     using Microsoft.Extensions.Logging;
     using DataAccess.Entities;
     using global::WebApi.Models;
     using global::WebApi.Services;
+    using AutoMapper;
 
     [AllowAnonymous]
     public class CreateAccountController : WebApiController2
@@ -22,7 +21,8 @@ namespace WebApi.Controllers
         public CreateAccountController(
             UserManager<AppIdentityUser> userManager,
             EmailSender emailSender,
-            ILogger<CreateAccountController> logger) : base(logger)
+            IMapper mapper,
+            ILogger<CreateAccountController> logger) : base(logger, mapper)
         {
             this.userManager = userManager;
             this.emailSender = emailSender;
@@ -37,14 +37,15 @@ namespace WebApi.Controllers
             if (result.Succeeded)
             {
                 logger.LogInformation("Account creat cu succes {0}", user.Email);
-
+                await userManager.AddToRoleAsync(appUser, "basic");
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(appUser);
-                var param = new Dictionary<string, string>() {
-                        { "token", token },
-                        { "email", user.Email }
-                    };
-                var confirmationLink = QueryHelpers.AddQueryString(confirmationUrl, param);
-                await emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
+                var result2 = await userManager.ConfirmEmailAsync(appUser, token);
+                //var param = new Dictionary<string, string>() {
+                //        { "token", token },
+                //        { "email", user.Email }
+                //    };
+                //var confirmationLink = QueryHelpers.AddQueryString(confirmationUrl, param);
+                //await emailSender.SendEmail(user.Email, confirmationLink, "Confirmati adresa de email");
             }
             else
             {

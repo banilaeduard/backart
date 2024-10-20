@@ -37,9 +37,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="MailExtrasExtractor\MailExtrasExtractor.csproj" />
+    <ProjectReference Include="PollerRecurringJob\PollerRecurringJob.csproj" />
     <ProjectReference Include="WebApi\WebApi.csproj">
       <ServiceLaunchUrl>https://localhost:{ServicePort}/swagger</ServiceLaunchUrl>
     </ProjectReference>
+    <ProjectReference Include="YahooTFeeder\YahooTFeeder.csproj" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
   <PropertyGroup>

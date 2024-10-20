@@ -6,6 +6,7 @@
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.Extensions.Logging;
+    using AutoMapper;
 
     [Authorize]
     [ApiController]
@@ -13,6 +14,7 @@
     public class WebApiController2 : ControllerBase
     {
         protected ILogger logger;
+        protected IMapper mapper;
 
         protected string CurrentUserName
         {
@@ -29,10 +31,12 @@
             get { return (User.FindFirst(ClaimTypes.Name)?.Value!); }
         }
 
-        public WebApiController2(ILogger logger)
+        public WebApiController2(ILogger logger, IMapper mapper)
         {
             this.logger = logger;
+            this.mapper = mapper;
         }
+
         protected string ipAddress()
         {
             if (Request.Headers.ContainsKey("X-Forwarded-For"))

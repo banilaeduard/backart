@@ -78,7 +78,7 @@ namespace DataAccess
                         }
                         else
                         {
-                            throw new System.Exception("admin nu a putut fi creat " + result.Errors.ToString());
+                            throw new Exception("admin nu a putut fi creat " + result.Errors.ToString());
                         }
                     }
                 }

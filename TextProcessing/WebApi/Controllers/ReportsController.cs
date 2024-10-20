@@ -1,4 +1,5 @@
-﻿using EntityDto;
+﻿using AutoMapper;
+using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
@@ -20,7 +21,8 @@ namespace WebApi.Controllers
             ILogger<ReportsController> logger,
             ICommitedOrdersRepository commitedOrdersRepository,
             IProductCodeRepository productCodeRepository,
-            IOrdersRepository ordersRepository) : base(logger)
+            IOrdersRepository ordersRepository,
+            IMapper mapper) : base(logger, mapper)
         {
             this.productCodeRepository = productCodeRepository;
             this.commitedOrdersRepository = commitedOrdersRepository;

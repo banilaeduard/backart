@@ -11,8 +11,9 @@ namespace WebApi.Models
         public string Details { get; set; }
         public string LocationCode { get; set; }
         public string? LocationName { get; set; }
+        public bool IsClosed { get; set; }
         public DateTime Created { get; set; }
-        public IEnumerable<TicketSeriesModel> ExternalMailReferences { get; set; }
+        public IEnumerable<TicketSeriesModel>? ExternalMailReferences { get; set; }
 
         public TaskEntry ToTaskEntry()
         {
@@ -22,10 +23,11 @@ namespace WebApi.Models
                 Details = Details,
                 Id = Id ?? 0,
                 Name = Name,
-                LocationCode = LocationCode
+                LocationCode = LocationCode,
+                IsClosed = IsClosed,
             };
 
-            taskModel.ExternalReferenceEntries = ExternalMailReferences.SelectMany(t => t.Tickets).Select(t => new ExternalReferenceEntry()
+            taskModel.ExternalReferenceEntries = ExternalMailReferences?.SelectMany(t => t.Tickets).Select(t => new ExternalReferenceEntry()
             {
                 ExternalGroupId = t.ThreadId,
                 PartitionKey = t.PartitionKey,
@@ -34,7 +36,7 @@ namespace WebApi.Models
                 IsRemoved = false,
                 Date = t.Created ?? DateTime.Now
                 
-            }).ToList();
+            }).ToList() ?? [];
 
             return taskModel;
         }
@@ -53,7 +55,8 @@ namespace WebApi.Models
                     Id = task.Id,
                     Name = task.Name,
                     LocationCode = task.LocationCode,
-                    LocationName = mainLocation?.LocationName
+                    LocationName = mainLocation?.LocationName,
+                    IsClosed = task.IsClosed,
                 };
                 result.Add(taskModel);
 

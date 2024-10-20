@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
@@ -10,7 +11,7 @@ using WebApi.Models;
 
 namespace WebApi.Controllers
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin, basic")]
     public class TaskController : WebApiController2
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -28,7 +29,8 @@ namespace WebApi.Controllers
             ITaskRepository taskRepository,
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
-            IOrdersRepository ordersRepository) : base(logger)
+            IOrdersRepository ordersRepository,
+            IMapper mapper) : base(logger, mapper)
         {
             this.productCodeRepository = productCodeRepository;
             this.commitedOrdersRepository = commitedOrdersRepository;
@@ -45,7 +47,6 @@ namespace WebApi.Controllers
 
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
-
             return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
         }
 
@@ -66,6 +67,7 @@ namespace WebApi.Controllers
         }
 
         [HttpDelete("{taskId}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTasks(int taskId)
         {
             await taskRepository.DeleteTask(taskId);

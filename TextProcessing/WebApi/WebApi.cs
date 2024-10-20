@@ -31,6 +31,9 @@ using RepositoryContract.Imports;
 using SqlTableRepository.Orders;
 using RepositoryContract.Tasks;
 using SqlTableRepository.Tasks;
+using SqlTableRepository.CommitedOrders;
+using AutoMapper;
+using WebApi.Models;
 
 namespace WebApi
 {
@@ -108,10 +111,10 @@ namespace WebApi
                             ServiceEventSource.Current.ServiceMessage(serviceContext, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
                         }));
 
-                        //app.Services.GetRequiredService<IServiceScopeFactory>()
-                        //    .CreateScope().ServiceProvider
-                        //    .GetRequiredService<Initializer>()
-                        //    .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                        app.Services.GetRequiredService<IServiceScopeFactory>()
+                            .CreateScope().ServiceProvider
+                            .GetRequiredService<Initializer>()
+                            .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                         return app;
                     }), "bart")
@@ -135,17 +138,24 @@ namespace WebApi
                 Password = Environment.GetEnvironmentVariable("Password")!,
                 User = Environment.GetEnvironmentVariable("User")!
             });
+
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
-            services.AddScoped<IOrdersRepository, OrdersRepository>();
-            services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
-            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
-            services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
-            services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
-            services.AddScoped<IImportsRepository, OrdersImportsRepository>();
             services.AddScoped<ITaskRepository, TaskRepository>();
+            services.AddSingleton<Initializer>();
+            services.AddScoped<IImportsRepository, OrdersImportsRepository>();
+            services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
+            services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
+            services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
 
+#if (DEBUG)
+            services.AddScoped<IOrdersRepository, OrdersRepository>();
+            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
+#elif (RELEASE)
+            services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
+            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
+#endif
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()
                     .AddDefaultTokenProviders();
@@ -177,8 +187,18 @@ namespace WebApi
             {
                 opts.User.RequireUniqueEmail = true;
                 opts.Password.RequiredLength = 8;
+                opts.Password.RequireNonAlphanumeric = false;
+                opts.Password.RequireUppercase = false;
                 opts.SignIn.RequireConfirmedEmail = false;
             });
+
+            MapperConfiguration config = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<AttachmentEntry, AttachmentModel>();
+                cfg.CreateMap<AttachmentModel, AttachmentEntry>();
+            });
+            IMapper mapper = config.CreateMapper();
+            services.AddSingleton(mapper);
         }
 
         /// <summary>

@@ -32,5 +32,6 @@
         public string DetaliiDoc { get; set; }
         public DateTime? DataDocumentBaza { get; set; }
         public bool Livrata { get; set; }
+        public int? NumarAviz { get; set; }
     }
 }

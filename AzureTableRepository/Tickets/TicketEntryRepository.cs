@@ -51,5 +51,17 @@ namespace AzureTableRepository.Tickets
             var resp = tableClient.GetEntityIfExists<T>(partitionKey, rowKey);
             return resp.HasValue ? resp.Value! : null;
         }
+
+        public async Task<IList<AttachmentEntry>> GetAllAttachments(string? partitionKey = null)
+        {
+            if (string.IsNullOrEmpty(partitionKey))
+            {
+                return CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.Timestamp > from).ToList()).ToList();
+            }
+            else
+            {
+                return CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.PartitionKey == partitionKey).ToList(), nameof(AttachmentEntry) + $"_{partitionKey}").ToList();
+            }
+        }
     }
 }

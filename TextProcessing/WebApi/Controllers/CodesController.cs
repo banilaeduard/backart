@@ -7,13 +7,15 @@ namespace WebApi.Controllers
     using global::WebApi.Models;
     using RepositoryContract.ProductCodes;
     using AzureSerRepositoryContract.ProductCodesvices;
+    using AutoMapper;
 
     public class CodesController : WebApiController2
     {
         private IProductCodeRepository productCodeRepository;
         public CodesController(
             IProductCodeRepository productCodeRepository,
-            ILogger<CodesController> logger) : base(logger)
+            IMapper mapper,
+            ILogger<CodesController> logger) : base(logger, mapper)
         {
             this.productCodeRepository = productCodeRepository;
         }

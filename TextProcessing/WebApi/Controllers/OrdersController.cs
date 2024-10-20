@@ -1,4 +1,5 @@
-﻿using EntityDto;
+﻿using AutoMapper;
+using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.Imports;
@@ -7,7 +8,7 @@ using WorkSheetServices;
 
 namespace WebApi.Controllers
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin, basic")]
     public class OrdersController : WebApiController2
     {
         private IOrdersRepository ordersRepository;
@@ -16,14 +17,16 @@ namespace WebApi.Controllers
         public OrdersController(
             ILogger<OrdersController> logger,
             IOrdersRepository ordersRepository,
-            IImportsRepository importsRepository
-            ) : base(logger)
+            IImportsRepository importsRepository,
+            IMapper mapper
+            ) : base(logger, mapper)
         {
             this.ordersRepository = ordersRepository;
             this.importsRepository = importsRepository;
         }
 
         [HttpPost("upload"), DisableRequestSizeLimit]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UploadOrders()
         {
             var file = Request.Form.Files[0];

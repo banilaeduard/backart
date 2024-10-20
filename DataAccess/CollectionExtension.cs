@@ -9,7 +9,7 @@ namespace DataAccess
     {
         internal static void configureConnectionString(string defaultConnection, DbContextOptionsBuilder options)
         {
-            if (!defaultConnection.Contains("datdat.database"))
+            if (!defaultConnection.Contains("1433"))
             {
                 options.UseMySql(
                     defaultConnection,

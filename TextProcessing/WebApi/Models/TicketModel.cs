@@ -5,16 +5,18 @@
     public class TicketModel
     {
         public string? PartitionKey { get; set; }
+        public string? BodyPath { get; set; }
+        public string? EmlPath { get; set; }
         public string? RowKey { get; set; }
         public string? CodeValue { get; set; }
         public string? Description { get; set; }
-        public bool? hasAttachments { get; set; }
+        public AttachmentModel Attachments { get; set; }
         public DateTime? Created { get; set; }
         public string? Location { get; set; }
         public string? From { get; set; }
         public string? Subject { get; set; }
-        public string? OriginalBody { get; set; }
         public string? ThreadId { get; set; }
+        public bool HasAttachments { get; set; }
 
         public static TicketModel FromEntry(TicketEntity t)
         {
@@ -28,8 +30,8 @@
                 From = t.From ?? "",
                 Subject = t.Subject ?? "",
                 Created = t.CreatedDate,
-                OriginalBody = t.OriginalBodyPath,
                 ThreadId = t.ThreadId,
+                HasAttachments = t.HasAttachments
             };
         }
     }

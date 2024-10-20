@@ -30,6 +30,7 @@ namespace RepositoryContract.CommitedOrders
                 DetaliiLinie = entry.DetaliiLinie,
                 DataDocumentBaza = entry.DataDocumentBaza?.ToUniversalTime(),
                 Livrata = entry.Livrata,
+                NumarAviz = entry.NumarAviz
             };
         }
     }

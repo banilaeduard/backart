@@ -231,37 +231,17 @@ namespace YahooTFeeder
                         }
                         else
                         {
-                            var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.TextBody ?? message.HtmlBody ?? message.Body);
+                            var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.Body);
+                            var bodyVisitor = new HtmlPreviewVisitor();
+                            bodyPart.Accept(bodyVisitor);
                             using (var stream = new MemoryStream())
                             {
-                                if (bodyPart is MultipartAlternative)
-                                {
-                                    bodyPart = ((MultipartAlternative)bodyPart).Last();
-                                }
-                                else if (bodyPart is Multipart)
-                                {
-                                    bodyPart = ((Multipart)bodyPart).Where(t => !t.IsAttachment).FirstOrDefault();
-                                }
-                                if (bodyPart == null) break;
-
-                                contentId = bodyPart.ContentId;
-                                if (bodyPart is MessagePart)
-                                {
-                                    var rfc822 = (MessagePart)bodyPart;
-                                    rfc822.Message.WriteTo(stream);
-                                }
-                                else
-                                {
-                                    var part = (MimePart)bodyPart;
-                                    part.Content?.DecodeTo(stream);
-                                }
-                                storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
-                                stream.Seek(0, SeekOrigin.Begin);
-                                body = Encoding.UTF8.GetString(stream.ToArray());
+                                storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(bodyVisitor.HtmlBody)));
+                                body = bodyVisitor.HtmlBody;
                             }
                             body = body.Trim().Replace("__", "") ?? "";
                             extras = await serviceProxy.CreateServiceProxy<IMailExtrasExtractor>(new Uri("fabric:/TextProcessing/MailExtrasExtractorType")).Parse(body);
-                            body = body.Length > 512 ? body.Substring(0, 512) : body;
+                            body = body.Length > 2048 ? body.Substring(0, 2048) : body;
                         }
                     }
                 }
@@ -322,54 +302,6 @@ namespace YahooTFeeder
             }
             await ticketEntryRepository.Save([.. toSave]);
         }
-
-        private async Task SaveAttachments(IMessageSummary message, TicketEntity ticket, ITicketEntryRepository ticketEntryRepository)
-        {
-            BlobAccessStorageService storageService = new();
-
-            if (message.Attachments?.Count() > 0)
-            {
-                foreach (var attachmentPart in message.Attachments)
-                {
-                    MimeTypes.TryGetExtension(attachmentPart.ContentType?.MimeType, out var extension);
-                    var fName = (attachmentPart.FileName ?? attachmentPart.ContentMd5).Replace("-", "").ToLowerInvariant();
-                    var fname = $"attachments/{GetPartitionKey(message)}/{GetRowKey(message)}/{fName}.{extension}";
-
-                    if (!storageService.Exists(fname))
-                    {
-                        var attachment = message.Folder.GetBodyPart(message.UniqueId, attachmentPart);
-                        using (var stream = new MemoryStream())
-                        {
-
-                            if (attachment is MessagePart)
-                            {
-                                var part = (MessagePart)attachment;
-                                await part.Message.WriteToAsync(stream);
-                            }
-                            else
-                            {
-                                var part = (MimePart)attachment;
-                                await part.Content.DecodeToAsync(stream);
-                            }
-                            storageService.WriteTo(fname, new BinaryData(stream.ToArray()));
-                        }
-                    }
-
-                    await ticketEntryRepository.Save(new AttachmentEntry()
-                    {
-                        PartitionKey = ticket.RowKey,
-                        RowKey = Guid.NewGuid().ToString(),
-                        Data = fname,
-                        ContentType = attachmentPart.ContentType?.MimeType,
-                        RefPartition = ticket.PartitionKey,
-                        RefKey = ticket.RowKey,
-                        ContentId = attachmentPart.ContentId
-                    });
-
-                }
-            }
-        }
-
         private string GetPartitionKey(IMessageSummary id) => id.UniqueId.Validity.ToString();
         private string GetRowKey(IMessageSummary id) => id.UniqueId.Id.ToString();
         private void LogError(Exception ex)
@@ -386,11 +318,13 @@ namespace YahooTFeeder
 
             try
             {
+                var attachments = await ticketEntryRepository.GetAllAttachments();
+                attachments = [.. attachments.Where(t => uids.Any(u => u.RowKey == t.RefKey && u.PartitionKey == t.RefPartition))];
                 foreach (var uid in uids)
                 {
                     var fname = $"attachments/{uid.PartitionKey}/{uid.RowKey}/body.eml";
 
-                    if (blob.Exists(fname))
+                    if (attachments.Any(a => a.RefPartition == uid.PartitionKey && a.RefKey == uid.RowKey))
                     {
                         result.Add(new() { TableEntity = uid, Path = fname });
                         continue;
@@ -421,12 +355,71 @@ namespace YahooTFeeder
                         {
                             var entry = tickets.First(t => uid.Validity == t.Validity && uid.Id == t.Uid);
                             var msg = folder.GetMessage(uid);
-                            var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
+                            HtmlPreviewVisitor visitor = new();
+                            msg.Accept(visitor);
 
-                            using (var ms = new MemoryStream())
+                            var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
+                            var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
+                            if (!blob.Exists(fname))
+                                using (var ms = new MemoryStream())
+                                {
+                                    msg.WriteTo(FormatOptions.Default, ms);
+                                    blob.WriteTo(fname, new BinaryData(ms.ToArray()));
+                                }
+
+                            await ticketEntryRepository.Save(new AttachmentEntry()
                             {
-                                msg.WriteTo(FormatOptions.Default, ms);
-                                blob.WriteTo(fname, new BinaryData(ms.ToArray()));
+                                PartitionKey = entry.Uid.ToString(),
+                                RowKey = entry.Validity + "eml",
+                                Data = fname,
+                                ContentType = "eml",
+                                Title = "eml",
+                                RefPartition = entry.PartitionKey,
+                                RefKey = entry.RowKey,
+                            });
+                            if (!blob.Exists(details + "body.html"))
+                                blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody));
+                            await ticketEntryRepository.Save(new AttachmentEntry()
+                            {
+                                PartitionKey = entry.Uid.ToString(),
+                                RowKey = entry.Validity + "body",
+                                Data = details + "body.html",
+                                Title = "body",
+                                ContentType = "html",
+                                RefPartition = entry.PartitionKey,
+                                RefKey = entry.RowKey,
+                            });
+
+                            foreach (var attachment in visitor.Attachments)
+                            {
+                                var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
+                                if (!blob.Exists(fileName))
+                                    using (var stream = new MemoryStream())
+                                    {
+                                        if (attachment is MessagePart)
+                                        {
+                                            var part = (MessagePart)attachment;
+                                            await part.Message.WriteToAsync(stream);
+                                        }
+                                        else
+                                        {
+                                            var part = (MimePart)attachment;
+                                            await part.Content.DecodeToAsync(stream);
+                                        }
+                                        blob.WriteTo(details + fileName, new BinaryData(stream.ToArray()));
+                                    }
+
+                                await ticketEntryRepository.Save(new AttachmentEntry()
+                                {
+                                    PartitionKey = entry.Uid.ToString(),
+                                    RowKey = Guid.NewGuid().ToString(),
+                                    Data = details + fileName,
+                                    Title = fileName,
+                                    ContentType = attachment.ContentType?.MimeType,
+                                    RefPartition = entry.PartitionKey,
+                                    RefKey = entry.RowKey,
+                                    ContentId = attachment.ContentId
+                                });
                             }
                             var uu = missingUids.First(t => t.PartitionKey == entry.PartitionKey && t.RowKey == entry.RowKey);
                             result.Add(new MailBody() { TableEntity = uu, Path = fname });

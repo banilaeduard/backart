@@ -17,7 +17,7 @@ namespace PollerRecurringJob
     ///  - None: State is kept in memory only and not replicated.
     /// </remarks>
     [StatePersistence(StatePersistence.Persisted)]
-    internal class PollerRecurringJob : Actor, IPollerRecurringJob, IActor1, IRemindable
+    internal class PollerRecurringJob : Actor, IPollerRecurringJob, IActor1//, IRemindable
     {
         /// <summary>
         /// Initializes a new instance of PollerRecurringJob
@@ -67,21 +67,21 @@ namespace PollerRecurringJob
             await StateManager.AddOrUpdateStateAsync("commited", latest.commited, (_, _) => latest.commited);
         }
 
-        public async Task RegisterReminder()
-        {
-            try
-            {
-                var previousRegistration = GetReminder("Reminder1");
-                await UnregisterReminderAsync(previousRegistration);
-            }
-            catch (ReminderNotFoundException) { }
+        //public async Task RegisterReminder()
+        //{
+        //    try
+        //    {
+        //        var previousRegistration = GetReminder("Reminder1");
+        //        await UnregisterReminderAsync(previousRegistration);
+        //    }
+        //    catch (ReminderNotFoundException) { }
 
-            var reminderRegistration = await RegisterReminderAsync("Reminder1", null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(3));
-        }
+        //    var reminderRegistration = await RegisterReminderAsync("Reminder1", null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(3));
+        //}
 
         public async Task Sync()
         {
-            await RegisterReminder();
+            await ReceiveReminderAsync("", null, TimeSpan.Zero, TimeSpan.Zero);
         }
 
         /// <summary>
@@ -97,8 +97,6 @@ namespace PollerRecurringJob
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
             await StateManager.AddOrUpdateStateAsync("commited", commitDate, (x, y) => y);
             await StateManager.AddOrUpdateStateAsync("order", oderDate, (x, y) => y);
-
-            await RegisterReminder();
         }
     }
 }

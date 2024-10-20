@@ -1,4 +1,5 @@
-﻿using EntityDto;
+﻿using AutoMapper;
+using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
@@ -13,7 +14,7 @@ using WorkSheetServices;
 
 namespace WebApi.Controllers
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin, basic")]
     public class CommitedOrdersController : WebApiController2
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -34,7 +35,8 @@ namespace WebApi.Controllers
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
             ITaskRepository taskRepository,
-            IOrdersRepository ordersRepository) : base(logger)
+            IMapper mapper,
+            IOrdersRepository ordersRepository) : base(logger, mapper)
         {
             this.storageService = storageService;
             this.commitedOrdersRepository = commitedOrdersRepository;

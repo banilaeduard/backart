@@ -16,8 +16,9 @@ namespace WebApi.Controllers
     using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
     using YahooFeeder;
     using RepositoryContract;
+    using AutoMapper;
 
-    [Authorize(Roles = "partener, admin")]
+    [Authorize(Roles = "admin, basic")]
     public class TicketController : WebApiController2
     {
         private ITicketEntryRepository ticketEntryRepository;
@@ -35,7 +36,8 @@ namespace WebApi.Controllers
             IDataKeyLocationRepository dataKeyLocationRepository,
             IStorageService storageService,
             ITaskRepository taskRepository,
-            ILogger<TicketController> logger) : base(logger)
+            IMapper mapper,
+            ILogger<TicketController> logger) : base(logger, mapper)
         {
             this.ticketEntryRepository = ticketEntryRepository;
             this.storageService = storageService;
@@ -44,6 +46,7 @@ namespace WebApi.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAll()
         {
             var complaints = await ticketEntryRepository.GetAll();
@@ -62,6 +65,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("delete")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Delete(TicketModel[] tickets)
         {
             var items = (await ticketEntryRepository.GetAll()).Where(t => tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
@@ -74,6 +78,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Save(TicketSeriesModel complaint)
         {
             await taskRepository.SaveTask(new TaskEntry()
@@ -86,6 +91,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("saveLocation/{partitionKey}/{rowKey}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> SaveComplaintLocation(TicketSeriesModel complaint, string partitionKey, string rowKey)
         {
             var locations = await dataKeyLocationRepository.GetLocations();
@@ -102,11 +108,12 @@ namespace WebApi.Controllers
             await ticketEntryRepository.Save([.. items]);
             return Ok();
         }
-        [HttpPost("eml/{partitionKey}/{rowKey}")]
-        public async Task<IActionResult> GetEmlMessage(string partitionKey, string rowKey)
+
+        [HttpPost("details")]
+        public async Task<IActionResult> GetTicketDetails(TableEntryModel[] entries)
         {
             var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
-            var path = await proxy.DownloadAll([TableEntityPK.From(partitionKey, rowKey)]);
+            var path = await proxy.DownloadAll(entries.Select(x => new TableEntityPK() { PartitionKey = x.PartitionKey, RowKey = x.RowKey }).ToArray());
 
             if (string.IsNullOrEmpty(path[0].Path))
             {
@@ -114,8 +121,31 @@ namespace WebApi.Controllers
             }
             else
             {
-                return File(storageService.Access(path.First().Path, out var contentType), contentType);
+                var attachments = await ticketEntryRepository.GetAllAttachments();
+                return Ok(attachments.Where(a => entries.Any(e => e.PartitionKey == a.RefPartition && e.RowKey == a.RefKey)).Select(mapper.Map<AttachmentModel>));
             }
+        }
+
+        [HttpPost("eml")]
+        public async Task<IActionResult> GetEmlMessage(TableEntryModel entry)
+        {
+            var attachments = await ticketEntryRepository.GetAllAttachments(entry.RowKey);
+            if (!attachments.Any())
+            {
+                var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
+                var path = await proxy.DownloadAll([new TableEntityPK() { PartitionKey = entry.PartitionKey, RowKey = entry.RowKey }]);
+                if (string.IsNullOrEmpty(path[0].Path))
+                {
+                    return BadRequest();
+                }
+                else
+                {
+                    return File(storageService.Access(path.First().Path, out var contentType2), contentType2);
+                }
+            }
+            var eml = attachments.FirstOrDefault(t => t.RowKey.Contains("eml"));
+            return File(storageService.Access(eml.Data, out var contentType), contentType);
+
         }
     }
 }
