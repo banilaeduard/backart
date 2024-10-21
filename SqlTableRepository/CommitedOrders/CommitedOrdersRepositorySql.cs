@@ -2,12 +2,11 @@
 using Dapper;
 using EntityDto;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using RepositoryContract;
 using RepositoryContract.CommitedOrders;
 using Services.Storage;
 using SqlTableRepository.Orders;
-using System.Collections.Concurrent;
 using System.Text;
 
 namespace SqlTableRepository.CommitedOrders
@@ -15,16 +14,16 @@ namespace SqlTableRepository.CommitedOrders
     public class CommitedOrdersRepositorySql : ICommitedOrdersRepository
     {
         static readonly string syncName = $"sync_control/LastSyncDate_${nameof(DispozitieLivrareEntry)}";
-        static readonly MemoryCache sqlCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromMinutes(10) });
-        static readonly ConcurrentDictionary<string, string> prevValues = new ConcurrentDictionary<string, string>();
 
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;
+        private ConnectionSettings ConnectionSettings;
 
-        public CommitedOrdersRepositorySql(IStorageService storageService, ILogger<OrdersRepositorySql> logger)
+        public CommitedOrdersRepositorySql(AzureFileStorage storageService, ILogger<OrdersRepositorySql> logger, ConnectionSettings ConnectionSettings)
         {
             this.storageService = storageService;
             this.logger = logger;
+            this.ConnectionSettings = ConnectionSettings;
         }
 
         public Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items)
@@ -34,17 +33,17 @@ namespace SqlTableRepository.CommitedOrders
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Func<DispozitieLivrareEntry, bool> expr)
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
+            using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("QImport/disp.txt"), new { Date1 = DateTime.Now.AddDays(-12) })).Where(expr))];
+                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddDays(-12) })).Where(expr))];
             }
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
+            using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("QImport/disp.txt"), new { Date1 = DateTime.Now.AddDays(-12) }))];
+                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddDays(-12) }))];
             }
         }
 
@@ -77,25 +76,14 @@ namespace SqlTableRepository.CommitedOrders
 
         private string TryAccess(string key)
         {
-            if (!sqlCache.TryGetValue<string>(key, out var sql))
+            try
             {
-                var s = "";
-                try
-                {
-                    s = Encoding.UTF8.GetString(storageService.Access(key, out var contentType));
-                    if (!prevValues.ContainsKey(key))
-                        prevValues.AddOrUpdate(key, s, (x, y) => s);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(new EventId(22), ex, "External Source Commited");
-                    prevValues.TryGetValue(key, out s);
-                }
-
-                return sqlCache.Set(key, s, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(15)))!;
+                return File.ReadAllText(Path.Combine(ConnectionSettings.SqlQueryCache, key));
             }
-            prevValues.AddOrUpdate(key, sql!, (x, y) => sql!);
-            return sql!;
+            catch (Exception ex)
+            {
+                return Encoding.UTF8.GetString(storageService.Access(key, out var _));
+            }
         }
 
         private IEnumerable<DispozitieLivrareEntry> Aggregate(IEnumerable<DispozitieLivrareEntry> items)

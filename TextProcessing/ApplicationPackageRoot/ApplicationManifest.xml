@@ -12,6 +12,7 @@
     <Parameter Name="feeder_Password" DefaultValue="" />
     <Parameter Name="storage_connection" DefaultValue="" />
     <Parameter Name="external_sql_server" DefaultValue="" />
+    <Parameter Name="path_to_sql" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -55,6 +56,7 @@
       <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+      <EnvironmentVariable Name="path_to_sql" Value="[path_to_sql]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
 </ApplicationManifest>

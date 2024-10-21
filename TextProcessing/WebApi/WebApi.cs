@@ -34,6 +34,7 @@ using SqlTableRepository.Tasks;
 using SqlTableRepository.CommitedOrders;
 using AutoMapper;
 using WebApi.Models;
+using RepositoryContract;
 
 namespace WebApi
 {
@@ -71,8 +72,8 @@ namespace WebApi
                                                             opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                                                             opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                                                         });
-                        ConfigureServices(builder.Services);
-
+                        ConfigureServices(builder.Services, serviceContext);
+                        
                         builder.WebHost
                                     .UseKestrel(opt =>
                                     {
@@ -121,7 +122,7 @@ namespace WebApi
             ];
         }
 
-        public void ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services, StatelessServiceContext serviceContext)
         {
             services.Configure<CookiePolicyOptions>(options =>
             {
@@ -139,7 +140,15 @@ namespace WebApi
                 User = Environment.GetEnvironmentVariable("User")!
             });
 
+            services.AddSingleton(new ConnectionSettings()
+            {
+                ConnectionString = Environment.GetEnvironmentVariable("ConnectionString"),
+                ExternalConnectionString = Environment.GetEnvironmentVariable("external_sql_server"),
+                SqlQueryCache = Environment.GetEnvironmentVariable("path_to_sql"),
+            });
+
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
             services.AddScoped<ITaskRepository, TaskRepository>();

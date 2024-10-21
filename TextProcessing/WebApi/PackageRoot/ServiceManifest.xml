@@ -12,10 +12,17 @@
 
   <!-- Code package is your service executable. -->
   <CodePackage Name="Code" Version="1.0.0">
+    <!--SetupEntryPoint>
+      <ExeHost>
+        <Program>MySetup.bat</Program>
+        <Arguments></Arguments>
+        <WorkingFolder>Work</WorkingFolder>
+      </ExeHost>
+    </SetupEntryPoint-->
     <EntryPoint>
       <ExeHost>
         <Program>WebApi.exe</Program>
-        <WorkingFolder>CodePackage</WorkingFolder>
+        <WorkingFolder>Work</WorkingFolder>
       </ExeHost>
     </EntryPoint>
     <EnvironmentVariables>
@@ -30,6 +37,7 @@
       <EnvironmentVariable Name="Password" Value="" />
       <EnvironmentVariable Name="storage_connection" Value="" />
       <EnvironmentVariable Name="external_sql_server" Value="" />
+      <EnvironmentVariable Name="path_to_sql" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 

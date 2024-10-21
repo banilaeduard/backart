@@ -16,7 +16,6 @@ namespace AzureServices
         public byte[] Access(string fName, out string contentType)
         {
             var blob = client.GetBlobClient(fName).DownloadContent();
-
             contentType = blob.Value.Details.ContentType;
             return blob.Value.Content.ToArray();
         }

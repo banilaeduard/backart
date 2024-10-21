@@ -10,7 +10,6 @@
         public string? RowKey { get; set; }
         public string? CodeValue { get; set; }
         public string? Description { get; set; }
-        public AttachmentModel Attachments { get; set; }
         public DateTime? Created { get; set; }
         public string? Location { get; set; }
         public string? From { get; set; }

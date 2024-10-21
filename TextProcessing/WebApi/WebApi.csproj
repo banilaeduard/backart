@@ -44,4 +44,10 @@
     <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="MySetup.bat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

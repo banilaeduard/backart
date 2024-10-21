@@ -69,7 +69,7 @@ namespace YahooTFeeder
             // TODO: Replace the following sample code with your own logic 
             //       or remove this RunAsync override if it's not needed in your service.
             //ServiceEventSource.Current.ServiceMessage(this.Context, "Service name is {0}. Listen address is {1}", Context.ServiceName.ToString(), Context.ListenAddress);
-            await Task.Delay(TimeSpan.FromHours(1));
+            await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -82,7 +82,7 @@ namespace YahooTFeeder
                 }, cancellationToken);
 
                 cancellationToken.ThrowIfCancellationRequested();
-                await Task.Delay(TimeSpan.FromHours(3));
+                await Task.Delay(TimeSpan.FromHours(3), cancellationToken);
             }
         }
 
