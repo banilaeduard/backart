@@ -4,6 +4,7 @@
     using System;
     public class TicketModel
     {
+        public int? Id { get; set; }
         public string? PartitionKey { get; set; }
         public string? BodyPath { get; set; }
         public string? EmlPath { get; set; }
@@ -30,7 +31,7 @@
                 Subject = t.Subject ?? "",
                 Created = t.CreatedDate,
                 ThreadId = t.ThreadId,
-                HasAttachments = t.HasAttachments
+                HasAttachments = t.HasAttachments,
             };
         }
     }

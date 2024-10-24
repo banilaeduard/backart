@@ -19,9 +19,9 @@ namespace PollerRecurringJob
         {
             await base.RunAsync(cancellationToken);
 
-            //var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(0), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+            var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(0), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
 
-            //await proxy.Sync();
+            await proxy.Sync();
         }
     }
 }

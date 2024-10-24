@@ -36,7 +36,7 @@ namespace WebApi.Models
             {
                 var sample = group.First();
                 var groupTickets = tickets.Where(t => t.LocationCode == sample.CodLocatie);
-                var groupedTasks = tasks.Where(t => t.LocationCode == sample.CodLocatie);
+                var groupedTasks = tasks.Where(t => t.LocationCode == sample.CodLocatie).Where(t => !t.IsClosed);
 
                 yield return new CommitedOrdersResponse()
                 {

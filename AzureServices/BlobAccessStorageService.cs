@@ -29,6 +29,7 @@ namespace AzureServices
         {
             if (client.GetBlobClient(fName).Exists()) return;
             client.UploadBlob(fName, file);
+            client.GetBlobClient(fName).SetHttpHeaders(new BlobHttpHeaders { CacheControl = "max-age=31536000" });
         }
 
         public bool Exists(string fName)

@@ -12,8 +12,9 @@ namespace RepositoryContract.Tasks
         public string Details { get; set; }
         public bool IsClosed { get; set; }
         public DateTime Created { get; set; }
-        public IList<TaskAction> Actions { get; set; }
-        public IList<ExternalReferenceEntry> ExternalReferenceEntries { get; set; }
+        public DateTime TaskDate { get; set; }
+        public List<TaskAction> Actions { get; set; }
+        public List<ExternalReferenceEntry> ExternalReferenceEntries { get; set; }
 
         public static TaskEntry From(TaskEntry entry, IList<TaskAction> actions, IList<ExternalReferenceEntry>? externalReferenceEntries)
         {

@@ -2,7 +2,7 @@
 {
     public class ExternalReferenceEntry
     {
-        public int Id { get; set; }
+        public int? Id { get; set; }
         public int TaskId { get; set; }
         public int TaskActionId { get; set; }
         public string TableName { get; set; }

@@ -22,7 +22,8 @@ namespace MailExtrasExtractor
 
         async Task<Extras> IMailExtrasExtractor.Parse(string body)
         {
-            var sentences = await tokService.GetSentences(body);
+            var stripHtmp = await tokService.HtmlStrip(body.Replace("<br/>", ""));
+            var sentences = await tokService.GetSentences(stripHtmp);
             var newBody = string.Join(Environment.NewLine, sentences);
 
             if (string.IsNullOrWhiteSpace(body))

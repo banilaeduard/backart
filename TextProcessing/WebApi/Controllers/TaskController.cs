@@ -40,10 +40,10 @@ namespace WebApi.Controllers
             this.keyLocationRepository = keyLocationRepository;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetTasks()
+        [HttpGet("{status}")]
+        public async Task<IActionResult> GetTasks(string status)
         {
-            var taskLists = await taskRepository.GetActiveTasks();
+            var taskLists = await taskRepository.GetTasks(Enum.Parse<TaskInternalState>(status));
 
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
@@ -53,8 +53,8 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> SaveTask(TaskModel task)
         {
-            await taskRepository.SaveTask(task.ToTaskEntry());
-            return Ok();
+            var newTask = await taskRepository.SaveTask(task.ToTaskEntry());
+            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
         }
 
         [HttpPost("close")]
@@ -62,8 +62,7 @@ namespace WebApi.Controllers
         {
             var tEntry = task.ToTaskEntry();
             tEntry.IsClosed = true;
-            await taskRepository.UpdateTask(task.ToTaskEntry());
-            return Ok();
+            return Ok(await taskRepository.UpdateTask(task.ToTaskEntry()));
         }
 
         [HttpDelete("{taskId}")]
@@ -78,7 +77,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> UpdateTask(TaskModel task)
         {
             var newTask = await taskRepository.UpdateTask(task.ToTaskEntry());
-            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]));
+            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
         }
     }
 }

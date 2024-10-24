@@ -373,7 +373,7 @@ namespace YahooTFeeder
                                 RowKey = entry.Validity + "eml",
                                 Data = fname,
                                 ContentType = "eml",
-                                Title = "eml",
+                                Title = $"{entry.Subject ?? "eml"}.eml",
                                 RefPartition = entry.PartitionKey,
                                 RefKey = entry.RowKey,
                             });
@@ -384,7 +384,7 @@ namespace YahooTFeeder
                                 PartitionKey = entry.Uid.ToString(),
                                 RowKey = entry.Validity + "body",
                                 Data = details + "body.html",
-                                Title = "body",
+                                Title = "body.html",
                                 ContentType = "html",
                                 RefPartition = entry.PartitionKey,
                                 RefKey = entry.RowKey,

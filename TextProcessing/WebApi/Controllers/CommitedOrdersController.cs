@@ -54,7 +54,7 @@ namespace WebApi.Controllers
 
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
-            var tasks = await taskRepository.GetActiveTasks();
+            var tasks = await taskRepository.GetTasks(TaskInternalState.All);
 
             return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations, tasks));
         }

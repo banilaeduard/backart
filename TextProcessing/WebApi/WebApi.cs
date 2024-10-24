@@ -147,6 +147,7 @@ namespace WebApi
                 SqlQueryCache = Environment.GetEnvironmentVariable("path_to_sql"),
             });
 
+            services.AddScoped<SaSToken, SaSToken>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();

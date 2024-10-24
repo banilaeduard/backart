@@ -9,21 +9,24 @@ namespace WebApi.Models
         public int? Id { get; set; }
         public string Name { get; set; }
         public string Details { get; set; }
-        public string LocationCode { get; set; }
-        public string? LocationName { get; set; }
         public bool IsClosed { get; set; }
         public DateTime Created { get; set; }
+        public required string TaskDate { get; set; }
+        public LocationModel LocationModel { get; set; }
         public IEnumerable<TicketSeriesModel>? ExternalMailReferences { get; set; }
+        public IEnumerable<UserUpload> UserUploads { get; set; }
 
         public TaskEntry ToTaskEntry()
         {
             var taskModel = new TaskEntry()
             {
                 Created = Created,
+                TaskDate = DateTime.SpecifyKind(DateTime.Parse(TaskDate),
+                                            DateTimeKind.Utc),
                 Details = Details,
                 Id = Id ?? 0,
                 Name = Name,
-                LocationCode = LocationCode,
+                LocationCode = LocationModel.LocationCode,
                 IsClosed = IsClosed,
             };
 
@@ -35,8 +38,18 @@ namespace WebApi.Models
                 TableName = nameof(TicketEntity),
                 IsRemoved = false,
                 Date = t.Created ?? DateTime.Now
-                
             }).ToList() ?? [];
+
+            taskModel.ExternalReferenceEntries.AddRange(UserUploads.Select(u => new ExternalReferenceEntry()
+            {
+                PartitionKey = u.PartitionKey,
+                RowKey = u.RowKey,
+                TableName = nameof(AttachmentEntry),
+                IsRemoved = false,
+                ExternalGroupId = u.Path,
+                Date = u.Created ?? DateTime.Now,
+                Id = u.Id ?? 0
+            }));
 
             return taskModel;
         }
@@ -51,11 +64,17 @@ namespace WebApi.Models
                 var taskModel = new TaskModel()
                 {
                     Created = task.Created,
+                    TaskDate = task.TaskDate.ToString("MM/dd/yyyy"),
                     Details = task.Details,
                     Id = task.Id,
                     Name = task.Name,
-                    LocationCode = task.LocationCode,
-                    LocationName = mainLocation?.LocationName,
+                    LocationModel = new LocationModel()
+                    {
+                        LocationCode = task.LocationCode,
+                        LocationName = mainLocation?.LocationName,
+                        PartitionKey = mainLocation?.PartitionKey,
+                        RowKey = mainLocation?.RowKey,
+                    },
                     IsClosed = task.IsClosed,
                 };
                 result.Add(taskModel);
@@ -68,8 +87,18 @@ namespace WebApi.Models
                     .ToList();
 
                 taskModel.ExternalMailReferences = relatedTickets ?? [];
+                taskModel.UserUploads = task.ExternalReferenceEntries?.Where(x => x.TableName == nameof(AttachmentEntry)).Select(a => new UserUpload()
+                {
+                    TableName = a.TableName,
+                    Created = a.Created,
+                    PartitionKey = a.PartitionKey,
+                    RowKey = a.RowKey,
+                    FileName = a.ExternalGroupId,
+                    Path = a.ExternalGroupId,
+                    Id = a.Id
+                }) ?? [];
             }
-            return result;
+            return result.OrderByDescending(t => t.TaskDate);
         }
     }
 }

@@ -20,14 +20,14 @@ namespace WorkSheetServices
 
                     var values = dispozitii.GroupBy(grouping1).OrderByDescending(t => t.Key);
 
-                    var ids = dispozitii.Select(keyResolver).Distinct().Order().ToArray();
+                    var ids = dispozitii.Select(keyResolver).Distinct().ToArray();
                     Dictionary<string, int> rowCounter = new();
 
                     worksheet.Row(1).Style.Font.FontSize = 14;
                     worksheet.Range("A:D").Row(1).Merge();
-                    worksheet.Cell(1, 1).Value = "Dispozitii Livrare:" + string.Join("; ", dispozitii.Select(t => t.NumarIntern).Distinct().Order().ToArray());
+                    worksheet.Cell(1, 1).Value = "Dispozitii Livrare:" + string.Join("; ", dispozitii.Select(t => t.NumarIntern).Distinct().ToArray());
                     worksheet.Range("A:D").Row(2).Merge();
-                    worksheet.Cell(2, 1).Value = string.Join("; ", dispozitii.Select(t => t.NumeLocatie).Distinct().Order().ToArray());
+                    worksheet.Cell(2, 1).Value = string.Join("; ", dispozitii.Select(t => t.NumeLocatie).Distinct().ToArray());
 
                     worksheet.Row(3).Cells("1:3").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
                     worksheet.Row(3).Style.Font.FontSize = 16;
@@ -44,7 +44,7 @@ namespace WorkSheetServices
                     {
                         worksheet.Cell(3, firstEmptyCol + z).Value = ids[z];
                         worksheet.Cell(3, firstEmptyCol + ids.Count() + z + 3).Value = ids[z];
-                        worksheet.Cell(3, firstEmptyCol + z).Style.Font.FontSize = 10;
+                        worksheet.Cell(3, firstEmptyCol + z).Style.Font.FontSize = 14;
 
                         var name = ids[z].ToString();
                         var z_sheet = workbook.AddWorksheet(name.Length > 30 ? name.Substring(0, 30) : name);
@@ -91,7 +91,7 @@ namespace WorkSheetServices
                                     z_sheet.Cell(row_count, 3).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
                                     z_sheet.Cell(row_count, 4).Value = item.NumarComanda;
                                     worksheet.Cell(i, firstEmptyCol + z).Value = x.Where(t => keyResolver(t) == ids[z]).Sum(t => t.Cantitate);
-                                    worksheet.Cell(i, firstEmptyCol + z).Style.Font.FontSize = 10;
+                                    worksheet.Cell(i, firstEmptyCol + z).Style.Font.FontSize = 14;
                                     rowCounter[ids[z]]++;
                                 }
                             }

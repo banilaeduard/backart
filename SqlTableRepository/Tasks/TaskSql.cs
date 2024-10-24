@@ -6,9 +6,9 @@ namespace SqlTableRepository.Tasks
     {
         internal static string UpsertExternalReference(string fromSql) => $@"
                                        WITH dif as (
-                                            SELECT @TableReferenceName as TableName, tickets.PartitionKey, tickets.RowKey, tickets.ExternalGroupId, tickets.Date
+                                            SELECT tickets.TableName, tickets.PartitionKey, tickets.RowKey, tickets.ExternalGroupId, tickets.Date 
                                             FROM {fromSql}
-                                            LEFT JOIN [dbo].[ExternalReferenceGroup] erg on tickets.PartitionKey = erg.PartitionKey AND tickets.RowKey = erg.RowKey AND erg.TableName = @TableReferenceName
+                                            LEFT JOIN [dbo].[ExternalReferenceGroup] erg on tickets.PartitionKey = erg.PartitionKey AND tickets.RowKey = erg.RowKey AND erg.TableName = tickets.TableName
                                             WHERE erg.G_Id IS NULL
                                         ) INSERT INTO [dbo].[ExternalReferenceGroup](TableName, PartitionKey, RowKey, ExternalGroupId, Date)
                                           SELECT * from dif;";
@@ -17,11 +17,11 @@ namespace SqlTableRepository.Tasks
                                 SELECT st.*, erg.G_Id, 0 
                                 FROM {fromSql}
                                 JOIN (values (@TaskId, @TaskActionId)) as st(taskId, taskActionId) on 1 = 1
-                                JOIN [dbo].[ExternalReferenceGroup] erg on tickets.PartitionKey = erg.PartitionKey AND tickets.RowKey = erg.RowKey AND erg.TableName = @TableReferenceName";
+                                JOIN [dbo].[ExternalReferenceGroup] erg on tickets.PartitionKey = erg.PartitionKey AND tickets.RowKey = erg.RowKey AND erg.TableName = tickets.TableName";
 
-        internal readonly static string InsertTask = $@"INSERT INTO dbo.TaskEntry(Name, Details, LocationCode)
+        internal readonly static string InsertTask = $@"INSERT INTO dbo.TaskEntry(Name, Details, LocationCode, TaskDate)
                                       OUTPUT INSERTED.*
-                                      VALUES(@Name, @Details, @LocationCode)
+                                      VALUES(@Name, @Details, @LocationCode, @TaskDate)
                                       INSERT INTO dbo.TaskAction([TaskId],[Description])
                                       OUTPUT INSERTED.*
                                       SELECT SCOPE_IDENTITY(), 'Created from tickets[' + @Count + ']';";

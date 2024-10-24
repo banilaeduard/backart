@@ -15,18 +15,21 @@ namespace WebApi.Controllers
     using System.Security.Claims;
     using Microsoft.Extensions.Caching.Memory;
     using AutoMapper;
+    using AzureServices;
 
     public class UsersController : WebApiController2
     {
         IUserService _userService;
         UserManager<AppIdentityUser> _userManager;
         EmailSender _emailService;
+        SaSToken sasTokenService;
         private static MemoryCache _userCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromDays(2) } );
 
         public UsersController(
             IUserService userService,
             UserManager<AppIdentityUser> userManager,
             ILogger<UsersController> logger,
+            SaSToken sasTokenService,
             EmailSender emailService,
             IMapper mapper
             ) : base(logger, mapper)
@@ -34,6 +37,7 @@ namespace WebApi.Controllers
             _userService = userService;
             _userManager = userManager;
             _emailService = emailService;
+            this.sasTokenService = sasTokenService;
         }
 
         [AllowAnonymous]
@@ -191,6 +195,12 @@ namespace WebApi.Controllers
             var role = HttpContext.User.FindFirst(ClaimTypes.Role);
 
             return Ok(roles.Contains(role.Value));
+        }
+
+        [HttpGet("sastoken")]
+        public async Task<IActionResult> GetToken()
+        {
+            return Ok(new { sasToken = sasTokenService.GenerateSaSToken() });
         }
     }
 }

@@ -2,7 +2,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
 using RepositoryContract.Tasks;
-using RepositoryContract.Tickets;
+using System.Globalization;
 
 namespace SqlTableRepository.Tasks
 {
@@ -22,9 +22,9 @@ namespace SqlTableRepository.Tasks
             _taskCache.Clear();
         }
 
-        public async Task<IList<TaskEntry>> GetActiveTasks()
+        public async Task<IList<TaskEntry>> GetTasks(TaskInternalState status)
         {
-            return await GetTasksInternal(TaskStatus.Open);
+            return await GetTasksInternal(status);
         }
 
         public async Task<IList<ExternalReferenceEntry>> GetExternalReferences()
@@ -61,6 +61,7 @@ namespace SqlTableRepository.Tasks
                                           task.Name,
                                           task.Details,
                                           task.LocationCode,
+                                          TaskDate = task.TaskDate.ToUniversalTime(),
                                       });
                 taskEntry = result.Read<TaskEntry>().First();
                 taskAction = result.Read<TaskAction>().First();
@@ -68,11 +69,10 @@ namespace SqlTableRepository.Tasks
                 if (count > 0)
                 {
                     DynamicParameters dParam = new();
-                    dParam.Add($"@TableReferenceName", nameof(TicketEntity));
                     dParam.Add($"@TaskId", taskAction.TaskId);
                     dParam.Add($"@TaskActionId", taskAction.Id);
 
-                    string fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date);
+                    string fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName);
 
                     externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE t.Id = @TaskId",
                         TaskSql.ExternalRefs.mapper
@@ -82,42 +82,56 @@ namespace SqlTableRepository.Tasks
                 }
             }
             _taskCache.Clear();
-            return TaskEntry.From(task, [taskAction], externalRef);
+            return TaskEntry.From(taskEntry, [taskAction], externalRef);
         }
 
         public async Task<TaskEntry> UpdateTask(TaskEntry task)
         {
+            dynamic taskResult;
+            TaskAction taskAction = new();
+            List<ExternalReferenceEntry>? externalRef = null;
+
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
             {
-                string updateTask = $"UPDATE dbo.TaskEntry SET Name = @Name, Details = @Details, IsClosed = @IsClosed " +
-                    $"OUTPUT INSERTED.*, DELETED.Details as old_details, DELETED.Name as old_name, DELETED.IsClosed as old_isclosed " +
-                    $"WHERE Id = @TaskId";
-                var taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details, task.IsClosed });
+                string updateTask = $@"UPDATE dbo.TaskEntry SET Name = @Name, Details = @Details, IsClosed = @IsClosed, TaskDate = @TaskDate
+                    OUTPUT INSERTED.*, DELETED.Details as old_details, DELETED.Name as old_name, DELETED.IsClosed as old_isclosed, DELETED.TaskDate as old_taskdate
+                    WHERE Id = @TaskId";
+                taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details, task.IsClosed, TaskDate = task.TaskDate.ToUniversalTime() });
 
-                if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name || taskResult.IsClosed != taskResult.old_isclosed)
+                var newExternal = task.ExternalReferenceEntries.Where(e => e.Id < 1).ToList();
+                if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name
+                    || taskResult.IsClosed != taskResult.old_isclosed || taskResult.TaskDate != taskResult.old_taskdate || newExternal.Count > 0)
                 {
                     string insertAction = $"INSERT INTO dbo.TaskAction(TaskId, Description) OUTPUT INSERTED.* VALUES (@TaskId, @Description)";
                     string descriptionStart = taskResult.IsClosed != taskResult.old_isclosed ? "Mark as closed" : "Update task properties";
                     string name = taskResult.Name != taskResult.old_name ? $"Name: {taskResult.old_name}" : "";
+                    string taskDate = taskResult.TaskDate != taskResult.old_taskdate ? $"Task Date: {taskResult.old_taskdate.ToString(CultureInfo.InvariantCulture)}" : "";
                     string details = taskResult.Details != taskResult.old_details ? $"Details: {taskResult.old_details}" : "";
 
-                    string refCountUpdate = "";
-                    if (taskResult.IsClosed != taskResult.old_isclosed)
+                    taskAction = await connection.QueryFirstAsync<TaskAction>($"{insertAction};", new { TaskId = task.Id, Description = $"{descriptionStart}.{taskDate}; {name}; {details}", Value = taskResult.IsClosed ? -1 : 1 });
+                    if (newExternal.Count > 0)
                     {
-                        refCountUpdate = @$"UPDATE erg SET Ref_count = Ref_count + @Value 
-                                            FROM dbo.ExternalReferenceGroup erg JOIN ExternalReferenceEntry er ON erg.G_Id = er.GroupId WHERE er.TaskId = @TaskId";
-                    }
+                        DynamicParameters dParam = new();
+                        dParam.Add($"@TaskId", taskAction.TaskId);
+                        dParam.Add($"@TaskActionId", taskAction.Id);
 
-                    await connection.ExecuteAsync($"{insertAction};{refCountUpdate}", new { TaskId = task.Id, Description = $"{descriptionStart}. {name}; {details}", Value = taskResult.IsClosed ? -1 : 1 });
+                        string fromSql = newExternal.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName);
+
+                        externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE t.Id = @TaskId",
+                            TaskSql.ExternalRefs.mapper
+                            , param: dParam
+                            , splitOn: TaskSql.ExternalRefs.splitOn)
+                            ).ToList();
+                    }
                 }
             }
             _taskCache.Clear();
-            return (await GetTasksInternal(TaskStatus.All, task.Id))[0];
+            return (await GetTasksInternal(TaskInternalState.All, task.Id))[0];
         }
 
-        private async Task<IList<TaskEntry>> GetTasksInternal(TaskStatus status, int? TaskId = null)
+        private async Task<IList<TaskEntry>> GetTasksInternal(TaskInternalState status, int? TaskId = null)
         {
-            var key = $"GetActiveTasksInternal_{TaskId ?? -1}";
+            var key = $"GetActiveTasksInternal_{status}_{TaskId ?? -1}";
             if (!_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
             {
                 IList<TaskEntry> tasks;
@@ -149,21 +163,15 @@ namespace SqlTableRepository.Tasks
             return tasksCache;
         }
 
-        private string GetTaskStatus(TaskStatus status)
+        private string GetTaskStatus(TaskInternalState status)
         {
             switch (status)
             {
-                case TaskStatus.All: return "1 = 1";
-                case TaskStatus.Closed: return "IsClosed = 1";
-                case TaskStatus.Open: return "IsClosed = 0";
+                case TaskInternalState.All: return "1 = 1";
+                case TaskInternalState.Closed: return "IsClosed = 1";
+                case TaskInternalState.Open: return "IsClosed = 0";
             }
             return "";
         }
-    }
-
-    enum TaskStatus {
-        All = 3,
-        Closed = 1,
-        Open = 2
     }
 }
