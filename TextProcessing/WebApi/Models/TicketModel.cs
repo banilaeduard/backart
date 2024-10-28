@@ -1,5 +1,6 @@
 ﻿namespace WebApi.Models
 {
+    using RepositoryContract.Tasks;
     using RepositoryContract.Tickets;
     using System;
     public class TicketModel
@@ -18,7 +19,7 @@
         public string? ThreadId { get; set; }
         public bool HasAttachments { get; set; }
 
-        public static TicketModel FromEntry(TicketEntity t)
+        public static TicketModel FromEntry(TicketEntity t, ExternalReferenceEntry? eRef)
         {
             return new TicketModel()
             {
@@ -32,6 +33,7 @@
                 Created = t.CreatedDate,
                 ThreadId = t.ThreadId,
                 HasAttachments = t.HasAttachments,
+                Id = eRef?.Id
             };
         }
     }

@@ -32,7 +32,7 @@ namespace SqlTableRepository.Tasks
             var key = $"GetExternalReferences";
             if (!_taskCache.TryGetValue(key, out IList<ExternalReferenceEntry>? tasksExternalCache) || tasksExternalCache == null)
             {
-                string taskExternalReferenceEntry = $@"SELECT * FROM dbo.ExternalReferenceGroup WHERE Ref_count > 0";
+                string taskExternalReferenceEntry = $@"SELECT G_Id as Id, * FROM dbo.ExternalReferenceGroup WHERE Ref_count > 0";
                 using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
                 {
                     var list = (await connection.QueryAsync<ExternalReferenceEntry>(taskExternalReferenceEntry)).ToList();

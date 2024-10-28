@@ -41,7 +41,7 @@ namespace WebApi.Models
                 yield return new CommitedOrdersResponse()
                 {
                     Entry = group.Select(t => DispozitieLivrareEntry.create(t, t.Cantitate)).OrderBy(t => t.DataDocumentBaza).ToList(),
-                    Tickets = [.. groupTickets.GroupBy(t => t.ThreadId).Select(grp => TicketSeriesModel.from([.. grp], externalRefs)).Where(t => !t.HasTasks)],
+                    Tickets = [.. groupTickets.GroupBy(t => t.ThreadId).Select(grp => TicketSeriesModel.from([.. grp], externalRefs)).Where(t => t.Tickets?.Any(x => x.Id.HasValue) == false)],
                     Tasks = [.. TaskModel.From(groupedTasks, groupTickets, synonimLocations)]
                 };
             }

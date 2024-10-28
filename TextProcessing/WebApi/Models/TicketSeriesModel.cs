@@ -24,24 +24,26 @@
 
         public string? LocationRowKey { get; set; }
 
-        public bool HasTasks { get; set; }
-
         [JsonConstructor]
         private TicketSeriesModel() { }
         private TicketSeriesModel(TicketEntity[] complaints, IList<ExternalReferenceEntry>? externalRefs)
         {
-            var complaint = complaints.MaxBy(t => t.CreatedDate);
+            var map = (TicketEntity e) =>
+            {
+                return TicketModel.FromEntry(e, externalRefs?.FirstOrDefault(x => x.PartitionKey == e.PartitionKey && x.RowKey == e.RowKey && x.TableName == nameof(TicketEntity)));
+            };
+            var complaint = complaints.MaxBy(t => t.CreatedDate)!;
 
+            Id = map(complaint)?.Id;
             PartitionKey = complaint.PartitionKey;
             RowKey = complaint.RowKey;
-            Tickets = [..complaints.OrderByDescending(t => t.CreatedDate).Select(TicketModel.FromEntry)];
+            Tickets = [.. complaints.OrderByDescending(t => t.CreatedDate).Select(map)];
             Created = complaint.CreatedDate;
             NrComanda = complaint.NrComanda ?? "";
             Status = complaint.From;
             DataKey = complaint.LocationCode ?? complaint.Locations;
             LocationPartitionKey = complaint.LocationPartitionKey;
             LocationRowKey = complaint.LocationRowKey;
-            HasTasks = externalRefs?.Any(t => complaints.Any(c => t.TableName == nameof(TicketEntity) && t.PartitionKey == c.PartitionKey && t.RowKey == c.RowKey)) == true;
         }
 
         public static TicketSeriesModel from(TicketEntity[] dbModel, IList<ExternalReferenceEntry>? externalRefs)
