@@ -31,10 +31,10 @@ using RepositoryContract.Imports;
 using SqlTableRepository.Orders;
 using RepositoryContract.Tasks;
 using SqlTableRepository.Tasks;
-using SqlTableRepository.CommitedOrders;
 using AutoMapper;
 using WebApi.Models;
 using RepositoryContract;
+using AzureSerRepositoryContract.ProductCodesvices;
 
 namespace WebApi
 {
@@ -206,6 +206,12 @@ namespace WebApi
             {
                 cfg.CreateMap<AttachmentEntry, AttachmentModel>();
                 cfg.CreateMap<AttachmentModel, AttachmentEntry>();
+
+                cfg.CreateMap<ProductStatsEntry, ProductStatsModel>();
+                cfg.CreateMap<ProductStatsModel, ProductStatsEntry>();
+
+                cfg.CreateMap<ProductCodeEntry, ProductModel>();
+                cfg.CreateMap<ProductModel, ProductCodeEntry>();
             });
             IMapper mapper = config.CreateMapper();
             services.AddSingleton(mapper);

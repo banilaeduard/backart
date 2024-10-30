@@ -30,16 +30,23 @@ namespace AzureTableRepository.ProductCodes
                     , table).Select(t => t.Shallowcopy()).ToList();
         }
 
-        public async Task Delete(string partitionKey, string rowKey)
+        public async Task Delete<T>(string partitionKey, string rowKey, string table = null)
         {
-            var item = tableStorageService.Query<ProductCodeEntry>(t => t.PartitionKey == partitionKey && t.RowKey == rowKey).First();
+            if (typeof(ProductCodeEntry).IsAssignableFrom(typeof(T)))
+            {
+                var item = tableStorageService.Query<ProductCodeEntry>(t => t.PartitionKey == partitionKey && t.RowKey == rowKey).First();
 
-            var batch = tableStorageService.PrepareDelete([item]);
-            await DeleteRecursive(item, batch);
+                var batch = tableStorageService.PrepareDelete([item]);
+                await DeleteRecursive(item, batch);
 
-            await batch.ExecuteBatch();
-            CacheManager.RemoveFromCache(typeof(ProductCodeEntry).Name, batch.items.Select(t => t.Entity).ToList());
-            CacheManager.Bust(typeof(ProductCodeEntry).Name, true, null);
+                await batch.ExecuteBatch(table);
+                CacheManager.RemoveFromCache(typeof(ProductCodeEntry).Name, batch.items.Select(t => t.Entity).ToList());
+                CacheManager.Bust(typeof(ProductCodeEntry).Name, true, null);
+            }
+            if (typeof(ProductStatsEntry).IsAssignableFrom(typeof(T)))
+            {
+
+            }
         }
 
         private async Task DeleteRecursive(ProductCodeEntry entry, (List<TableTransactionAction> items, TableStorageService self) batch)
@@ -52,6 +59,22 @@ namespace AzureTableRepository.ProductCodes
                 batch.Concat(tableStorageService.PrepareDelete([entity]));
                 await DeleteRecursive(entity, batch);
             }
+        }
+
+        public async Task<IList<ProductStatsEntry>> GetProductStats(string? table = null)
+        {
+            return CacheManager.GetAll((from) =>
+                    tableStorageService.Query<ProductStatsEntry>(t => t.Timestamp > from, table).ToList()
+                    , table).Select(t => t.Shallowcopy()).ToList();
+        }
+
+        public async Task<IList<ProductStatsEntry>> CreateProductStats(IList<ProductStatsEntry> productStats, string? table = null)
+        {
+            DateTimeOffset from = DateTimeOffset.Now;
+            await tableStorageService.PrepareUpsert(productStats).ExecuteBatch();
+            CacheManager.Bust(typeof(ProductStatsEntry).Name, false, from);
+            CacheManager.UpsertCache(typeof(ProductStatsEntry).Name, [.. productStats]);
+            return productStats;
         }
     }
 }

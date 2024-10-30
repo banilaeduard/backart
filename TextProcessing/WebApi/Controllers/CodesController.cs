@@ -65,9 +65,24 @@ namespace WebApi.Controllers
                     //barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
                 };
             }
-            await productCodeRepository.Delete(partitionKey, rowKey);
+            await productCodeRepository.Delete<ProductCodeEntry>(partitionKey, rowKey);
             var result = await productCodeRepository.GetProductCodes();
             return Ok(result.Select(map));
+        }
+
+        [HttpPost("productstats")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> CreateProductStats(ProductStatsModel[] productStatsModels)
+        {
+            return Ok(await productCodeRepository.CreateProductStats([.. productStatsModels.Select(mapper.Map<ProductStatsEntry>)]));
+        }
+
+        [HttpGet("productstats")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetProductStats()
+        {
+            var stats= await productCodeRepository.GetProductStats();
+            return Ok(stats);
         }
     }
 }

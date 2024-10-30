@@ -16,7 +16,7 @@ namespace AzureTableRepository
         private static volatile bool syncing;
         private static readonly DateTimeOffset minValueForAzure = new(2024, 1, 1, 1, 1, 1, TimeSpan.Zero);
 
-        public static IList<T> GetAll<T>(Func<DateTimeOffset, IList<T>> getContent, string tableName = null) where T : ITableEntity
+        public static IList<T> GetAll<T>(Func<DateTimeOffset, IList<T>> getContent, string? tableName = null) where T : ITableEntity
         {
             BlobAccessStorageService blobAccessStorageService = new();
             tableName = tableName ?? typeof(T).Name;
