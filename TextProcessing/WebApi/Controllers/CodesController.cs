@@ -82,7 +82,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetProductStats()
         {
             var stats= await productCodeRepository.GetProductStats();
-            return Ok(stats);
+            return Ok(stats ?? []);
         }
     }
 }

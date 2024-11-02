@@ -35,6 +35,7 @@ using AutoMapper;
 using WebApi.Models;
 using RepositoryContract;
 using AzureSerRepositoryContract.ProductCodesvices;
+using SqlTableRepository.CommitedOrders;
 
 namespace WebApi
 {

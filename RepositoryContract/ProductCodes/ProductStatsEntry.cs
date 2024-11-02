@@ -12,6 +12,7 @@ namespace RepositoryContract.ProductCodes
         public string PropertyName { get; set; }
         public string PropertyValue { get; set; }
         public string PropertyType { get; set; }
+        public string PropertyCategory { get; set; }
 
         public ProductStatsEntry Shallowcopy()
         {
