@@ -8,11 +8,12 @@ namespace RepositoryContract.CommitedOrders
     {
         public ETag ETag { get; set; }
 
-        public static DispozitieLivrareEntry create(DispozitieLivrare entry, int cantitate)
+        public static DispozitieLivrareEntry create(DispozitieLivrare entry, int cantitate, int greutate)
         {
             return new DispozitieLivrareEntry()
             {
                 Cantitate = cantitate,
+                Greutate = greutate,
                 CodEan = entry.CodEan,
                 CodLocatie = entry.CodLocatie,
                 CodProdus = entry.CodProdus,

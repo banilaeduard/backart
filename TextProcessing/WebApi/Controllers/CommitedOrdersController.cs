@@ -6,6 +6,7 @@ using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
+using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using Services.Storage;
@@ -25,6 +26,7 @@ namespace WebApi.Controllers
         private IImportsRepository importsRepository;
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
+        private IProductCodeRepository productCodeRepository;
         private ITaskRepository taskRepository;
 
         public CommitedOrdersController(
@@ -34,6 +36,7 @@ namespace WebApi.Controllers
             IImportsRepository importsRepository,
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
+            IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
             IMapper mapper,
             IOrdersRepository ordersRepository) : base(logger, mapper)
@@ -45,18 +48,22 @@ namespace WebApi.Controllers
             this.ticketEntryRepository = ticketEntryRepository;
             this.keyLocationRepository = keyLocationRepository;
             this.taskRepository = taskRepository;
+            this.productCodeRepository = productCodeRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCommitedOrders()
         {
-            var orders = await commitedOrdersRepository.GetCommitedOrders(t => t.DataDocument >= DateTime.Now.AddDays(-14) || !t.Livrata);
+            var orders = await commitedOrdersRepository.GetCommitedOrders();
+
+            var productLinkWeights = (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate");
+            var weights = (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate");
 
             var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
             var tasks = await taskRepository.GetTasks(TaskInternalState.All);
 
-            return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations, tasks));
+            return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations, tasks, [.. productLinkWeights], [.. weights]));
         }
 
         [HttpPost("delivered/{internalNumber}")]

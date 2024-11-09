@@ -8,19 +8,21 @@ using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using WebApi.Models;
+using WebApi.Services;
 
 namespace WebApi.Controllers
 {
     [Authorize(Roles = "admin, basic")]
     public class TaskController : WebApiController2
     {
-        const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        const string contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         private ICommitedOrdersRepository commitedOrdersRepository;
         private IOrdersRepository ordersRepository;
         private IProductCodeRepository productCodeRepository;
         private ITaskRepository taskRepository;
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
+        private ReclamatiiReport reclamatiiReport;
 
         public TaskController(
             ILogger<ReportsController> logger,
@@ -30,6 +32,7 @@ namespace WebApi.Controllers
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
             IOrdersRepository ordersRepository,
+            ReclamatiiReport reclamatiiReport,
             IMapper mapper) : base(logger, mapper)
         {
             this.productCodeRepository = productCodeRepository;
@@ -38,6 +41,7 @@ namespace WebApi.Controllers
             this.taskRepository = taskRepository;
             this.ticketEntryRepository = ticketEntryRepository;
             this.keyLocationRepository = keyLocationRepository;
+            this.reclamatiiReport = reclamatiiReport;
         }
 
         [HttpGet("{status}")]
@@ -78,6 +82,12 @@ namespace WebApi.Controllers
         {
             var newTask = await taskRepository.UpdateTask(task.ToTaskEntry());
             return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
+        }
+
+        [HttpPost("reclamatii")]
+        public async Task<IActionResult> ExportReclamatii(ComplaintDocument document)
+        {
+            return File(await reclamatiiReport.GenerateReport(document), contentType);
         }
     }
 }

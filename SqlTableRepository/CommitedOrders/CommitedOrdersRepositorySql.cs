@@ -35,7 +35,7 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddDays(-12) })).Where(expr))];
+                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) })).Where(expr))];
             }
         }
 
@@ -43,7 +43,7 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddDays(-12) }))];
+                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) }))];
             }
         }
 
@@ -89,7 +89,7 @@ namespace SqlTableRepository.CommitedOrders
         private IEnumerable<DispozitieLivrareEntry> Aggregate(IEnumerable<DispozitieLivrareEntry> items)
         {
             foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
-                yield return DispozitieLivrareEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate));
+                yield return DispozitieLivrareEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate), group.Sum(x => x.Greutate ?? 0) * group.Sum(t => t.Cantitate));
         }
     }
 }

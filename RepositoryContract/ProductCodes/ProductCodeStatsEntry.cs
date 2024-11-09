@@ -13,5 +13,10 @@ namespace RepositoryContract.ProductCodes
         public string ProductRowKey { get; set; }
         public string StatsPartitionKey { get; set; }
         public string StatsRowKey { get; set; }
+
+        public ProductCodeStatsEntry Shallowcopy()
+        {
+            return (ProductCodeStatsEntry)MemberwiseClone();
+        }
     }
 }

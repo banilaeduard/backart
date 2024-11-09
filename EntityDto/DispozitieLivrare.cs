@@ -33,5 +33,7 @@
         public DateTime? DataDocumentBaza { get; set; }
         public bool Livrata { get; set; }
         public int? NumarAviz { get; set; }
+
+        public int? Greutate { get; set; }
     }
 }

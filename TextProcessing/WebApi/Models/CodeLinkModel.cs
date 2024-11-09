@@ -11,5 +11,7 @@
         public int Level { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
+        public ProductCodeStatsModel? ProductCodeStats { get; set; }
+        public string ProductCodeStats_Id { get; set; }
     }
 }

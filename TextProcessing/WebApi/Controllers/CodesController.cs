@@ -24,8 +24,9 @@ namespace WebApi.Controllers
         [Authorize(Roles = "partener, admin")]
         public async Task<IActionResult> GetCodes()
         {
-            CodeLinkModel map(ProductCodeEntry t)
+            var map = (IList<ProductCodeStatsEntry> stats) => (ProductCodeEntry t) =>
             {
+                var stat = stats.Where(x => x.ProductPartitionKey == t.PartitionKey && x.ProductRowKey == t.RowKey).Select(mapper.Map<ProductCodeStatsModel>).FirstOrDefault();
                 return new CodeLinkModel()
                 {
                     Id = t.PartitionKey + "_" + t.RowKey,
@@ -37,12 +38,14 @@ namespace WebApi.Controllers
                     RootCode = t.RootCode,
                     PartitionKey = t.PartitionKey,
                     RowKey = t.RowKey,
+                    ProductCodeStats = stat,
+                    ProductCodeStats_Id = stat != null ? $"{stat.StatsPartitionKey}_{stat.StatsRowKey}" : ""
                     //barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
                 };
-            }
+            };
             var result = await productCodeRepository.GetProductCodes();
-
-            return Ok(result.Select(map));
+            var stats = await productCodeRepository.GetProductCodeStatsEntry();
+            return Ok(result.Select(map(stats)));
         }
 
         [HttpPost("delete/{partitionKey}/{rowKey}")]
@@ -75,6 +78,13 @@ namespace WebApi.Controllers
         public async Task<IActionResult> CreateProductStats(ProductStatsModel[] productStatsModels)
         {
             return Ok(await productCodeRepository.CreateProductStats([.. productStatsModels.Select(mapper.Map<ProductStatsEntry>)]));
+        }
+
+        [HttpPost("productcodestats")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> CreateProductStats(ProductCodeStatsModel[] productCodeStatsModel)
+        {
+            return Ok(await productCodeRepository.CreateProductCodeStatsEntry([.. productCodeStatsModel.Select(mapper.Map<ProductCodeStatsEntry>)]));
         }
 
         [HttpGet("productstats")]

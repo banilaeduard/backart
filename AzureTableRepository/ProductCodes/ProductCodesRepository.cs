@@ -76,5 +76,21 @@ namespace AzureTableRepository.ProductCodes
             CacheManager.UpsertCache(typeof(ProductStatsEntry).Name, [.. productStats]);
             return productStats;
         }
+
+        public async Task<IList<ProductCodeStatsEntry>> CreateProductCodeStatsEntry(IList<ProductCodeStatsEntry> productStats, string? table = null)
+        {
+            DateTimeOffset from = DateTimeOffset.Now;
+            await tableStorageService.PrepareUpsert(productStats).ExecuteBatch();
+            CacheManager.Bust(typeof(ProductCodeStatsEntry).Name, false, from);
+            CacheManager.UpsertCache(typeof(ProductCodeStatsEntry).Name, [.. productStats]);
+            return productStats;
+        }
+
+        public async Task<IList<ProductCodeStatsEntry>> GetProductCodeStatsEntry(string? table = null)
+        {
+            return CacheManager.GetAll((from) =>
+                    tableStorageService.Query<ProductCodeStatsEntry>(t => t.Timestamp > from, table).ToList()
+                    , table).Select(t => t.Shallowcopy()).ToList();
+        }
     }
 }

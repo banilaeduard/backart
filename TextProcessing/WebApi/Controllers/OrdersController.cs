@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
+using RepositoryContract.ProductCodes;
+using WebApi.Models;
 using WorkSheetServices;
 
 namespace WebApi.Controllers
@@ -13,16 +15,19 @@ namespace WebApi.Controllers
     {
         private IOrdersRepository ordersRepository;
         private IImportsRepository importsRepository;
+        private IProductCodeRepository productCodeRepository;
 
         public OrdersController(
             ILogger<OrdersController> logger,
             IOrdersRepository ordersRepository,
             IImportsRepository importsRepository,
+            IProductCodeRepository productCodeRepository,
             IMapper mapper
             ) : base(logger, mapper)
         {
             this.ordersRepository = ordersRepository;
             this.importsRepository = importsRepository;
+            this.productCodeRepository = productCodeRepository;
         }
 
         [HttpPost("upload"), DisableRequestSizeLimit]
@@ -43,7 +48,15 @@ namespace WebApi.Controllers
         [HttpGet()]
         public async Task<IActionResult> GetOrders()
         {
-            return Ok(await ordersRepository.GetOrders());
+            var productLinkWeights = (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate");
+            var weights = (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate");
+
+            var odersModel = (await ordersRepository.GetOrders()).Select(product => mapper.Map<OrderModel>(product).Weight(weights.FirstOrDefault(w =>
+            {
+                var pw = productLinkWeights.FirstOrDefault(x => x.PartitionKey == product.CodArticol);
+                return w.RowKey == pw?.StatsRowKey && w.PartitionKey == pw?.StatsPartitionKey;
+            })));
+            return Ok(odersModel);
         }
     }
 }

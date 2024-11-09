@@ -149,6 +149,7 @@ namespace WebApi
             });
 
             services.AddScoped<SaSToken, SaSToken>();
+            services.AddScoped<ReclamatiiReport, ReclamatiiReport>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();
@@ -213,6 +214,12 @@ namespace WebApi
 
                 cfg.CreateMap<ProductCodeEntry, ProductModel>();
                 cfg.CreateMap<ProductModel, ProductCodeEntry>();
+
+                cfg.CreateMap<ProductCodeStatsModel, ProductCodeStatsEntry>();
+                cfg.CreateMap<ProductCodeStatsEntry, ProductCodeStatsModel>();
+
+                cfg.CreateMap<OrderModel, RepositoryContract.Orders.ComandaVanzareEntry>();
+                cfg.CreateMap<RepositoryContract.Orders.ComandaVanzareEntry, OrderModel>();
             });
             IMapper mapper = config.CreateMapper();
             services.AddSingleton(mapper);
