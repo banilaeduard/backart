@@ -1,10 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
-using RepositoryContract.Orders;
-using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using WebApi.Models;
@@ -16,9 +13,6 @@ namespace WebApi.Controllers
     public class TaskController : WebApiController2
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        private ICommitedOrdersRepository commitedOrdersRepository;
-        private IOrdersRepository ordersRepository;
-        private IProductCodeRepository productCodeRepository;
         private ITaskRepository taskRepository;
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
@@ -26,18 +20,12 @@ namespace WebApi.Controllers
 
         public TaskController(
             ILogger<ReportsController> logger,
-            ICommitedOrdersRepository commitedOrdersRepository,
-            IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
-            IOrdersRepository ordersRepository,
             ReclamatiiReport reclamatiiReport,
             IMapper mapper) : base(logger, mapper)
         {
-            this.productCodeRepository = productCodeRepository;
-            this.commitedOrdersRepository = commitedOrdersRepository;
-            this.ordersRepository = ordersRepository;
             this.taskRepository = taskRepository;
             this.ticketEntryRepository = ticketEntryRepository;
             this.keyLocationRepository = keyLocationRepository;

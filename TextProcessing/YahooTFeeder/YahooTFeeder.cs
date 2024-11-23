@@ -17,7 +17,6 @@ using MimeKit;
 using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tickets;
-using Tokenizer;
 using V2.Interfaces;
 using YahooFeeder;
 using UniqueId = MailKit.UniqueId;
@@ -29,8 +28,6 @@ namespace YahooTFeeder
     /// </summary>
     internal sealed class YahooTFeeder : StatelessService, IYahooFeeder
     {
-        private static readonly string syncPrefix = "sync_control/ymailtickets${0}";
-        private static readonly TokenizerService tokService = new();
         private ServiceProxyFactory serviceProxy;
         public YahooTFeeder(StatelessServiceContext context)
             : base(context)
@@ -102,42 +99,47 @@ namespace YahooTFeeder
             var ticketEntryRepository = new TicketEntryRepository(null);
             var mailSettings = new MailSettingsRepository(null);
 
+            var mSettings = (await mailSettings.GetMailSetting()).ToList();
+            var settingMap = mSettings
+                .SelectMany(x => x.From.Split(";", StringSplitOptions.TrimEntries))
+                .Distinct()
+                .ToDictionary(x => x, v => mSettings.First(x => x.From.Contains(v)));
+            var folderRecipients = mSettings
+                .SelectMany(x => x.Folders.Split(";", StringSplitOptions.TrimEntries))
+                .GroupBy(x => x)
+                .OrderByDescending(x => x.Count())
+                .Select(x => x.First())
+                .ToDictionary(x => x, v => mSettings.Where(x => x.Folders.Contains(v))
+                                                    .SelectMany(x => x.From.Split(";", StringSplitOptions.TrimEntries))
+                                                    .Distinct()
+                                                    .ToList());
+
             ServiceEventSource.Current.ServiceMessage(Context, "Executing task mails. {0}", DateTime.Now);
-            using (ImapClient client = await ConnectAsync(settings, cancellationToken))
+            foreach (var (folderName, recipientsList) in folderRecipients)
             {
-                var mSettings = await mailSettings.GetMailSetting();
-
-                foreach (var setting in mSettings)
+                DateTimeOffset? fromDate = null;
+                fromDate = fromDate ?? DateTime.Now.AddDays(-settings.DaysBefore);
+                DateTimeOffset? syncDate = fromDate.Value!;
+                using (ImapClient client = await ConnectAsync(settings, cancellationToken))
                 {
-                    var meta = blob.GetMetadata(syncPrefix, setting.PartitionKey + setting.RowKey);
-
-                    DateTimeOffset? fromDate = null;
-                    if (meta.TryGetValue("sync_data", out var date))
+                    foreach (var batchRecipients in recipientsList.Chunk(10))
                     {
-                        fromDate = DateTimeOffset.Parse(date);
-                    }
-                    fromDate = fromDate ?? DateTime.Now.AddDays(-settings.DaysBefore);
-                    DateTimeOffset? syncDate = fromDate.Value!;
-
-                    foreach (var folder in GetFolders(client, setting.Folders.Split(";", StringSplitOptions.TrimEntries), cancellationToken))
-                    {
+                        IMailFolder folder = null;
                         try
                         {
-                            var from_entries = setting.From.Split(";", StringSplitOptions.TrimEntries);
-                            BinarySearchQuery query = SearchQuery.FromContains(from_entries[0]).Or(SearchQuery.FromContains(from_entries[0]));
-                            for (var i = 1; i < from_entries.Length; i++)
+                            SearchQuery query = SearchQuery.FromContains(batchRecipients[0])
+                                .Or(SearchQuery.CcContains(batchRecipients[0]))
+                                .Or(SearchQuery.ToContains(batchRecipients[0]));
+                            for (var i = 1; i < batchRecipients.Count(); i++)
                             {
-                                query = query.Or(SearchQuery.FromContains(from_entries[i]));
-                            }
-
-                            BinarySearchQuery query2 = SearchQuery.ToContains(from_entries[0]).Or(SearchQuery.ToContains(from_entries[0]));
-                            for (var i = 1; i < from_entries.Length; i++)
-                            {
-                                query2 = query2.Or(SearchQuery.ToContains(from_entries[i]));
+                                query = query.Or(SearchQuery.FromContains(batchRecipients[i])
+                                .Or(SearchQuery.CcContains(batchRecipients[i]))
+                                .Or(SearchQuery.ToContains(batchRecipients[i])));
                             }
 
                             List<UniqueId> uids;
 
+                            folder = GetFolders(client, [folderName], cancellationToken).ElementAt(0);
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
                             uids = folder.Search(
@@ -146,17 +148,11 @@ namespace YahooTFeeder
                                 )
                             , cancellationToken).ToList();
 
-                            var uids2 = folder.Search(
-                                SearchQuery.DeliveredAfter(fromDate.Value.DateTime).And(
-                                  SearchQuery.FromContains(settings.User).And(query2)
-                                )
-                            , cancellationToken);
-
-                            uids.AddRange(uids2);
-
                             List<IMessageSummary> toProcess = new();
                             if (uids?.Any() == true)
-                                foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.InternalDate | MessageSummaryItems.EmailId | MessageSummaryItems.UniqueId))
+                                foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.InternalDate
+                                    | MessageSummaryItems.EmailId
+                                    | MessageSummaryItems.UniqueId))
                                 {
                                     if (await ticketEntryRepository.GetIfExists<TicketEntity>(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null)
                                         continue;
@@ -167,7 +163,6 @@ namespace YahooTFeeder
                             {
                                 await AddComplaint(toProcess, ticketEntryRepository, folder);
                                 var sample = toProcess.OrderByDescending(t => t.InternalDate).First().InternalDate;
-                                syncDate = sample > syncDate ? sample : syncDate;
                             }
                         }
                         catch (Exception ex)
@@ -176,13 +171,11 @@ namespace YahooTFeeder
                         }
                         finally
                         {
-                            folder.Close(cancellationToken: cancellationToken);
+                            await folder?.CloseAsync(cancellationToken: cancellationToken);
                         }
                     }
-                    meta["sync_data"] = syncDate.Value.ToString();
-                    blob.SetMetadata(syncPrefix, null, meta, setting.PartitionKey + setting.RowKey);
+                    client.Disconnect(true, cancellationToken);
                 }
-                client.Disconnect(true, cancellationToken);
             }
         }
 
@@ -264,7 +257,7 @@ namespace YahooTFeeder
                         {
                             LocationName = froms[0],
                             LocationCode = froms[0],
-                            TownName = string.Join(";", extras.Addreses ?? froms ?? []),
+                            TownName = string.Join(";", extras?.Addreses ?? froms ?? []),
                         }]))[0];
                     }
                     else if ((locationMain = locations.FirstOrDefault(loc => loc.LocationCode == location.LocationCode && loc.MainLocation)) != null)
@@ -298,6 +291,7 @@ namespace YahooTFeeder
                     LocationRowKey = location?.RowKey,
                     LocationPartitionKey = location?.PartitionKey,
                     HasAttachments = message.Attachments?.Any() == true,
+                    FoundInFolder = message.Folder.Name
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
@@ -337,6 +331,10 @@ namespace YahooTFeeder
                 var tickets = (await ticketEntryRepository.GetAll()).Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey));
                 var allFolders = (await mailSettings.GetMailSetting()).SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries)).Distinct().ToArray();
 
+                var foundIn = tickets.Where(x => !string.IsNullOrEmpty(x.FoundInFolder)).Select(x => x.FoundInFolder)
+                                    .Distinct()
+                                    .ToList();
+
                 using (var client = await ConnectAsync(new MailSettings()
                 {
                     DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
@@ -344,7 +342,7 @@ namespace YahooTFeeder
                     User = Environment.GetEnvironmentVariable("User")!
                 }, CancellationToken.None))
                 {
-                    foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                    foreach (var folder in GetFolders(client, [..foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
                     {
                         var uidsMissing = tickets.Select(t => new UniqueId((uint)t.Validity, (uint)t.Uid)).ToList();
                         if (uidsMissing.Count == 0) return result.ToArray();
@@ -373,7 +371,7 @@ namespace YahooTFeeder
                                 RowKey = entry.Validity + "eml",
                                 Data = fname,
                                 ContentType = "eml",
-                                Title = $"{entry.Subject ?? "eml"}.eml",
+                                Title = "body.eml",
                                 RefPartition = entry.PartitionKey,
                                 RefKey = entry.RowKey,
                             });
@@ -440,6 +438,7 @@ namespace YahooTFeeder
         private async Task<ImapClient> ConnectAsync(MailSettings settings, CancellationToken cancellationToken)
         {
             ImapClient client = new ImapClient();
+            client.ServerCertificateValidationCallback = (s, c, h, e) => true;
             await client.ConnectAsync("imap.mail.yahoo.com", 993, true, cancellationToken);
             await client.AuthenticateAsync(settings.User, settings.Password, cancellationToken);
             return client;

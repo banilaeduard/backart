@@ -144,8 +144,7 @@ namespace WebApi.Controllers
                 }
             }
             var eml = attachments.FirstOrDefault(t => t.RowKey.Contains("eml"));
-            return File(storageService.Access(eml.Data, out var contentType), contentType);
-
+            return File(storageService.Access(eml.Data, out var contentType), contentType ?? "application/text");
         }
     }
 }

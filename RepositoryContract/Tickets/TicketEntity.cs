@@ -31,5 +31,6 @@ namespace RepositoryContract.Tickets
         public string LocationPartitionKey { get; set; }
         public string LocationRowKey { get; set; }
         public bool HasAttachments { get; set; }
+        public string FoundInFolder { get; set; }
     }
 }
