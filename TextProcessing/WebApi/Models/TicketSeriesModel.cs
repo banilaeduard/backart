@@ -5,12 +5,11 @@
     using System;
     using RepositoryContract.Tickets;
     using RepositoryContract.Tasks;
+    using RepositoryContract;
 
-    public class TicketSeriesModel
+    public class TicketSeriesModel: TableEntityPK
     {
         public int? Id { get; set; }
-        public string? PartitionKey { get; set; }
-        public string? RowKey { get; set; }
         public List<TicketModel> Tickets { get; set; }
         public string? NrComanda { get; set; }
 

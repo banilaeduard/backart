@@ -1,11 +1,15 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using WebApi.Models;
 using WebApi.Services;
+using YahooFeeder;
 
 namespace WebApi.Controllers
 {
@@ -17,6 +21,10 @@ namespace WebApi.Controllers
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
         private ReclamatiiReport reclamatiiReport;
+        private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
+        {
+            return new FabricTransportServiceRemotingClientFactory();
+        });
 
         public TaskController(
             ILogger<ReportsController> logger,
@@ -45,16 +53,16 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> SaveTask(TaskModel task)
         {
-            var newTask = await taskRepository.SaveTask(task.ToTaskEntry());
-            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
-        }
+            var dbTask = task.ToTaskEntry();
+            var newTask = await taskRepository.SaveTask(dbTask);
 
-        [HttpPost("close")]
-        public async Task<IActionResult> MarkAsClosed(TaskModel task)
-        {
-            var tEntry = task.ToTaskEntry();
-            tEntry.IsClosed = true;
-            return Ok(await taskRepository.UpdateTask(task.ToTaskEntry()));
+            if (task.ExternalMailReferences?.FirstOrDefault() != null)
+            {
+                var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
+                await proxy.Move([.. task.ExternalMailReferences.SelectMany(x => x.Tickets).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))], "_PENDING_");
+            }
+
+            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
         }
 
         [HttpDelete("{taskId}")]

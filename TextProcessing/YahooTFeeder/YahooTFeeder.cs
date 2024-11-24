@@ -96,6 +96,7 @@ namespace YahooTFeeder
         async Task ReadMails(MailSettings settings, CancellationToken cancellationToken)
         {
             var blob = new BlobAccessStorageService();
+            var tableStorageService = new TableStorageService(null);
             var ticketEntryRepository = new TicketEntryRepository(null);
             var mailSettings = new MailSettingsRepository(null);
 
@@ -112,29 +113,41 @@ namespace YahooTFeeder
                 .ToDictionary(x => x, v => mSettings.Where(x => x.Folders.Contains(v))
                                                     .SelectMany(x => x.From.Split(";", StringSplitOptions.TrimEntries))
                                                     .Distinct()
+                                                    .Order()
                                                     .ToList());
 
             ServiceEventSource.Current.ServiceMessage(Context, "Executing task mails. {0}", DateTime.Now);
-            foreach (var (folderName, recipientsList) in folderRecipients)
+            using (ImapClient client = await ConnectAsync(settings, cancellationToken))
             {
-                DateTimeOffset? fromDate = null;
-                fromDate = fromDate ?? DateTime.Now.AddDays(-settings.DaysBefore);
-                DateTimeOffset? syncDate = fromDate.Value!;
-                using (ImapClient client = await ConnectAsync(settings, cancellationToken))
+                foreach (var (folderName, recipientsList) in folderRecipients)
                 {
+                    var fromDate = DateTime.Now.AddDays(-settings.DaysBefore).ToUniversalTime();
+                    var lastRun = tableStorageService.Query<MailEntryStatus>(t => t.PartitionKey == folderName).ToList();
+                    var startTimer = DateTime.Now.ToUniversalTime();
+
                     foreach (var batchRecipients in recipientsList.Chunk(10))
                     {
+                        var defaultTimers = batchRecipients.ToDictionary(x => x, v => lastRun.FirstOrDefault(r => r.From == v)?.LastFetch ?? fromDate);
+                        var groupedTimers = defaultTimers.GroupBy(x => x.Value).ToDictionary(x => x.Key, v => v.Select(t => t.Key).ToList());
                         IMailFolder folder = null;
+
                         try
                         {
-                            SearchQuery query = SearchQuery.FromContains(batchRecipients[0])
-                                .Or(SearchQuery.CcContains(batchRecipients[0]))
-                                .Or(SearchQuery.ToContains(batchRecipients[0]));
-                            for (var i = 1; i < batchRecipients.Count(); i++)
+                            SearchQuery query = null;
+
+                            foreach (var item in groupedTimers)
                             {
-                                query = query.Or(SearchQuery.FromContains(batchRecipients[i])
-                                .Or(SearchQuery.CcContains(batchRecipients[i]))
-                                .Or(SearchQuery.ToContains(batchRecipients[i])));
+                                SearchQuery qRecipients = SearchQuery.FromContains(item.Value[0])
+                                .Or(SearchQuery.CcContains(item.Value[0]))
+                                .Or(SearchQuery.ToContains(item.Value[0]));
+                                for (var i = 1; i < item.Value.Count(); i++)
+                                {
+                                    qRecipients = qRecipients.Or(SearchQuery.FromContains(item.Value[i])
+                                    .Or(SearchQuery.CcContains(item.Value[i]))
+                                    .Or(SearchQuery.ToContains(item.Value[i])));
+                                }
+
+                                query = query != null ? query.Or(SearchQuery.DeliveredAfter(item.Key.AddDays(-1)).And(qRecipients)) : SearchQuery.DeliveredAfter(item.Key.AddDays(-1)).And(qRecipients);
                             }
 
                             List<UniqueId> uids;
@@ -142,11 +155,7 @@ namespace YahooTFeeder
                             folder = GetFolders(client, [folderName], cancellationToken).ElementAt(0);
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
-                            uids = folder.Search(
-                                SearchQuery.DeliveredAfter(fromDate.Value.DateTime).And(
-                                  query
-                                )
-                            , cancellationToken).ToList();
+                            uids = folder.Search(query, cancellationToken).ToList();
 
                             List<IMessageSummary> toProcess = new();
                             if (uids?.Any() == true)
@@ -162,8 +171,30 @@ namespace YahooTFeeder
                             if (toProcess.Count > 0)
                             {
                                 await AddComplaint(toProcess, ticketEntryRepository, folder);
-                                var sample = toProcess.OrderByDescending(t => t.InternalDate).First().InternalDate;
                             }
+
+                            var batchRun = lastRun.Where(x => batchRecipients.Contains(x.From)).ToList();
+
+                            if (batchRun.Count != batchRecipients.Count())
+                            {
+                                foreach (var recipient in batchRecipients.Except(batchRun.Select(x => x.From)))
+                                {
+                                    batchRun.Add(new MailEntryStatus()
+                                    {
+                                        PartitionKey = folderName,
+                                        RowKey = recipient,
+                                        LastFetch = startTimer,
+                                        Folder = folderName,
+                                        From = recipient,
+                                    });
+                                }
+                            }
+
+                            foreach (var status in batchRun)
+                            {
+                                status.LastFetch = startTimer;
+                            }
+                            await tableStorageService.PrepareUpsert(batchRun).ExecuteBatch();
                         }
                         catch (Exception ex)
                         {
@@ -171,10 +202,8 @@ namespace YahooTFeeder
                         }
                         finally
                         {
-                            await folder?.CloseAsync(cancellationToken: cancellationToken);
                         }
                     }
-                    client.Disconnect(true, cancellationToken);
                 }
             }
         }
@@ -291,7 +320,8 @@ namespace YahooTFeeder
                     LocationRowKey = location?.RowKey,
                     LocationPartitionKey = location?.PartitionKey,
                     HasAttachments = message.Attachments?.Any() == true,
-                    FoundInFolder = message.Folder.Name
+                    FoundInFolder = message.Folder.Name,
+                    CurrentFolder = message.Folder.Name
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
@@ -331,7 +361,7 @@ namespace YahooTFeeder
                 var tickets = (await ticketEntryRepository.GetAll()).Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey));
                 var allFolders = (await mailSettings.GetMailSetting()).SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries)).Distinct().ToArray();
 
-                var foundIn = tickets.Where(x => !string.IsNullOrEmpty(x.FoundInFolder)).Select(x => x.FoundInFolder)
+                var foundIn = tickets.Where(x => !string.IsNullOrEmpty(x.CurrentFolder)).Select(x => x.CurrentFolder)
                                     .Distinct()
                                     .ToList();
 
@@ -342,7 +372,7 @@ namespace YahooTFeeder
                     User = Environment.GetEnvironmentVariable("User")!
                 }, CancellationToken.None))
                 {
-                    foreach (var folder in GetFolders(client, [..foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
+                    foreach (var folder in GetFolders(client, [.. foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
                     {
                         var uidsMissing = tickets.Select(t => new UniqueId((uint)t.Validity, (uint)t.Uid)).ToList();
                         if (uidsMissing.Count == 0) return result.ToArray();
@@ -433,6 +463,66 @@ namespace YahooTFeeder
             }
 
             return result.ToArray();
+        }
+
+        public async Task Move(TableEntityPK[] ui, string folderName)
+        {
+            var mailSettings = new MailSettingsRepository(null);
+            var ticketEntryRepository = new TicketEntryRepository(null);
+            List<TicketEntity> entries = new();
+
+            var allFolders = (await mailSettings.GetMailSetting()).SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries))
+                .Distinct()
+                .ToArray();
+
+            foreach (var u in ui)
+            {
+                var ticket = await ticketEntryRepository.GetIfExists<TicketEntity>(u.PartitionKey, u.RowKey);
+                if (ticket != null)
+                {
+                    entries.Add(ticket);
+                }
+            }
+
+            var foundIn = entries.Where(x => !string.IsNullOrEmpty(x.CurrentFolder)).Select(x => x.CurrentFolder)
+                                .Distinct()
+                                .ToList();
+            allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
+
+            var uids = entries.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList();
+
+            using (var client = await ConnectAsync(new MailSettings()
+            {
+                DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
+                Password = Environment.GetEnvironmentVariable("Password")!,
+                User = Environment.GetEnvironmentVariable("User")!
+            }, CancellationToken.None))
+            {
+                var destinationFolder = GetFolders(client, [folderName], CancellationToken.None).ElementAt(0);
+                foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                {
+                    if (!uids.Any()) break;
+                    await folder.OpenAsync(FolderAccess.ReadWrite);
+                    var found = await folder.SearchAsync(SearchQuery.Uids(uids));
+                    if (found.Any())
+                    {
+                        await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
+
+                        var moved = entries.Where(x => found.Any(f => f.Validity == x.Validity && f.Id == x.Uid)).ToList();
+                        foreach (var x in moved)
+                        {
+                            x.CurrentFolder = folderName;
+                            if (string.IsNullOrEmpty(x.FoundInFolder))
+                            {
+                                x.FoundInFolder = folder.Name;
+                            }
+                        }
+                        await ticketEntryRepository.Save([.. moved]);
+
+                        uids = [.. uids.Except(found)];
+                    }
+                }
+            }
         }
 
         private async Task<ImapClient> ConnectAsync(MailSettings settings, CancellationToken cancellationToken)

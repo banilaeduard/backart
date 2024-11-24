@@ -8,5 +8,6 @@ namespace YahooFeeder
     {
         public Task Get();
         public Task<MailBody[]> DownloadAll(TableEntityPK[] uids);
+        public Task Move(TableEntityPK[] uids, string folderName);
     }
 }
