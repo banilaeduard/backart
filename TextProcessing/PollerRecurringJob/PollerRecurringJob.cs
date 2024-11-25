@@ -1,10 +1,11 @@
-using AzureServices;
 using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.Orders;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using PollerRecurringJob.Interfaces;
-using SqlTableRepository.Orders;
+using PollerRecurringJob.JobHandlers;
 
 namespace PollerRecurringJob
 {
@@ -19,6 +20,14 @@ namespace PollerRecurringJob
     [StatePersistence(StatePersistence.Persisted)]
     internal class PollerRecurringJob : Actor, IPollerRecurringJob, IActor1, IRemindable
     {
+        internal ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
+            {
+                return new FabricTransportServiceRemotingClientFactory();
+            });
+
+        internal static readonly string SyncOrders = "SyncOrders";
+        internal static readonly string MoveTo = "MoveToFolder";
+
         /// <summary>
         /// Initializes a new instance of PollerRecurringJob
         /// </summary>
@@ -31,52 +40,34 @@ namespace PollerRecurringJob
 
         public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
-            var storage = new BlobAccessStorageService();
-            var ordersImportsRepository = new OrdersImportsRepository(storage);
-            var commitedOrdersRepository = new CommitedOrdersRepository(null);
-            var ordersRepository = new OrdersRepository(null);
-
-            var lastOrder = await StateManager.GetOrAddStateAsync("order", DateTime.Now.AddDays(-7));
-            var lastCommited = await StateManager.GetOrAddStateAsync("commited", DateTime.Now.AddDays(-7));
-
-            var latest = await ordersImportsRepository.PollForNewContent();
-
-            if (latest.order > lastOrder && latest.commited > lastCommited)
+            if (reminderName == SyncOrders)
             {
-                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetching orders {latest.order} and commited {latest.commited}");
-                var sourceOrders = await ordersImportsRepository.GetImportCommitedOrders(lastCommited, new DateTime(2024, 5, 5));
-                await commitedOrdersRepository.ImportCommitedOrders(sourceOrders.commited, latest.commited);
-                await ordersRepository.ImportOrders(sourceOrders.orders, latest.order);
-                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetched orders {sourceOrders.orders.Count} and commited {sourceOrders.commited.Count}");
+                await OrdersStorageSync.Execute(this);
             }
-            else if (latest.order > lastOrder)
+            else if (reminderName == MoveTo)
             {
-                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetching orders {latest.order}");
-                var sourceOrders = await ordersImportsRepository.GetImportOrders(new DateTime(2024, 5, 5));
-                await ordersRepository.ImportOrders(sourceOrders, latest.order);
-                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetched orders {sourceOrders.Count}");
+                await MoveToFolder.Execute(this);
             }
-            else if (latest.commited > lastCommited)
-            {
-                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetching commited {latest.commited}");
-                var commited = await ordersImportsRepository.GetImportCommited(lastCommited);
-                await commitedOrdersRepository.ImportCommitedOrders(commited, latest.commited);
-                ActorEventSource.Current.ActorMessage(this, $"Polling Actor. Fetched commited {commited.Count}");
-            }
-            await StateManager.AddOrUpdateStateAsync("order", latest.order, (_, _) => latest.order);
-            await StateManager.AddOrUpdateStateAsync("commited", latest.commited, (_, _) => latest.commited);
         }
 
         public async Task RegisterReminder()
         {
             try
             {
-                var previousRegistration = GetReminder("Reminder1");
+                var previousRegistration = GetReminder(SyncOrders);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
+            try
+            {
+                var previousRegistration = GetReminder(MoveTo);
                 await UnregisterReminderAsync(previousRegistration);
             }
             catch (ReminderNotFoundException) { }
 
-            var reminderRegistration = await RegisterReminderAsync("Reminder1", null, TimeSpan.FromMinutes(0), TimeSpan.FromHours(3));
+
+            await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(0), TimeSpan.FromHours(3));
+            await RegisterReminderAsync(MoveTo, null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(5));
         }
 
         public async Task Sync()

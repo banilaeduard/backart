@@ -4,6 +4,7 @@ using AzureServices;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.MailSettings;
 using AzureTableRepository.Tickets;
+using EntityDto;
 using MailExtrasExtractor;
 using MailKit;
 using MailKit.Net.Imap;
@@ -465,31 +466,15 @@ namespace YahooTFeeder
             return result.ToArray();
         }
 
-        public async Task Move(TableEntityPK[] ui, string folderName)
+        public async Task Move(MoveToMessage<TableEntityPK>[] messages)
         {
             var mailSettings = new MailSettingsRepository(null);
             var ticketEntryRepository = new TicketEntryRepository(null);
-            List<TicketEntity> entries = new();
 
             var allFolders = (await mailSettings.GetMailSetting()).SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries))
                 .Distinct()
                 .ToArray();
-
-            foreach (var u in ui)
-            {
-                var ticket = await ticketEntryRepository.GetIfExists<TicketEntity>(u.PartitionKey, u.RowKey);
-                if (ticket != null)
-                {
-                    entries.Add(ticket);
-                }
-            }
-
-            var foundIn = entries.Where(x => !string.IsNullOrEmpty(x.CurrentFolder)).Select(x => x.CurrentFolder)
-                                .Distinct()
-                                .ToList();
-            allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
-
-            var uids = entries.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList();
+            var ticket = await ticketEntryRepository.GetAll();
 
             using (var client = await ConnectAsync(new MailSettings()
             {
@@ -498,28 +483,42 @@ namespace YahooTFeeder
                 User = Environment.GetEnvironmentVariable("User")!
             }, CancellationToken.None))
             {
-                var destinationFolder = GetFolders(client, [folderName], CancellationToken.None).ElementAt(0);
-                foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                foreach (var msg in messages)
                 {
-                    if (!uids.Any()) break;
-                    await folder.OpenAsync(FolderAccess.ReadWrite);
-                    var found = await folder.SearchAsync(SearchQuery.Uids(uids));
-                    if (found.Any())
+                    var destinationFolder = GetFolders(client, [msg.DestinationFolder], CancellationToken.None).ElementAt(0);
+
+                    var entries = ticket.Where(x => msg.Items.Any(f => f.RowKey == x.RowKey && f.PartitionKey == x.PartitionKey)).ToList();
+                    var foundIn = entries.Where(x => !string.IsNullOrEmpty(x.CurrentFolder))
+                                        .Select(x => x.CurrentFolder)
+                                        .Distinct()
+                                        .ToList();
+                    allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
+                    var uids = entries.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList();
+                    
+                    foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
                     {
-                        await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
+                        if (folder.Name == destinationFolder.Name) continue;
+                        if (!uids.Any()) break;
 
-                        var moved = entries.Where(x => found.Any(f => f.Validity == x.Validity && f.Id == x.Uid)).ToList();
-                        foreach (var x in moved)
+                        await folder.OpenAsync(FolderAccess.ReadWrite);
+                        var found = await folder.SearchAsync(SearchQuery.Uids(uids));
+                        if (found.Any())
                         {
-                            x.CurrentFolder = folderName;
-                            if (string.IsNullOrEmpty(x.FoundInFolder))
-                            {
-                                x.FoundInFolder = folder.Name;
-                            }
-                        }
-                        await ticketEntryRepository.Save([.. moved]);
+                            await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
 
-                        uids = [.. uids.Except(found)];
+                            var moved = entries.Where(x => found.Any(f => f.Validity == x.Validity && f.Id == x.Uid)).ToList();
+                            foreach (var x in moved)
+                            {
+                                x.CurrentFolder = msg.DestinationFolder;
+                                if (string.IsNullOrEmpty(x.FoundInFolder))
+                                {
+                                    x.FoundInFolder = folder.Name;
+                                }
+                            }
+                            await ticketEntryRepository.Save([.. moved]);
+
+                            uids = [.. uids.Except(found)];
+                        }
                     }
                 }
             }

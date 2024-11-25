@@ -1,4 +1,5 @@
-﻿using Microsoft.ServiceFabric.Services.Remoting;
+﻿using EntityDto;
+using Microsoft.ServiceFabric.Services.Remoting;
 using RepositoryContract;
 using V2.Interfaces;
 
@@ -8,6 +9,6 @@ namespace YahooFeeder
     {
         public Task Get();
         public Task<MailBody[]> DownloadAll(TableEntityPK[] uids);
-        public Task Move(TableEntityPK[] uids, string folderName);
+        public Task Move(MoveToMessage<TableEntityPK>[] messages);
     }
 }

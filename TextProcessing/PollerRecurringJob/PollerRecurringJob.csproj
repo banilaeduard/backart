@@ -26,8 +26,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\AzureTableRepository\AzureTableRepository.csproj" />
+    <ProjectReference Include="..\..\EntityDto\EntityDto.csproj" />
     <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />
     <ProjectReference Include="..\PollerRecurringJob.Interfaces\V2_1.Interfaces.csproj" />
+    <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
   </ItemGroup>
 
 </Project>

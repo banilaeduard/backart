@@ -1,15 +1,14 @@
 ﻿using AutoMapper;
+using AzureServices;
+using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.ServiceFabric.Services.Remoting.Client;
-using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using WebApi.Models;
 using WebApi.Services;
-using YahooFeeder;
 
 namespace WebApi.Controllers
 {
@@ -21,10 +20,6 @@ namespace WebApi.Controllers
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
         private ReclamatiiReport reclamatiiReport;
-        private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
-        {
-            return new FabricTransportServiceRemotingClientFactory();
-        });
 
         public TaskController(
             ILogger<ReportsController> logger,
@@ -58,8 +53,13 @@ namespace WebApi.Controllers
 
             if (task.ExternalMailReferences?.FirstOrDefault() != null)
             {
-                var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
-                await proxy.Move([.. task.ExternalMailReferences.SelectMany(x => x.Tickets).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))], "_PENDING_");
+                var client = await QueueService.GetClient("movemailto");
+                await client.SendMessageAsync(QueueService.Serialize(
+                    new MoveToMessage<TableEntityPK>
+                    {
+                        DestinationFolder = "_PENDING_",
+                        Items = task.ExternalMailReferences.SelectMany(x => x.Tickets).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                    }));
             }
 
             return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
@@ -77,6 +77,22 @@ namespace WebApi.Controllers
         public async Task<IActionResult> UpdateTask(TaskModel task)
         {
             var newTask = await taskRepository.UpdateTask(task.ToTaskEntry());
+
+            if (newTask.Actions.Any())
+            {
+                var lastAction = newTask.Actions.OrderByDescending(t => t.Created).First();
+                if (lastAction.Description.Contains("Mark as closed"))
+                {
+                    var client = await QueueService.GetClient("movemailto");
+                    await client.SendMessageAsync(QueueService.Serialize(
+                        new MoveToMessage<TableEntityPK>
+                        {
+                            DestinationFolder = "Archive",
+                            Items = newTask.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))
+                        }));
+                }
+            }
+
             return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
         }
 
