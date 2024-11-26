@@ -20,13 +20,13 @@ namespace PollerRecurringJob.JobHandlers
             var tasks = await repo.GetTasks(TaskInternalState.Open);
             var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 
-            items = [.. items.Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId)))];
+            var items2 = items.Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
 
             // update only active tasks
             foreach (var task in tasks)
             {
                 // make sure we don't have the external mail attached
-                var intersect = items.Where(newMail => externalRefs.Any(er => er.TaskId == task.Id
+                var intersect = items2.Where(newMail => externalRefs.Any(er => er.TaskId == task.Id
                     && er.ExternalGroupId.Equals(newMail.ThreadId)
                     && $"{er.PartitionKey}_{er.RowKey}_{er.TableName}" != $"{newMail.PartitionKey}_{newMail.RowKey}_{newMail.TableName}"
                 )).ToList();
@@ -52,6 +52,9 @@ namespace PollerRecurringJob.JobHandlers
             {
                 await client.DeleteMessageAsync(item.MessageId, item.PopReceipt);
             }
+
+            var processQueue = await QueueService.GetClient("createtaskfrommail");
+            processQueue.SendMessage(QueueService.Serialize(items.Except(items2).ToArray()));
         }
     }
 }

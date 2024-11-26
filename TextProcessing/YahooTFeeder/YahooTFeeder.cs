@@ -326,6 +326,7 @@ namespace YahooTFeeder
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
+
             var processQueue = await QueueService.GetClient("addmailtotask");
             processQueue.SendMessage(QueueService.Serialize(toSave.Select(t => new AddMailToTask()
             {
@@ -333,9 +334,12 @@ namespace YahooTFeeder
                 RowKey = t.RowKey,
                 ThreadId = t.ThreadId,
                 Date = t.CreatedDate,
-                TableName = nameof(TicketEntity)
+                TableName = nameof(TicketEntity),
+                LocationRowKey = t?.LocationRowKey ?? "",
+                LocationPartitionKey = t?.LocationPartitionKey ?? ""
             })));
         }
+
         private string GetPartitionKey(IMessageSummary id) => id.UniqueId.Validity.ToString();
         private string GetRowKey(IMessageSummary id) => id.UniqueId.Id.ToString();
         private void LogError(Exception ex)
