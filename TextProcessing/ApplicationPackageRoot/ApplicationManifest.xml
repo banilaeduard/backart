@@ -21,6 +21,7 @@
     <ServiceManifestRef ServiceManifestName="PollerRecurringJobPkg" ServiceManifestVersion="1.0.0" />
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
+      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>

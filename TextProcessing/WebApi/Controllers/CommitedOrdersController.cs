@@ -4,12 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
-using RepositoryContract.Imports;
-using RepositoryContract.Orders;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
-using Services.Storage;
 using WebApi.Models;
 using WorkSheetServices;
 
@@ -20,10 +17,7 @@ namespace WebApi.Controllers
     {
         const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-        private IStorageService storageService;
         private ICommitedOrdersRepository commitedOrdersRepository;
-        private IOrdersRepository ordersRepository;
-        private IImportsRepository importsRepository;
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
         private IProductCodeRepository productCodeRepository;
@@ -31,20 +25,14 @@ namespace WebApi.Controllers
 
         public CommitedOrdersController(
             ILogger<CommitedOrdersController> logger,
-            IStorageService storageService,
             ICommitedOrdersRepository commitedOrdersRepository,
-            IImportsRepository importsRepository,
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
             IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
-            IMapper mapper,
-            IOrdersRepository ordersRepository) : base(logger, mapper)
+            IMapper mapper) : base(logger, mapper)
         {
-            this.storageService = storageService;
             this.commitedOrdersRepository = commitedOrdersRepository;
-            this.ordersRepository = ordersRepository;
-            this.importsRepository = importsRepository;
             this.ticketEntryRepository = ticketEntryRepository;
             this.keyLocationRepository = keyLocationRepository;
             this.taskRepository = taskRepository;

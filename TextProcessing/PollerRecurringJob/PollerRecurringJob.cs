@@ -27,6 +27,7 @@ namespace PollerRecurringJob
 
         internal static readonly string SyncOrders = "SyncOrders";
         internal static readonly string MoveTo = "MoveToFolder";
+        internal static readonly string AddNewMail = "AddNewMailToExistingTasks";
 
         /// <summary>
         /// Initializes a new instance of PollerRecurringJob
@@ -40,13 +41,24 @@ namespace PollerRecurringJob
 
         public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
-            if (reminderName == SyncOrders)
+            try
             {
-                await OrdersStorageSync.Execute(this);
+                if (reminderName == SyncOrders)
+                {
+                    await OrdersStorageSync.Execute(this);
+                }
+                else if (reminderName == MoveTo)
+                {
+                    await MoveToFolder.Execute(this);
+                }
+                else if (reminderName == AddNewMail)
+                {
+                    await AddNewMailToExistingTasks.Execute(this);
+                }
             }
-            else if (reminderName == MoveTo)
+            catch (Exception ex)
             {
-                await MoveToFolder.Execute(this);
+                ActorEventSource.Current.ActorMessage(this, "EXCEPTION POLLER." + ex.StackTrace ?? ex.Message);
             }
         }
 
@@ -64,10 +76,17 @@ namespace PollerRecurringJob
                 await UnregisterReminderAsync(previousRegistration);
             }
             catch (ReminderNotFoundException) { }
+            try
+            {
+                var previousRegistration = GetReminder(AddNewMail);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
 
 
             await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(0), TimeSpan.FromHours(3));
             await RegisterReminderAsync(MoveTo, null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(5));
+            await RegisterReminderAsync(AddNewMail, null, TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(5));
         }
 
         public async Task Sync()

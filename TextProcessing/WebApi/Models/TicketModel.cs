@@ -17,6 +17,9 @@
         public string? From { get; set; }
         public string? Subject { get; set; }
         public string? ThreadId { get; set; }
+        public bool IsRemoved { get; set; }
+        public bool IsExternal { get; set; }
+        public bool? IsAccepted { get; set; }
         public bool HasAttachments { get; set; }
 
         public static TicketModel FromEntry(TicketEntity t, ExternalReferenceEntry? eRef)
@@ -33,7 +36,10 @@
                 Created = t.CreatedDate,
                 ThreadId = t.ThreadId,
                 HasAttachments = t.HasAttachments,
-                Id = eRef?.Id
+                Id = eRef?.Id,
+                IsRemoved = eRef?.IsRemoved ?? false,
+                IsAccepted = eRef?.Accepted,
+                IsExternal = eRef?.Action == ActionType.External,
             };
         }
     }

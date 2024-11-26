@@ -7,7 +7,7 @@
     using RepositoryContract.Tasks;
     using RepositoryContract;
 
-    public class TicketSeriesModel: TableEntityPK
+    public class TicketSeriesModel : TableEntityPK
     {
         public int? Id { get; set; }
         public List<TicketModel> Tickets { get; set; }

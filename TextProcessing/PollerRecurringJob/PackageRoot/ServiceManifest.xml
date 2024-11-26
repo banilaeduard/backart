@@ -25,6 +25,7 @@
     <EnvironmentVariables>
       <EnvironmentVariable Name="external_sql_server" Value="" />
       <EnvironmentVariable Name="storage_connection" Value="" />
+      <EnvironmentVariable Name="ConnectionString" Value="" />
     </EnvironmentVariables>
   </CodePackage>
   <ConfigPackage Name="Config" Version="1.0.0" />

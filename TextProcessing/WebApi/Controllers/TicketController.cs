@@ -54,6 +54,7 @@ namespace WebApi.Controllers
             var result = complaints.GroupBy(T => T.ThreadId);
 
             var externalRefs = await taskRepository.GetExternalReferences();
+
             var paged = result.Select(t => TicketSeriesModel.from([.. t], externalRefs))
                               .ToList();
 

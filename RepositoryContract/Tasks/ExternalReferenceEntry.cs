@@ -13,5 +13,13 @@
         public int GroupId { get; set; }
         public string ExternalGroupId { get; set; }
         public DateTime Date { get; set; }
+        public ActionType? Action { get; set; }
+        public bool? Accepted { get; set; }
+    }
+
+    public enum ActionType
+    {
+        User = 0,
+        External = 1
     }
 }

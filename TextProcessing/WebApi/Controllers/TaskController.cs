@@ -73,6 +73,29 @@ namespace WebApi.Controllers
             return Ok();
         }
 
+        [HttpDelete("{taskId}/delete/{partitionKey}/{rowKey}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeleteTaskExternalRef(int taskId, string partitionKey, string rowKey)
+        {
+            await taskRepository.DeleteTaskExternalRef(taskId, partitionKey, rowKey);
+            return Ok();
+        }
+
+        [HttpDelete("{taskId}/accept/{partitionKey}/{rowKey}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> AcceptTaskExternalRef(int taskId, string partitionKey, string rowKey)
+        {
+            await taskRepository.AcceptExternalRef(taskId, partitionKey, rowKey);
+            var client = await QueueService.GetClient("movemailto");
+            await client.SendMessageAsync(QueueService.Serialize(
+                new MoveToMessage<TableEntityPK>
+                {
+                    DestinationFolder = "_PENDING_",
+                    Items = [TableEntityPK.From(partitionKey, rowKey)]
+                }));
+            return Ok();
+        }
+
         [HttpPatch]
         public async Task<IActionResult> UpdateTask(TaskModel task)
         {

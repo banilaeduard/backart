@@ -27,8 +27,8 @@ namespace SqlTableRepository.Tasks
                                       SELECT SCOPE_IDENTITY(), 'Created from tickets[' + @Count + ']';";
 
         internal readonly static (string sql, Func<dynamic, dynamic, ExternalReferenceEntry> mapper, string splitOn) ExternalRefs =
-            ($@"SELECT er.*, erg.* FROM dbo.ExternalReferenceEntry er
-                    JOIN dbo.TaskEntry t on er.TaskId = t.Id
+            ($@"SELECT er.*, erg.*, ta.[External], ta.Accepted FROM dbo.ExternalReferenceEntry er
+                    JOIN dbo.TaskAction ta on ta.id = er.TaskActionId and ta.TaskId = er.TaskId
                     JOIN dbo.ExternalReferenceGroup erg on er.GroupId = erg.G_Id",
             (d, eg) => new ExternalReferenceEntry()
             {
@@ -42,7 +42,9 @@ namespace SqlTableRepository.Tasks
                 RowKey = eg.RowKey,
                 TaskActionId = d.TaskActionId,
                 TaskId = d.TaskId,
-                Date = eg.Date
+                Date = eg.Date,
+                Action = eg.External != null && eg.External == true ? ActionType.External : ActionType.User,
+                Accepted = eg.Accepted != null && eg.Accepted == true ? true : false
             }, "G_Id");
     }
 }

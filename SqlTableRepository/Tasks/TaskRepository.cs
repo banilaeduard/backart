@@ -2,6 +2,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
 using RepositoryContract.Tasks;
+using RepositoryContract.Tickets;
 using System.Globalization;
 
 namespace SqlTableRepository.Tasks
@@ -74,7 +75,7 @@ namespace SqlTableRepository.Tasks
 
                     string fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName);
 
-                    externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE t.Id = @TaskId",
+                    externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE ta.TaskId = @TaskId",
                         TaskSql.ExternalRefs.mapper
                         , param: dParam
                         , splitOn: TaskSql.ExternalRefs.splitOn)
@@ -98,17 +99,24 @@ namespace SqlTableRepository.Tasks
                     WHERE Id = @TaskId";
                 taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details, task.IsClosed, TaskDate = task.TaskDate.ToUniversalTime() });
 
-                var newExternal = task.ExternalReferenceEntries.Where(e => e.Id < 1).ToList();
+                var newExternal = task.ExternalReferenceEntries.Where(e => !e.Id.HasValue || e.Id < 1).ToList();
                 if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name
                     || taskResult.IsClosed != taskResult.old_isclosed || taskResult.TaskDate != taskResult.old_taskdate || newExternal.Count > 0)
                 {
-                    string insertAction = $"INSERT INTO dbo.TaskAction(TaskId, Description) OUTPUT INSERTED.* VALUES (@TaskId, @Description)";
+                    string insertAction = $"INSERT INTO dbo.TaskAction(TaskId, Description, [External]) OUTPUT INSERTED.* VALUES (@TaskId, @Description, @External)";
                     string descriptionStart = taskResult.IsClosed != taskResult.old_isclosed ? "Mark as closed" : "Update task properties";
                     string name = taskResult.Name != taskResult.old_name ? $"Name: {taskResult.old_name}" : "";
                     string taskDate = taskResult.TaskDate != taskResult.old_taskdate ? $"Task Date: {taskResult.old_taskdate.ToString(CultureInfo.InvariantCulture)}" : "";
                     string details = taskResult.Details != taskResult.old_details ? $"Details: {taskResult.old_details}" : "";
 
-                    taskAction = await connection.QueryFirstAsync<TaskAction>($"{insertAction};", new { TaskId = task.Id, Description = $"{descriptionStart}.{taskDate}; {name}; {details}", Value = taskResult.IsClosed ? -1 : 1 });
+                    var desc = $"{descriptionStart}.{taskDate}; {name}; {details}";
+                    ExternalReferenceEntry? externalAction = null;
+                    if ((externalAction = newExternal.FirstOrDefault(x => x.Action.HasValue && x.Action.Value == ActionType.External)) != null)
+                    {
+                        desc = string.IsNullOrEmpty(desc?.Replace(";", "")) ? "EXTERNAL_ACTION" : $"EXTERNAL;{desc}";
+                    }
+
+                    taskAction = await connection.QueryFirstAsync<TaskAction>($"{insertAction};", new { TaskId = task.Id, Description = desc, External = externalAction != null, Value = taskResult.IsClosed ? -1 : 1 });
                     if (newExternal.Count > 0)
                     {
                         DynamicParameters dParam = new();
@@ -117,7 +125,7 @@ namespace SqlTableRepository.Tasks
 
                         string fromSql = newExternal.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName);
 
-                        externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE t.Id = @TaskId",
+                        externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE ta.TaskId = @TaskId",
                             TaskSql.ExternalRefs.mapper
                             , param: dParam
                             , splitOn: TaskSql.ExternalRefs.splitOn)
@@ -127,6 +135,49 @@ namespace SqlTableRepository.Tasks
             }
             _taskCache.Clear();
             return (await GetTasksInternal(TaskInternalState.All, task.Id))[0];
+        }
+        public async Task DeleteTaskExternalRef(int taskId, string partitionKey, string rowKey)
+        {
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            {
+                await connection.ExecuteAsync($@"
+                    UPDATE dbo.ExternalReferenceEntry SET IsRemoved = 1
+                    FROM dbo.ExternalReferenceGroup erg
+                    JOIN dbo.ExternalReferenceEntry er on er.GroupId = erg.G_Id
+                    WHERE erg.PartitionKey = @PartitionKey and erg.RowKey = @RowKey and er.TaskId = @TaskId", new
+                {
+                    PartitionKey = partitionKey,
+                    RowKey = rowKey,
+                    TaskId = taskId
+                });
+            }
+            _taskCache.Clear();
+        }
+
+        public async Task<TaskEntry> GetTask(int taskId)
+        {
+            return (await GetTasksInternal(TaskInternalState.All, taskId))[0];
+        }
+
+        public async Task AcceptExternalRef(int taskId, string partitionKey, string rowKey)
+        {
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            {
+                await connection.ExecuteAsync($@"update dbo.TaskAction
+                                                Set Accepted = 1
+                                                from dbo.TaskAction ta
+                                                join dbo.ExternalReferenceEntry er on ta.Id = er.TaskActionId
+                                                join dbo.ExternalReferenceGroup erg on erg.G_Id = er.GroupId
+                                                where erg.PartitionKey = @PartitionKey and erg.RowKey = @RowKey and erg.TableName = @TableName and ta.TaskId = @TaskId"
+                                                , new
+                                                {
+                                                    PartitionKey = partitionKey,
+                                                    RowKey = rowKey,
+                                                    TaskId = taskId,
+                                                    TableName = nameof(TicketEntity)
+                                                });
+            }
+            _taskCache.Clear();
         }
 
         private async Task<IList<TaskEntry>> GetTasksInternal(TaskInternalState status, int? TaskId = null)
@@ -146,7 +197,7 @@ namespace SqlTableRepository.Tasks
                     tasks = [.. multi.Read<TaskEntry>()];
                     actions = [.. multi.Read<TaskAction>()];
 
-                    externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE {(TaskId.HasValue ? "t.Id = @TaskId" : "@TaskId = @TaskId")}",
+                    externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE {(TaskId.HasValue ? "ta.TaskId = @TaskId" : "@TaskId = @TaskId")}",
                         TaskSql.ExternalRefs.mapper,
                         splitOn: TaskSql.ExternalRefs.splitOn,
                         param: new { TaskId = TaskId ?? -1 })).ToList();

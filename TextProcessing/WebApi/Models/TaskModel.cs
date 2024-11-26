@@ -32,11 +32,12 @@ namespace WebApi.Models
 
             taskModel.ExternalReferenceEntries = ExternalMailReferences?.SelectMany(t => t.Tickets).Select(t => new ExternalReferenceEntry()
             {
+                Id = t.Id,
                 ExternalGroupId = t.ThreadId,
                 PartitionKey = t.PartitionKey,
                 RowKey = t.RowKey,
                 TableName = nameof(TicketEntity),
-                IsRemoved = false,
+                IsRemoved = t.IsRemoved,
                 Date = t.Created ?? DateTime.Now
             }).ToList() ?? [];
 
@@ -83,7 +84,7 @@ namespace WebApi.Models
                     er => er.TableName == nameof(TicketEntity)
                             && er.PartitionKey == t.PartitionKey && er.RowKey == t.RowKey) == true)
                     .GroupBy(T => T.ThreadId)
-                    .Select(t => TicketSeriesModel.from([.. t], null))
+                    .Select(t => TicketSeriesModel.from([.. t], [.. task.ExternalReferenceEntries]))
                     .ToList();
 
                 taskModel.ExternalMailReferences = relatedTickets ?? [];

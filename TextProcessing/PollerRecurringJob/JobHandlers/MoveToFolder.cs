@@ -12,29 +12,28 @@ namespace PollerRecurringJob.JobHandlers
             var client = await QueueService.GetClient("movemailto");
             var messages = await client.ReceiveMessagesAsync(maxMessages: 32);
 
-            var finalList = new List<MoveToMessage<TableEntityPK>>();
-            var msgList = new List<(string messageId, string popReceipt)>();
+            var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());
 
-            foreach (var message in messages.Value)
+            foreach (var message in messages.Value.OrderBy(x => x.InsertedOn))
             {
                 var body = QueueService.Deserialize<MoveToMessage<TableEntityPK>>(message.Body.ToString())!;
-                finalList.Add(body);
-
-                msgList.Add((message.MessageId, message.PopReceipt));
+                foreach (var item in body.Items)
+                    finalList[item] = body.DestinationFolder;
             }
 
-            if (finalList.SelectMany(x => x.Items).Any())
+            if (finalList.Any())
             {
                 var proxy = jobContext.serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
-                await proxy.Move([..finalList.GroupBy(l => l.DestinationFolder).Select(x =>
+                await proxy.Move([..finalList.GroupBy(l => l.Value).Select(x =>
                     new MoveToMessage<TableEntityPK>() {
                             DestinationFolder = x.Key,
-                            Items = x.SelectMany(it => it.Items).Distinct()
+                            Items = x.Select(it => it.Key).Distinct()
                         })]);
-                foreach (var item in msgList)
-                {
-                    await client.DeleteMessageAsync(item.messageId, item.popReceipt);
-                }
+            }
+
+            foreach (var item in messages.Value)
+            {
+                await client.DeleteMessageAsync(item.MessageId, item.PopReceipt);
             }
         }
     }
