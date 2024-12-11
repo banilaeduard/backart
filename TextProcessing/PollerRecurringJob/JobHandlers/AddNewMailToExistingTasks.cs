@@ -53,8 +53,8 @@ namespace PollerRecurringJob.JobHandlers
                 await client.DeleteMessageAsync(item.MessageId, item.PopReceipt);
             }
 
-            var processQueue = await QueueService.GetClient("createtaskfrommail");
-            processQueue.SendMessage(QueueService.Serialize(items.Except(items2).ToArray()));
+            //var processQueue = await QueueService.GetClient("createtaskfrommail");
+            //processQueue.SendMessage(QueueService.Serialize(items.Except(items2).ToArray()));
         }
     }
 }

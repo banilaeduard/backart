@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="Azure.Data.Tables" Version="12.9.1" />
+    <PackageReference Include="System.Memory.Data" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

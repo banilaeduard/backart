@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <UserSecretsId>fd145ee9-fee9-4a28-a551-74cc98177931</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Memory.Data" Version="6.0.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.20.1" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.7" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="MailKit" Version="4.7.1.1" />
+    <PackageReference Include="MimeKit" Version="4.7.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AzureServices\AzureServices.csproj" />
+    <ProjectReference Include="..\AzureTableRepository\AzureTableRepository.csproj" />
+    <ProjectReference Include="..\RepositoryContract\RepositoryContract.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+</Project>

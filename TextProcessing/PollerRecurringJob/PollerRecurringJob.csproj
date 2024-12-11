@@ -22,6 +22,7 @@
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.Outputs.ApplicationInsights" Version="1.9.1" />
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.ServiceFabric" Version="1.8.0" />
     <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="7.1.2175" />
+    <PackageReference Include="System.Memory.Data" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

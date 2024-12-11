@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.ServiceFabric" Version="1.8.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.ServiceFabric.Services" Version="7.1.2175" />
+    <PackageReference Include="System.Memory.Data" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

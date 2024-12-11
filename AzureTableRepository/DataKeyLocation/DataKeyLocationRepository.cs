@@ -8,9 +8,9 @@ namespace AzureTableRepository.DataKeyLocation
     {
         TableStorageService tableStorageService;
 
-        public DataKeyLocationRepository(ILogger<TableStorageService> logger)
+        public DataKeyLocationRepository()
         {
-            tableStorageService = new TableStorageService(logger);
+            tableStorageService = new TableStorageService();
         }
 
         public async Task DeleteLocation(DataKeyLocationEntry[] entries)

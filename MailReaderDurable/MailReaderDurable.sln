@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35506.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailReaderDurable", "MailReaderDurable.csproj", "{B3A5B985-52BA-48AB-9C78-4FF415BCACCA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureServices", "..\AzureServices\AzureServices.csproj", "{127851D7-06DD-422E-988E-C2FE893C7373}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureTableRepository", "..\AzureTableRepository\AzureTableRepository.csproj", "{1CAE1161-1A96-4BE6-ABB6-EC1CA219C04B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{60C7A950-860B-44FF-A4FB-2D569D8119D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B3A5B985-52BA-48AB-9C78-4FF415BCACCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3A5B985-52BA-48AB-9C78-4FF415BCACCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3A5B985-52BA-48AB-9C78-4FF415BCACCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3A5B985-52BA-48AB-9C78-4FF415BCACCA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{127851D7-06DD-422E-988E-C2FE893C7373}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{127851D7-06DD-422E-988E-C2FE893C7373}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{127851D7-06DD-422E-988E-C2FE893C7373}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{127851D7-06DD-422E-988E-C2FE893C7373}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CAE1161-1A96-4BE6-ABB6-EC1CA219C04B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CAE1161-1A96-4BE6-ABB6-EC1CA219C04B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CAE1161-1A96-4BE6-ABB6-EC1CA219C04B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CAE1161-1A96-4BE6-ABB6-EC1CA219C04B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60C7A950-860B-44FF-A4FB-2D569D8119D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60C7A950-860B-44FF-A4FB-2D569D8119D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60C7A950-860B-44FF-A4FB-2D569D8119D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60C7A950-860B-44FF-A4FB-2D569D8119D1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

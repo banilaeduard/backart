@@ -1,5 +1,4 @@
 ﻿using Azure.Data.Tables;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Linq.Expressions;
 
@@ -7,8 +6,7 @@ namespace AzureServices
 {
     public class TableStorageService
     {
-        private ILogger<TableStorageService> logger;
-        public TableStorageService(ILogger<TableStorageService> logger) { this.logger = logger; }
+        public TableStorageService() { }
 
         public Azure.Pageable<T> Query<T>(Expression<Func<T, bool>> expr, string? tableName = null) where T : class, ITableEntity
         {

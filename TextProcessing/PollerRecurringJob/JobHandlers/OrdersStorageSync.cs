@@ -11,9 +11,8 @@ namespace PollerRecurringJob.JobHandlers
         {
             var storage = new BlobAccessStorageService();
             var ordersImportsRepository = new OrdersImportsRepository(storage);
-            var commitedOrdersRepository = new CommitedOrdersRepository(null);
-            var ordersRepository = new OrdersRepository(null);
-
+            var commitedOrdersRepository = new CommitedOrdersRepository();
+            var ordersRepository = new OrdersRepository();
             var lastOrder = await jobContext.StateManager.GetOrAddStateAsync("order", DateTime.Now.AddDays(-7));
             var lastCommited = await jobContext.StateManager.GetOrAddStateAsync("commited", DateTime.Now.AddDays(-7));
 

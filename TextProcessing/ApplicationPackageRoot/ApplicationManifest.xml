@@ -5,11 +5,6 @@
     <Parameter Name="WebApi_Secret" DefaultValue="" />
     <Parameter Name="WebApi_ConnectionString" DefaultValue="" />
     <Parameter Name="WebApi_SengridKey" DefaultValue="" />
-    <Parameter Name="feeder_y_folders" DefaultValue="" />
-    <Parameter Name="feeder_y_from" DefaultValue="" />
-    <Parameter Name="feeder_days_before" DefaultValue="" />
-    <Parameter Name="feeder_User" DefaultValue="" />
-    <Parameter Name="feeder_Password" DefaultValue="" />
     <Parameter Name="storage_connection" DefaultValue="" />
     <Parameter Name="external_sql_server" DefaultValue="" />
     <Parameter Name="path_to_sql" DefaultValue="" />
@@ -18,7 +13,7 @@
        should match the Name and Version attributes of the ServiceManifest element defined in the 
        ServiceManifest.xml file. -->
   <ServiceManifestImport>
-    <ServiceManifestRef ServiceManifestName="PollerRecurringJobPkg" ServiceManifestVersion="1.0.0" />
+    <ServiceManifestRef ServiceManifestName="MailReaderPkg" ServiceManifestVersion="1.0.0" />
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
@@ -26,16 +21,11 @@
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>
-    <ServiceManifestRef ServiceManifestName="YahooTFeederPkg" ServiceManifestVersion="1.0.0" />
-    <ConfigOverrides />
+    <ServiceManifestRef ServiceManifestName="PollerRecurringJobPkg" ServiceManifestVersion="1.0.0" />
     <EnvironmentOverrides CodePackageRef="code">
-      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
-      <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
-      <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
-      <EnvironmentVariable Name="days_before" Value="[feeder_days_before]" />
-      <EnvironmentVariable Name="User" Value="[feeder_User]" />
-      <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
+      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
+      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>
@@ -50,11 +40,6 @@
       <EnvironmentVariable Name="Secret" Value="[WebApi_Secret]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
       <EnvironmentVariable Name="SendGridKey" Value="[WebApi_SengridKey]" />
-      <EnvironmentVariable Name="y_folders" Value="[feeder_y_folders]" />
-      <EnvironmentVariable Name="y_from" Value="[feeder_y_from]" />
-      <EnvironmentVariable Name="days_before" Value="[feeder_days_before]" />
-      <EnvironmentVariable Name="User" Value="[feeder_User]" />
-      <EnvironmentVariable Name="Password" Value="[feeder_Password]" />
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="path_to_sql" Value="[path_to_sql]" />

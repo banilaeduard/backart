@@ -12,11 +12,11 @@ namespace WebApi.Controllers
     using global::Services.Storage;
     using RepositoryContract.DataKeyLocation;
     using RepositoryContract.Tasks;
-    using Microsoft.ServiceFabric.Services.Remoting.Client;
-    using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
-    using YahooFeeder;
     using RepositoryContract;
     using AutoMapper;
+    using MailReader.Interfaces;
+    using Microsoft.ServiceFabric.Actors.Client;
+    using Microsoft.ServiceFabric.Actors;
 
     [Authorize(Roles = "admin, basic")]
     public class TicketController : WebApiController2
@@ -25,11 +25,6 @@ namespace WebApi.Controllers
         private IDataKeyLocationRepository dataKeyLocationRepository;
         private IStorageService storageService;
         private ITaskRepository taskRepository;
-
-        private static readonly ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
-        {
-            return new FabricTransportServiceRemotingClientFactory();
-        });
 
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
@@ -113,18 +108,23 @@ namespace WebApi.Controllers
         [HttpPost("details")]
         public async Task<IActionResult> GetTicketDetails(TableEntryModel[] entries)
         {
-            var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
-            var path = await proxy.DownloadAll(entries.Select(x => new TableEntityPK() { PartitionKey = x.PartitionKey, RowKey = x.RowKey }).ToArray());
+            var attachments = await ticketEntryRepository.GetAllAttachments();
+            var relatedAttachments = attachments.Where(a => entries.Any(e => e.PartitionKey == a.RefPartition && e.RowKey == a.RefKey))
+                .Select(mapper.Map<AttachmentModel>).ToList();
+            var missing = entries.Where(e => !relatedAttachments.Any(x => x.RefKey == e.RowKey && x.RefPartition == e.PartitionKey)).ToList();
 
-            if (string.IsNullOrEmpty(path[0].Path))
+            if (missing.Any())
             {
-                return BadRequest();
+                var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+                await proxy.DownloadAll([.. missing.Select(x => new TableEntityPK() {
+                        PartitionKey = x.PartitionKey,
+                        RowKey = x.RowKey
+                    })]);
+                attachments = await ticketEntryRepository.GetAllAttachments();
+                relatedAttachments = [.. attachments.Where(a => entries.Any(e => e.PartitionKey == a.RefPartition && e.RowKey == a.RefKey)).Select(mapper.Map<AttachmentModel>)];
             }
-            else
-            {
-                var attachments = await ticketEntryRepository.GetAllAttachments();
-                return Ok(attachments.Where(a => entries.Any(e => e.PartitionKey == a.RefPartition && e.RowKey == a.RefKey)).Select(mapper.Map<AttachmentModel>));
-            }
+
+            return Ok(relatedAttachments.Select(mapper.Map<AttachmentModel>));
         }
 
         [HttpPost("eml")]
@@ -133,16 +133,15 @@ namespace WebApi.Controllers
             var attachments = await ticketEntryRepository.GetAllAttachments(entry.RowKey);
             if (!attachments.Any())
             {
-                var proxy = serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
-                var path = await proxy.DownloadAll([new TableEntityPK() { PartitionKey = entry.PartitionKey, RowKey = entry.RowKey }]);
-                if (string.IsNullOrEmpty(path[0].Path))
-                {
-                    return BadRequest();
-                }
-                else
-                {
-                    return File(storageService.Access(path.First().Path, out var contentType2), contentType2);
-                }
+                var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+                await proxy.DownloadAll([ new TableEntityPK() {
+                    PartitionKey = entry.PartitionKey,
+                    RowKey = entry.RowKey,
+                }]);
+
+                attachments = await ticketEntryRepository.GetAllAttachments(entry.RowKey);
+                var attachment = attachments.First(x => x.ContentType == "eml");
+                return File(storageService.Access(attachment.Data, out var contentType2), contentType2);
             }
             var eml = attachments.FirstOrDefault(t => t.RowKey.Contains("eml"));
             return File(storageService.Access(eml.Data, out var contentType), contentType ?? "application/text");

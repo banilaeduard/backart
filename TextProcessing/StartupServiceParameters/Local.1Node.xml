@@ -7,5 +7,8 @@
     <Parameter Name="PollerRecurringJobActorService_PartitionCount" Value="1" />
     <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" Value="1" />
     <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" Value="1" />
+    <Parameter Name="MailReaderActorService_PartitionCount" Value="1" />
+    <Parameter Name="MailReaderActorService_TargetReplicaSetSize" Value="1" />
+    <Parameter Name="MailReaderActorService_MinReplicaSetSize" Value="1" />
   </Parameters>
 </StartupServices>

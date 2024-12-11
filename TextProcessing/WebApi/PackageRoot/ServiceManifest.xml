@@ -30,11 +30,6 @@
       <EnvironmentVariable Name="Secret" Value="" />
       <EnvironmentVariable Name="ConnectionString" Value=""/>
       <EnvironmentVariable Name="SendGridKey" Value=""/>
-      <EnvironmentVariable Name="y_folders" Value="" />
-      <EnvironmentVariable Name="y_from" Value="" />
-      <EnvironmentVariable Name="days_before" Value="" />
-      <EnvironmentVariable Name="User" Value="" />
-      <EnvironmentVariable Name="Password" Value="" />
       <EnvironmentVariable Name="storage_connection" Value="" />
       <EnvironmentVariable Name="external_sql_server" Value="" />
       <EnvironmentVariable Name="path_to_sql" Value="" />

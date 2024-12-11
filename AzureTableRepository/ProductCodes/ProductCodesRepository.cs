@@ -10,9 +10,9 @@ namespace AzureTableRepository.ProductCodes
     {
         TableStorageService tableStorageService;
 
-        public ProductCodesRepository(ILogger<TableStorageService> logger)
+        public ProductCodesRepository()
         {
-            tableStorageService = new TableStorageService(logger);
+            tableStorageService = new TableStorageService();
         }
 
         public async Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr, string? table = null)

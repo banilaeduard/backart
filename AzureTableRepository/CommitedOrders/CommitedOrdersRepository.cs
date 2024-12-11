@@ -11,9 +11,9 @@ namespace AzureTableRepository.CommitedOrders
         static readonly string syncName = $"sync_control/LastSyncDate_${nameof(DispozitieLivrareEntry)}";
         static BlobAccessStorageService blobAccessStorageService = new();
         TableStorageService tableStorageService;
-        public CommitedOrdersRepository(ILogger<TableStorageService> logger)
+        public CommitedOrdersRepository()
         {
-            tableStorageService = new TableStorageService(logger);
+            tableStorageService = new TableStorageService();
         }
 
         public async Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items)

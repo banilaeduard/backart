@@ -134,12 +134,6 @@ namespace WebApi
             services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"));
 
             var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
-            services.AddSingleton(new MailSettings()
-            {
-                DaysBefore = int.Parse(Environment.GetEnvironmentVariable("days_before")!),
-                Password = Environment.GetEnvironmentVariable("Password")!,
-                User = Environment.GetEnvironmentVariable("User")!
-            });
 
             services.AddSingleton(new ConnectionSettings()
             {

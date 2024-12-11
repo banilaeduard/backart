@@ -1,7 +1,9 @@
 ﻿using AzureServices;
 using EntityDto;
+using MailReader.Interfaces;
+using Microsoft.ServiceFabric.Actors.Client;
+using Microsoft.ServiceFabric.Actors;
 using RepositoryContract;
-using YahooFeeder;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -10,8 +12,8 @@ namespace PollerRecurringJob.JobHandlers
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
             var client = await QueueService.GetClient("movemailto");
-            var messages = await client.ReceiveMessagesAsync(maxMessages: 32);
 
+            var messages = await client.ReceiveMessagesAsync(maxMessages: 32);
             var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());
 
             foreach (var message in messages.Value.OrderBy(x => x.InsertedOn))
@@ -23,12 +25,14 @@ namespace PollerRecurringJob.JobHandlers
 
             if (finalList.Any())
             {
-                var proxy = jobContext.serviceProxy.CreateServiceProxy<IYahooFeeder>(new Uri("fabric:/TextProcessing/YahooTFeederType"));
-                await proxy.Move([..finalList.GroupBy(l => l.Value).Select(x =>
-                    new MoveToMessage<TableEntityPK>() {
-                            DestinationFolder = x.Key,
-                            Items = x.Select(it => it.Key).Distinct()
-                        })]);
+                var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+                var request = finalList.GroupBy(l => l.Value).Select(x =>
+                    new MoveToMessage<TableEntityPK>()
+                    {
+                        DestinationFolder = x.Key,
+                        Items = x.Select(it => it.Key).Distinct()
+                    }).ToList();
+                await proxy.BatchAsync(request);
             }
 
             foreach (var item in messages.Value)

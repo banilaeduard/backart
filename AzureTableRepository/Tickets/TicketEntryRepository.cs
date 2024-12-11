@@ -10,9 +10,9 @@ namespace AzureTableRepository.Tickets
     {
         TableStorageService tableStorageService;
 
-        public TicketEntryRepository(ILogger<TableStorageService> logger)
+        public TicketEntryRepository()
         {
-            tableStorageService = new TableStorageService(logger);
+            tableStorageService = new TableStorageService();
         }
 
         public async Task Delete<T>(string partitionKey, string rowKey) where T : class, ITableEntity

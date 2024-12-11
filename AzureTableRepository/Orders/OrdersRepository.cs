@@ -10,9 +10,9 @@ namespace AzureTableRepository.Orders
         static readonly string syncName = $"sync_control/LastSyncDate_${typeof(ComandaVanzareEntry).Name}";
         static BlobAccessStorageService blobAccessStorageService = new();
         TableStorageService tableStorageService;
-        public OrdersRepository(ILogger<TableStorageService> logger)
+        public OrdersRepository()
         {
-            tableStorageService = new TableStorageService(logger);
+            tableStorageService = new TableStorageService();
         }
         public async Task<List<ComandaVanzareEntry>> GetOrders(string? table = null)
         {

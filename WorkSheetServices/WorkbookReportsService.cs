@@ -106,6 +106,14 @@ namespace WorkSheetServices
 
                             worksheet.Cell(i, 3).FormulaR1C1 = string.Format("=SUM(R{0}C4:R{1}C{2})", grp_i, i - 1, lastColCountIndex);
                             worksheet.Cell(i, 3).Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
+
+                            for (var z = 0; z < ids.Count(); z++)
+                            {
+                                worksheet.Cell(i, 5 + z).FormulaR1C1 = string.Format("=SUM(R{0}C{1}:R{2}C{3})", grp_i, 5 + z, i - 1, 5 + z);
+                            }
+
+                            worksheet.Row(i).Cells($@"2:{4 + ids.Count()}").Style.Fill.SetBackgroundColor(XLColor.LightYellow);
+
                             i++;
                         }
                         else

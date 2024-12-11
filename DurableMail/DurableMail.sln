@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35506.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DurableMail", "DurableMail.csproj", "{F03D8D49-CD0D-4671-A410-8C9182A93159}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureTableRepository", "..\AzureTableRepository\AzureTableRepository.csproj", "{44B407BE-8555-480D-B5B9-4F4E932B4F65}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureServices", "..\AzureServices\AzureServices.csproj", "{1FB53678-E1FA-4945-82C4-C0AEC41C72F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{09DED15A-1EA8-4EA5-8B77-B59F4219459F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F03D8D49-CD0D-4671-A410-8C9182A93159}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F03D8D49-CD0D-4671-A410-8C9182A93159}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F03D8D49-CD0D-4671-A410-8C9182A93159}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F03D8D49-CD0D-4671-A410-8C9182A93159}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44B407BE-8555-480D-B5B9-4F4E932B4F65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44B407BE-8555-480D-B5B9-4F4E932B4F65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44B407BE-8555-480D-B5B9-4F4E932B4F65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44B407BE-8555-480D-B5B9-4F4E932B4F65}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FB53678-E1FA-4945-82C4-C0AEC41C72F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FB53678-E1FA-4945-82C4-C0AEC41C72F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FB53678-E1FA-4945-82C4-C0AEC41C72F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FB53678-E1FA-4945-82C4-C0AEC41C72F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

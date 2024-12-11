@@ -29,7 +29,8 @@
     <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="7.1.2175" />
     <PackageReference Include="Microsoft.ServiceFabric.AspNetCore.Kestrel" Version="7.1.2175" />
     <PackageReference Include="SendGrid" Version="9.29.3" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="System.Memory.Data" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -38,7 +38,7 @@ namespace SqlTableRepository.Tasks
                 {
                     var list = (await connection.QueryAsync<ExternalReferenceEntry>(taskExternalReferenceEntry)).ToList();
                     if (list.Any())
-                        return _taskCache.Set(key, list, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
+                        return _taskCache.Set(key, list, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(30)));
                     return [];
                 }
             }
@@ -206,7 +206,7 @@ namespace SqlTableRepository.Tasks
 
                 if (taskList.Any())
                 {
-                    return _taskCache.Set(key, taskList, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
+                    return _taskCache.Set(key, taskList, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(30)));
                 }
                 return [];
             }

@@ -8,18 +8,15 @@ namespace PollerRecurringJob
 {
     internal class ScheduledActorService<T> : ActorService where T : IActor
     {
-        private ActorServiceProxy actorServiceProxy;
-
         public ScheduledActorService(StatefulServiceContext context, ActorTypeInformation actorType) : base(context, actorType)
         {
-            actorServiceProxy = new ActorServiceProxy();
         }
 
         protected async override Task RunAsync(CancellationToken cancellationToken)
         {
             await base.RunAsync(cancellationToken);
 
-            var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(0), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+            var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId("poller"), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
 
             await proxy.Sync();
         }
