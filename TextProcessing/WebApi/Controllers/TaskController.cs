@@ -20,6 +20,7 @@ namespace WebApi.Controllers
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
         private ReclamatiiReport reclamatiiReport;
+        private StructuraReport structuraReport;
 
         public TaskController(
             ILogger<ReportsController> logger,
@@ -27,12 +28,14 @@ namespace WebApi.Controllers
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,
             ReclamatiiReport reclamatiiReport,
+            StructuraReport structuraReport,
             IMapper mapper) : base(logger, mapper)
         {
             this.taskRepository = taskRepository;
             this.ticketEntryRepository = ticketEntryRepository;
             this.keyLocationRepository = keyLocationRepository;
             this.reclamatiiReport = reclamatiiReport;
+            this.structuraReport = structuraReport;
         }
 
         [HttpGet("{status}")]
@@ -123,6 +126,12 @@ namespace WebApi.Controllers
         public async Task<IActionResult> ExportReclamatii(ComplaintDocument document)
         {
             return File(await reclamatiiReport.GenerateReport(document), contentType);
+        }
+
+        [HttpPost("structurareport/{reportName}/{dispozitie}")]
+        public async Task<IActionResult> ExportStructuraReport(string reportName, int dispozitie)
+        {
+            return File(await structuraReport.GenerateReport(dispozitie, reportName), contentType);
         }
     }
 }

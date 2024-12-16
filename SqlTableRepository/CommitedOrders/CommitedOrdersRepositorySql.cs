@@ -39,6 +39,14 @@ namespace SqlTableRepository.CommitedOrders
             }
         }
 
+        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrder(int id)
+        {
+            using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
+            {
+                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("dispOrder.sql"), new { NumarIntern = id }))];
+            }
+        }
+
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))

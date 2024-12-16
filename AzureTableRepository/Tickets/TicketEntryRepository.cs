@@ -1,6 +1,5 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
-using Microsoft.Extensions.Logging;
 using RepositoryContract;
 using RepositoryContract.Tickets;
 

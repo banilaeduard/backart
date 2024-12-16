@@ -36,6 +36,7 @@ using WebApi.Models;
 using RepositoryContract;
 using AzureSerRepositoryContract.ProductCodesvices;
 using SqlTableRepository.CommitedOrders;
+using RepositoryContract.Report;
 
 namespace WebApi
 {
@@ -144,6 +145,7 @@ namespace WebApi
 
             services.AddScoped<SaSToken, SaSToken>();
             services.AddScoped<ReclamatiiReport, ReclamatiiReport>();
+            services.AddScoped<StructuraReport, StructuraReport>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();
@@ -154,6 +156,7 @@ namespace WebApi
             services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
+            services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
 
 #if (DEBUG)
             services.AddScoped<IOrdersRepository, OrdersRepository>();

@@ -34,6 +34,8 @@
         public bool Livrata { get; set; }
         public int? NumarAviz { get; set; }
 
+        public DateTime? DataAviz {  get; set; }
+
         public int? Greutate { get; set; }
     }
 }

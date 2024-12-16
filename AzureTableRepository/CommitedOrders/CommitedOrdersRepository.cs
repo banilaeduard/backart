@@ -101,5 +101,10 @@ namespace AzureTableRepository.CommitedOrders
             }
             return null;
         }
+
+        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrder(int id)
+        {
+            return tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == id.ToString()).ToList();
+        }
     }
 }
