@@ -1,5 +1,4 @@
 using System.Text;
-using System.Threading.Tasks.Dataflow;
 using AzureServices;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.MailSettings;
@@ -8,7 +7,8 @@ using EntityDto;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
-using Microsoft.Extensions.Logging;
+using MailReader;
+using Microsoft.ServiceFabric.Actors.Runtime;
 using MimeKit;
 using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
@@ -28,7 +28,8 @@ namespace YahooTFeeder
 
     internal class YahooTFeeder
     {
-        internal static ILogger logger;
+        internal static ActorEventSource logger;
+        internal static Actor actor;
 
         internal static async Task Batch(string sourceName, Operation op,
             TableEntityPK[] download_uids, MoveToMessage<TableEntityPK>[] messages,
@@ -335,20 +336,24 @@ namespace YahooTFeeder
                 {
                     if (folder.Name == destinationFolder.Name) continue;
                     if (!uids.Any()) break;
-                    if (!folder.IsOpen)
-                        await folder.OpenAsync(FolderAccess.ReadWrite);
+                    await folder.OpenAsync(FolderAccess.ReadWrite);
                     var found = await folder.SearchAsync(SearchQuery.Uids(uids));
                     if (found.Any())
                     {
-                        await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
-
+                        var mapping = await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
                         var moved = entries.Where(x => found.Any(f => f.Validity == x.Validity && f.Id == x.Uid)).ToList();
                         foreach (var x in moved)
                         {
+                            var currentKey = new UniqueId((uint)x.Validity, (uint)x.Uid);
                             x.CurrentFolder = msg.DestinationFolder;
                             if (string.IsNullOrEmpty(x.FoundInFolder))
                             {
                                 x.FoundInFolder = folder.Name;
+                            }
+                            if (mapping.ContainsKey(currentKey))
+                            {
+                                x.Validity = (int)mapping[currentKey].Validity;
+                                x.Uid = (int)mapping[currentKey].Id;
                             }
                         }
                         await ticketEntryRepository.Save([.. moved]);
@@ -499,7 +504,7 @@ namespace YahooTFeeder
         private static string GetRowKey(IMessageSummary id) => id.UniqueId.Id.ToString();
         private static void LogError(Exception ex)
         {
-            logger.LogError("{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
+            logger.ActorMessage(actor,"{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
         }
         private static IEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, CancellationToken cancellationToken)
         {
