@@ -7,5 +7,6 @@
         public string LocationName { get; set; }
         public string LocationCode { get; set; }
         public string TownName { get; set; }
+        public string ShortName { get; set; }
     }
 }

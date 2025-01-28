@@ -1,5 +1,4 @@
 ﻿using AzureServices;
-using Microsoft.Extensions.Logging;
 using RepositoryContract.DataKeyLocation;
 
 namespace AzureTableRepository.DataKeyLocation
