@@ -68,6 +68,7 @@ namespace WebApi.Controllers
             var items = await commitedOrdersRepository.GetCommitedOrders(t => internalNumber.Any(x => x == t.NumarIntern));
             var synonimLocations = (await keyLocationRepository.GetLocations())
                 .Where(t => t.MainLocation && !string.IsNullOrWhiteSpace(t.ShortName) && items.Any(o => o.CodLocatie == t.LocationCode))
+                .DistinctBy(t => t.LocationCode)
                 .ToDictionary(x => x.LocationCode, x => x.ShortName);
 
             var missing = internalNumber.Except(items.DistinctBy(t => t.NumarIntern).Select(t => t.NumarIntern));
@@ -76,7 +77,7 @@ namespace WebApi.Controllers
 
             var reportData = WorkbookReportsService.GenerateReport(
                 items.Cast<DispozitieLivrare>().ToList(),
-                t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.NumeLocatie.ToUpperInvariant(),
+                t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
                 t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
                 t => t.CodProdus);
 
