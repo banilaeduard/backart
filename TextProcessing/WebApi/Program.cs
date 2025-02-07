@@ -18,8 +18,10 @@ namespace WebApi
                 // Registering a service maps a service type name to a .NET type.
                 // When Service Fabric creates an instance of this service type,
                 // an instance of the class is created in this host process.
+#if RELEASE
                 using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-WebApi-DiagnosticsPipeline"))
                 {
+#endif
                     ServiceRuntime.RegisterServiceAsync("WebApiType",
                     context => new WebApi(context)).GetAwaiter().GetResult();
                     CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -27,7 +29,9 @@ namespace WebApi
                     ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(WebApi).Name);
                     // Prevents this host process from terminating so services keeps running. 
                     Thread.Sleep(Timeout.Infinite);
+                #if RELEASE
                 }
+#endif
             }
             catch (Exception e)
             {

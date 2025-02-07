@@ -1,8 +1,11 @@
 ﻿using AutoMapper;
-using EllipticCurve;
+using AzureTableRepository.CommitedOrders;
 using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.ServiceFabric.Actors.Client;
+using Microsoft.ServiceFabric.Actors;
+using PollerRecurringJob.Interfaces;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.ProductCodes;
@@ -44,6 +47,15 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetCommitedOrders()
         {
             var orders = await commitedOrdersRepository.GetCommitedOrders();
+            var storageOrders = (await (new CommitedOrdersRepository()).GetCommitedOrders()).DistinctBy(t => t.NumarIntern).ToDictionary(x => x.NumarIntern, x => x);
+            foreach (var order in orders)
+            {
+                if (!order.Livrata && storageOrders.ContainsKey(order.NumarIntern))
+                {
+                    order.Livrata = storageOrders[order.NumarIntern].Livrata;
+                    order.NumarIntern = storageOrders[order.NumarIntern].NumarIntern;
+                }
+            }
 
             var productLinkWeights = (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate");
             var weights = (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate");
@@ -58,7 +70,9 @@ namespace WebApi.Controllers
         [HttpPost("delivered/{internalNumber}")]
         public async Task<IActionResult> DeliverOrder(int internalNumber)
         {
-            await commitedOrdersRepository.SetDelivered(internalNumber);
+            var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(nameof(DeliverOrder)), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+            await proxy.SyncOrdersAndCommited();
+            await (new CommitedOrdersRepository()).SetDelivered([internalNumber]);
             return Ok();
         }
 

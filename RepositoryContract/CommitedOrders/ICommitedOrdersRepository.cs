@@ -10,7 +10,7 @@ namespace RepositoryContract.CommitedOrders
         Task<DateTime?> GetLastSyncDate();
         Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items);
         Task InsertCommitedOrder(DispozitieLivrareEntry item);
-        Task SetDelivered(int internalNumber);
+        Task SetDelivered(int[] internalNumbers);
         Task ImportCommitedOrders(IList<DispozitieLivrare> items, DateTime when);
     }
 }

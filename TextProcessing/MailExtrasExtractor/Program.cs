@@ -18,8 +18,10 @@ namespace MailExtrasExtractor
                 // Registering a service maps a service type name to a .NET type.
                 // When Service Fabric creates an instance of this service type,
                 // an instance of the class is created in this host process.
+#if RELEASE
                 using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-MailExtrasExtractor-DiagnosticsPipeline"))
                 {
+#endif
                     ServiceRuntime.RegisterServiceAsync("MailExtrasExtractorType",
                     context => new MailExtrasExtractor(context)).GetAwaiter().GetResult();
                     CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -28,7 +30,9 @@ namespace MailExtrasExtractor
 
                     // Prevents this host process from terminating so services keep running.
                     Thread.Sleep(Timeout.Infinite);
-                }
+               #if RELEASE
+               }
+#endif
             }
             catch (Exception e)
             {

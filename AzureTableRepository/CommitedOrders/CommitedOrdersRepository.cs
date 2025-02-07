@@ -1,7 +1,6 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
 using EntityDto;
-using Microsoft.Extensions.Logging;
 using RepositoryContract.CommitedOrders;
 
 namespace AzureTableRepository.CommitedOrders
@@ -59,7 +58,8 @@ namespace AzureTableRepository.CommitedOrders
 
                 foreach (var group in groupedEntries.Value.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
                 {
-                    transaction = transaction.Concat(tableStorageService.PrepareInsert([DispozitieLivrareEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0))]));
+                    var sample = group.ElementAt(0);
+                    transaction = transaction.Concat(tableStorageService.PrepareInsert([DispozitieLivrareEntry.create(sample, group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0))]));
                 };
 
                 if (transaction.items.Any())
@@ -77,18 +77,21 @@ namespace AzureTableRepository.CommitedOrders
             blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
-        public async Task SetDelivered(int internalNumber)
+        public async Task SetDelivered(int[] internalNumbers)
         {
-            var entries = tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == internalNumber.ToString()).ToList();
-            foreach (var entry in entries) entry.Livrata = true;
+            foreach (var internalNumber in internalNumbers)
+            {
+                var entries = tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == internalNumber.ToString()).ToList();
+                foreach (var entry in entries) entry.Livrata = true;
 
-            var transactions = tableStorageService.PrepareUpsert(entries);
+                var transactions = tableStorageService.PrepareUpsert(entries);
 
-            var offset = DateTimeOffset.Now;
-            await transactions.ExecuteBatch();
+                var offset = DateTimeOffset.Now;
+                await transactions.ExecuteBatch();
 
-            CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
-            CacheManager.UpsertCache(nameof(DispozitieLivrareEntry), transactions.items.Select(t => t.Entity).ToList());
+                CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
+                CacheManager.UpsertCache(nameof(DispozitieLivrareEntry), transactions.items.Select(t => t.Entity).ToList());
+            }
         }
 
         public async Task<DateTime?> GetLastSyncDate()

@@ -77,9 +77,11 @@ namespace SqlTableRepository.CommitedOrders
             throw new NotImplementedException();
         }
 
-        public Task SetDelivered(int internalNumber)
+        public async Task SetDelivered(int[] internalNumbers)
         {
-            throw new NotImplementedException();
+            //using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            //{
+            //}
         }
 
         private string TryAccess(string key)

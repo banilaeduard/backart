@@ -158,13 +158,13 @@ namespace WebApi
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
 
-#if (DEBUG)
-            services.AddScoped<IOrdersRepository, OrdersRepository>();
-            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
-#elif (RELEASE)
+//#if (DEBUG)
+//            services.AddScoped<IOrdersRepository, OrdersRepository>();
+//            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
+//#elif (RELEASE)
             services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
-#endif
+//#endif
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()
                     .AddDefaultTokenProviders();

@@ -26,7 +26,7 @@ namespace PollerRecurringJob
             });
 
         internal static readonly string SyncOrders = "SyncOrders";
-        internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromHours(3);
+        internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(15);
         internal static readonly string MoveTo = "MoveToFolder";
         internal static readonly TimeSpan MoveToDue = TimeSpan.FromMinutes(5);
         internal static readonly string AddNewMail = "AddNewMailToExistingTasks";
@@ -105,6 +105,25 @@ namespace PollerRecurringJob
             await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(30), SyncMailsDue);
         }
 
+        public async Task SyncOrdersAndCommited()
+        {
+            try
+            {
+                var previousRegistration = GetReminder(SyncOrders);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
+
+            try
+            {
+                await OrdersStorageSync.Execute(this);
+            }
+            finally
+            {
+                await RegisterReminderAsync(SyncOrders, null, SyncOrdersDue, SyncOrdersDue);
+            }
+        }
+
         public async Task Sync()
         {
             await RegisterReminder();
@@ -121,8 +140,6 @@ namespace PollerRecurringJob
             var ordersRepository = new OrdersRepository();
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
-            await StateManager.AddOrUpdateStateAsync("commited", commitDate, (x, y) => y);
-            await StateManager.AddOrUpdateStateAsync("order", oderDate, (x, y) => y);
         }
     }
 }

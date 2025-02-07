@@ -9,5 +9,7 @@ namespace PollerRecurringJob.Interfaces
     public interface IPollerRecurringJob : IActor
     {
         Task Sync();
+
+        Task SyncOrdersAndCommited();
     }
 }

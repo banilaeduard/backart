@@ -21,13 +21,17 @@ namespace MailReader
                 // The contents of your ServiceManifest.xml and ApplicationManifest.xml files
                 // are automatically populated when you build this project.
                 // For more information, see https://aka.ms/servicefabricactorsplatform
+#if RELEASE
                 using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-MailReader"))
                 {
+#endif
                     ActorRuntime.RegisterActorAsync<MailReader>((context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
                     CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
                     CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
                     Thread.Sleep(Timeout.Infinite);
+#if RELEASE
                 }
+#endif
             }
             catch (Exception e)
             {

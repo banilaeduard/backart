@@ -62,7 +62,11 @@ namespace MailReader
             ActorEventSource.Current.ActorMessage(this, "Actor activated.");
             YahooTFeeder.YahooTFeeder.logger = ActorEventSource.Current;
             YahooTFeeder.YahooTFeeder.actor = this;
+#if DEBUG
+            return;
+#else
             Source = this.GetActorId().GetStringId();
+#endif
         }
     }
 }

@@ -13,8 +13,9 @@ namespace PollerRecurringJob.JobHandlers
             var ordersImportsRepository = new OrdersImportsRepository(storage);
             var commitedOrdersRepository = new CommitedOrdersRepository();
             var ordersRepository = new OrdersRepository();
-            var lastOrder = await jobContext.StateManager.GetOrAddStateAsync("order", DateTime.Now.AddDays(-7));
-            var lastCommited = await jobContext.StateManager.GetOrAddStateAsync("commited", DateTime.Now.AddDays(-7));
+
+            var lastCommited = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
+            var lastOrder = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
 
             var latest = await ordersImportsRepository.PollForNewContent();
 
@@ -40,8 +41,6 @@ namespace PollerRecurringJob.JobHandlers
                 await commitedOrdersRepository.ImportCommitedOrders(commited, latest.commited);
                 ActorEventSource.Current.ActorMessage(jobContext, $"Polling Actor. Fetched commited {commited.Count}");
             }
-            await jobContext.StateManager.AddOrUpdateStateAsync("order", latest.order, (_, _) => latest.order);
-            await jobContext.StateManager.AddOrUpdateStateAsync("commited", latest.commited, (_, _) => latest.commited);
         }
     }
 }
