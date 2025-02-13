@@ -103,7 +103,6 @@ namespace WebApi
                             .AllowAnyMethod()
                             .AllowAnyHeader()
                             .AllowCredentials());
-
                         app.UseRouting();
                         app.UseAuthentication();
                         app.UseAuthorization();

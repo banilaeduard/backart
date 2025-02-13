@@ -1,7 +1,6 @@
 namespace WebApi.Controllers
 {
     using System.Threading.Tasks;
-    using Newtonsoft.Json.Linq;
 
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Identity;
@@ -11,6 +10,7 @@ namespace WebApi.Controllers
     using global::WebApi.Models;
     using global::WebApi.Services;
     using AutoMapper;
+    using System.Text;
 
     [AllowAnonymous]
     public class CreateAccountController : WebApiController2
@@ -80,13 +80,14 @@ namespace WebApi.Controllers
 
         [Route("reset-password")]
         [HttpPost]
-        public async Task<IActionResult> ResetPassword([FromBody] JObject password, [FromQuery] string token, [FromQuery] string email)
+        public async Task<IActionResult> ResetPassword([FromQuery] string password, [FromQuery] string token, [FromQuery] string email)
         {
             var identityUser = await userManager.FindByEmailAsync(email);
             if (identityUser == null)
                 return NotFound();
 
-            var result = await userManager.ResetPasswordAsync(identityUser, token, password["password"]?.Value<string>()!);
+            var pass = Encoding.UTF8.GetString(Convert.FromBase64String(password))!;
+            var result = await userManager.ResetPasswordAsync(identityUser, token, pass!);
             if (result.Succeeded)
             {
                 logger.LogInformation("Parola modificata cu succes {0}", email);

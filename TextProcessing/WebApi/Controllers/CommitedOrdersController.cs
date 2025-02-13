@@ -93,7 +93,7 @@ namespace WebApi.Controllers
                 items.Cast<DispozitieLivrare>().ToList(),
                 t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
                 t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
-                t => t.CodProdus);
+                t => t.NumeProdus);
 
             return File(reportData, contentType);
         }
