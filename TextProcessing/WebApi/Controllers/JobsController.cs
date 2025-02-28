@@ -5,6 +5,7 @@ using Microsoft.ServiceFabric.Actors;
 using System.Fabric;
 using AutoMapper;
 using MailReader.Interfaces;
+using PollerRecurringJob.Interfaces;
 
 namespace WebApi.Controllers
 {
@@ -43,7 +44,9 @@ namespace WebApi.Controllers
             try
             {
                 var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
-                await proxy.FetchMails();
+                var proxy2 = ActorProxy.Create<IPollerRecurringJob>(new ActorId("source2"), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+
+                await Task.WhenAll(proxy.FetchMails(), proxy2.SyncOrdersAndCommited());
 
                 return Ok();
             }

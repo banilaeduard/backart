@@ -141,14 +141,55 @@ namespace WorkSheetServices
                         worksheet.Cell(i++, 1).Style.Alignment.ShrinkToFit = true;
                     }
 
-                    //worksheet.Rows().AdjustToContents();
+                    int[] colIndex2 = [1, 4];
+                    int[] colRowIndex2 = [1, 1];
+                    var worksheet3 = workbook.AddWorksheet("per location-2");
+                    var colCount2 = 2;
 
-                    int[] colIndex = [1, 4];
-                    int[] colRowIndex = [1, 1];
+                    for (int idx = 0; idx < lines.Count; idx++)
+                    {
+                        var col = colIndex2[idx % colIndex2.Length];
+                        var rowIdx = colRowIndex2[idx % colIndex2.Length];
+
+                        var firstCol = ((char)(col + 64)).ToString();
+                        var lastCol2 = ((char)(col + 64 + colCount2 - 1)).ToString();
+
+                        var series = lines[idx].GroupBy(grouping1).OrderByDescending(t => t.Key).ToList();
+
+                        worksheet3.Cell(++rowIdx, col).Value = lines[idx].First().NumeLocatie;
+                        worksheet3.Cell(rowIdx++, col).Style.Fill.SetBackgroundColor(XLColor.Yellow);
+
+                        foreach (var line in series)
+                        {
+                            var grouping = line.GroupBy(grouping2).ToList();
+                            var initialRow = rowIdx;
+                            foreach (var t in grouping)
+                            {
+                                worksheet3.Cell(rowIdx, col).Value = t.Key;
+                                worksheet3.Cell(rowIdx, col + 1).Value = t.Sum(x => x.Cantitate);
+
+                                rowIdx++;
+                            }
+                            if (grouping.Count() > 1)
+                            {
+                                worksheet3.Range(@$"{firstCol}{rowIdx}:{lastCol2}{rowIdx}").Style.Border.SetTopBorder(XLBorderStyleValues.Dotted);
+                            }
+                            else
+                            {
+                                worksheet3.Range(@$"{firstCol}{rowIdx - 1}:{lastCol2}{rowIdx - 1}").Style.Fill.SetBackgroundColor(XLColor.LightCyan);
+                            }
+                        }
+                        colRowIndex2[idx % colIndex2.Length] = rowIdx;
+                    }
+
+                    worksheet3.Rows().AdjustToContents();
+                    worksheet3.Columns("1:" + colIndex2.Last() + colCount2 + 1).AdjustToContents();
 
                     var worksheet2 = workbook.AddWorksheet("per location");
                     worksheet2.Style.Font.FontSize = 14;
-                    var colCount = 2;
+                    int[] colIndex = [1, 4];
+                    int[] colRowIndex = [1, 1];
+                    int colCount = 2;
 
                     for (int idx = 0; idx < lines.Count; idx++)
                     {
@@ -195,7 +236,7 @@ namespace WorkSheetServices
                         locSheet.Cell(1, 1).Style.Font.FontSize = 15;
 
                         locSheet.Range("A2:C2").Merge();
-                        locSheet.Cell(2, 1).Value = $"Numar Intern: {string.Join("; ", lines[idx].Select(x => x.NumarIntern).Distinct())}";
+                        locSheet.Cell(2, 1).Value = $"Numar Intern: {string.Join("; ", lines[idx].Select(x => $"{x.NumarIntern} - {x.DataDocument.ToString("dd/MM/yyyy")}").Distinct())}";
                         locSheet.Cell(2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                         locSheet.Cell(2, 1).Style.Font.FontSize = 9;
 
@@ -273,6 +314,7 @@ namespace WorkSheetServices
 
                     SetupWorksheetPage(worksheet, i + 1, lastColCountIndex);
                     SetupWorksheetPage(worksheet2, colRowIndex.Max() + 1, colIndex.Last() + colCount);
+                    SetupWorksheetPage(worksheet3, colRowIndex2.Max() + 1, colIndex2.Last() + colCount2);
 
                     workbook.SaveAs(ms);
                     return ms.ToArray();
