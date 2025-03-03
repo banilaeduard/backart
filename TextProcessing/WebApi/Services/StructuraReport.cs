@@ -24,14 +24,16 @@ namespace WebApi.Services
 
         public async Task<byte[]> GenerateReport(int dispozitieId, string reportName)
         {
-            string templatePath = Path.Combine(_settings.SqlQueryCache, "PV_RECEPTIE_ACCESORII.docx");
-
             var reportsRows = await _reportsRepository.GetReportEntry(reportName);
 
             var items = await _commitedOrdersRepository.GetCommitedOrder(dispozitieId);
             var reportCodes = await _productCodeRepository.GetProductCodes(c =>
                                             reportsRows.Any(r => c.Code.ToLowerInvariant().Contains(r.FindBy.ToLowerInvariant()) && c.Level == r.Level));
 
+            var docSample = items.First();
+            var templateCustomPath = await _reportsRepository.GetReportTemplate(docSample.CodLocatie!, reportName);
+            string templatePath = Path.Combine(_settings.SqlQueryCache, templateCustomPath.TemplateName //"PV_RECEPTIE_ACCESORII.docx"
+                );
             //System.IO.File.Copy(templatePath, outputPath, true);
             using (var ms = new MemoryStream())
             {
@@ -44,7 +46,6 @@ namespace WebApi.Services
                     // Access the main document part
                     var mainPart = wordDoc.MainDocumentPart!;
                     var body = mainPart.Document.Body!;
-                    var docSample = items.First();
                     // Replace placeholders in the paragraphs
                     ReplaceContentControlText(mainPart, "date_field", docSample.DataAviz?.ToString("dd.MM.yyyy") ?? "................");
                     ReplaceContentControlText(mainPart, "magazin_field", docSample.NumeLocatie!);

@@ -4,6 +4,7 @@
     {
         public DateTime Date { get; set; }
         public string LocationName { get; set; }
+        public string LocationCode { get; set; }
         public ComplaintEntry[] complaintEntries { get; set; }
     }
 

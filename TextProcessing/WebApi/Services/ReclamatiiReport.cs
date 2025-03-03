@@ -1,6 +1,7 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using RepositoryContract;
+using RepositoryContract.Report;
 using WebApi.Models;
 
 namespace WebApi.Services
@@ -8,14 +9,17 @@ namespace WebApi.Services
     public class ReclamatiiReport
     {
         private ConnectionSettings _settings;
-        public ReclamatiiReport(ConnectionSettings settings)
+        private IReportEntryRepository _reportsRepository;
+        public ReclamatiiReport(ConnectionSettings settings, IReportEntryRepository reportsRepository)
         {
             _settings = settings;
+            _reportsRepository = reportsRepository;
         }
 
         public async Task<byte[]> GenerateReport(ComplaintDocument complaintDocument)
         {
-            string templatePath = $@"{_settings.SqlQueryCache}/PV RECLAMATII TEHNINVEST.docx";
+            var templateCustomPath = await _reportsRepository.GetReportTemplate(complaintDocument.LocationCode!, "Reclamatii");
+            string templatePath = $@"{_settings.SqlQueryCache}/{templateCustomPath.TemplateName}";
 
             //System.IO.File.Copy(templatePath, outputPath, true);
             using (var ms = new MemoryStream())
