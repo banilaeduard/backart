@@ -2,19 +2,20 @@
 {
     internal class TransportSql
     {
-        internal readonly static string InsertTransport = $@"INSERT INTO [dbo].[Transport](Description, DriverName, CarPlateNumber, Distance, FuelConsumption, CurrentStatus, ExternalItemId)
+        internal readonly static string InsertTransport = $@"INSERT INTO [dbo].[Transport](Description, DriverName, CarPlateNumber, Distance, FuelConsumption, CurrentStatus, ExternalItemId, Delivered)
                                       OUTPUT INSERTED.*
-                                      VALUES(@Description, @DriverName, @CarPlateNumber, @Distance, @FuelConsumption, @CurrentStatus, @ExternalItemId)";
+                                      VALUES(@Description, @DriverName, @CarPlateNumber, @Distance, @FuelConsumption, @CurrentStatus, @ExternalItemId, @Delivered)";
 
         internal static string UpdateTransport(int transportId) => $@"UPDATE [dbo].[Transport] SET
-                        Description = @Description, DriverName = @DriverName, CarPlateNumber = @CarPlateNumber, Distance = @Distance, FuelConsumption = @FuelConsumption, CurrentStatus = @CurrentStatus, ExternalItemId = @ExternalItemId
+                        Description = @Description, DriverName = @DriverName, CarPlateNumber = @CarPlateNumber, Distance = @Distance, 
+                        FuelConsumption = @FuelConsumption, CurrentStatus = @CurrentStatus, ExternalItemId = @ExternalItemId, Delivered = @Delivered
                         OUTPUT INSERTED.*
                         WHERE Id = {transportId}
                         ";
 
         internal static string GetTransport(int transportId) => $@"SELECT * FROM [dbo].[Transport] WHERE Id = {transportId}";
         internal static string DeleteTransport(int transportId) => $@"DELETE FROM dbo.TransportItems WHERE TransportId = {transportId};
-                                                                      DELETE FROM dbo.Transport WHERE Id = {transportId}";
+                                                         DELETE FROM dbo.Transport WHERE Id = {transportId}";
         internal static string GetTransportItems(int transportId) => $@"SELECT * FROM [dbo].[TransportItems] WHERE TransportId = {transportId}";
 
         internal static string InsertMissingTransportItems(string fromSql, string fromAlias) => $@"

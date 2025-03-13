@@ -32,7 +32,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                return [.. await connection.QueryAsync<TransportEntry>($@"SELECT * FROM [dbo].[Transport]")];
+                return [.. await connection.QueryAsync<TransportEntry>($@"SELECT * FROM [dbo].[Transport] ORDER BY Id DESC")];
             }
         }
 
@@ -48,7 +48,8 @@ namespace SqlTableRepository.Transport
                     transportEntry.FuelConsumption,
                     transportEntry.CurrentStatus,
                     transportEntry.Distance,
-                    transportEntry.ExternalItemId
+                    transportEntry.ExternalItemId,
+                    transportEntry.Delivered,
                 });
 
                 if (transportEntry.TransportItems?.Count > 0)
@@ -83,7 +84,8 @@ namespace SqlTableRepository.Transport
                     transportEntry.FuelConsumption,
                     transportEntry.CurrentStatus,
                     transportEntry.Distance,
-                    transportEntry.ExternalItemId
+                    transportEntry.ExternalItemId,
+                    transportEntry.Delivered,
                 });
 
                 if (transportEntry.TransportItems?.Count > 0)
