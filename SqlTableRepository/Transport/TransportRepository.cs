@@ -6,6 +6,15 @@ namespace SqlTableRepository.Transport
 {
     public class TransportRepository : ITransportRepository
     {
+        public async Task DeleteTransport(int transportId)
+        {
+            using (var connection = GetConnection())
+            {
+                var sql = TransportSql.DeleteTransport(transportId);
+                await connection.ExecuteAsync(sql);
+            }
+        }
+
         public async Task<TransportEntry> GetTransport(int transportId)
         {
             using (var connection = GetConnection())
@@ -23,7 +32,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                return [.. await connection.QueryAsync<TransportEntry>($@"SELECT * FROM dbo.Transport")];
+                return [.. await connection.QueryAsync<TransportEntry>($@"SELECT * FROM [dbo].[Transport]")];
             }
         }
 
@@ -45,7 +54,7 @@ namespace SqlTableRepository.Transport
                 if (transportEntry.TransportItems?.Count > 0)
                 {
                     var dParams = new DynamicParameters();
-                    var fromSql = transportEntry.TransportItems.FromValues(new DynamicParameters(), "transportItemValues",
+                    var fromSql = transportEntry.TransportItems.FromValues(dParams, "transportItemValues",
                         t => t.ExternalItemId2,
                         t => t.ExternalItemId,
                         t => t.ItemId,
@@ -79,17 +88,18 @@ namespace SqlTableRepository.Transport
                 if (transportEntry.TransportItems?.Count > 0)
                 {
                     var dParams = new DynamicParameters();
-                    var fromSql = transportEntry.TransportItems.FromValues(new DynamicParameters(), "transportItemValues",
+                    var fromSql = transportEntry.TransportItems.FromValues(dParams, "transportItemValues",
                         t => t.ExternalItemId2,
                         t => t.ExternalItemId,
                         t => t.ItemId,
                         t => t.ItemName,
                         t => t.TransportId,
                         t => t.DocumentType);
-                    transport.TransportItems = [.. await connection.QueryAsync<TransportItem>($@"
-                                {TransportSql.UpdateTransportItems(fromSql, "transportItemValues")}; 
+                    var sql = $@"{TransportSql.UpdateTransportItems(fromSql, "transportItemValues")}; 
                                 {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues")};
-                                {TransportSql.GetTransportItems(transport.Id)}", dParams)];
+                                {TransportSql.GetTransportItems(transport.Id)}";
+
+                    transport.TransportItems = [.. await connection.QueryAsync<TransportItem>(sql, dParams)];
                 }
 
                 return transport;

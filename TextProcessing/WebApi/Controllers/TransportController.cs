@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.Transport;
+using WebApi.Models;
 
 namespace WebApi.Controllers
 {
@@ -33,15 +34,22 @@ namespace WebApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SaveTask(TransportEntry transport)
+        public async Task<IActionResult> SaveTransport(TransportModel transport)
         {
-            return Ok(await transportRepository.SaveTransport(transport));
+            return Ok(await transportRepository.SaveTransport(mapper.Map<TransportEntry>(transport)));
         }
 
         [HttpPatch]
-        public async Task<IActionResult> UpdateTask(TransportEntry transport)
+        public async Task<IActionResult> UpdateTransport(TransportModel transport)
         {
-            return Ok(await transportRepository.UpdateTransport(transport));
+            return Ok(await transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport)));
+        }
+
+        [HttpDelete("{transportId}")]
+        public async Task<IActionResult> DeleteTransport(int transportId)
+        {
+            await transportRepository.DeleteTransport(transportId);
+            return Ok(new { success = true });
         }
     }
 }

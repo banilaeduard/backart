@@ -219,6 +219,12 @@ namespace WebApi
 
                 cfg.CreateMap<OrderModel, RepositoryContract.Orders.ComandaVanzareEntry>();
                 cfg.CreateMap<RepositoryContract.Orders.ComandaVanzareEntry, OrderModel>();
+
+                cfg.CreateMap<TransportEntry, TransportModel>();
+                cfg.CreateMap<TransportModel, TransportEntry>();
+
+                cfg.CreateMap<TransportItem, TransportItemModel>();
+                cfg.CreateMap<TransportItemModel, TransportItem>();
             });
             IMapper mapper = config.CreateMapper();
             services.AddSingleton(mapper);
