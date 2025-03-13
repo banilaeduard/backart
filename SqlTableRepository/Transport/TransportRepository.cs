@@ -53,6 +53,7 @@ namespace SqlTableRepository.Transport
 
                 if (transportEntry.TransportItems?.Count > 0)
                 {
+                    populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);
                     var dParams = new DynamicParameters();
                     var fromSql = transportEntry.TransportItems.FromValues(dParams, "transportItemValues",
                         t => t.ExternalItemId2,
@@ -87,6 +88,7 @@ namespace SqlTableRepository.Transport
 
                 if (transportEntry.TransportItems?.Count > 0)
                 {
+                    populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);
                     var dParams = new DynamicParameters();
                     var fromSql = transportEntry.TransportItems.FromValues(dParams, "transportItemValues",
                         t => t.ExternalItemId2,
@@ -103,6 +105,14 @@ namespace SqlTableRepository.Transport
                 }
 
                 return transport;
+            }
+        }
+
+        private void populateTransportItemsWithParentId(List<TransportItem> tItems, int transportId)
+        {
+            for (int i = 0; i < tItems.Count; i++)
+            {
+                tItems[i].TransportId = transportId;
             }
         }
 

@@ -12,6 +12,6 @@
         public string ExternalItemId { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Delivered { get; set; }
-        public List<TransportItem> TransportItems { get; set; }
+        public List<TransportItem>? TransportItems { get; set; }
     }
 }
