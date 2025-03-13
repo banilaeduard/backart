@@ -200,7 +200,8 @@ namespace WebApi.Controllers
         [HttpGet("sastoken")]
         public async Task<IActionResult> GetToken()
         {
-            return Ok(new { sasToken = sasTokenService.GenerateSaSToken() });
+            var token = sasTokenService.GenerateSaSToken();
+            return Ok(new { sasToken = token.Item1, tableToken = token.Item2 });
         }
     }
 }

@@ -37,6 +37,8 @@ using RepositoryContract;
 using AzureSerRepositoryContract.ProductCodesvices;
 using SqlTableRepository.CommitedOrders;
 using RepositoryContract.Report;
+using RepositoryContract.Transport;
+using SqlTableRepository.Transport;
 
 namespace WebApi
 {
@@ -149,6 +151,7 @@ namespace WebApi
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
+            services.AddScoped<BlobAccessStorageService, BlobAccessStorageService>();
             services.AddScoped<ITaskRepository, TaskRepository>();
             services.AddSingleton<Initializer>();
             services.AddScoped<IImportsRepository, OrdersImportsRepository>();
@@ -156,7 +159,7 @@ namespace WebApi
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
-
+            services.AddScoped<ITransportRepository, TransportRepository>();
 #if (DEBUG)
             services.AddScoped<IOrdersRepository, OrdersRepository>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();

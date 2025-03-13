@@ -1,4 +1,5 @@
-﻿using Azure.Storage;
+﻿using Azure.Data.Tables;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 
@@ -7,12 +8,14 @@ namespace AzureServices
     public class SaSToken
     {
         BlobContainerClient client;
+        TableClient tableClient;
         public SaSToken()
         {
             client = new(Environment.GetEnvironmentVariable("storage_connection"), "importstorage");
+            tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), "LocationMap" , new TableClientOptions());
         }
 
-        public string GenerateSaSToken()
+        public (string,string) GenerateSaSToken()
         {
             //Azure.Storage.Sas.BlobSasBuilder blobSasBuilder = new Azure.Storage.Sas.BlobSasBuilder()
             //{
@@ -23,7 +26,9 @@ namespace AzureServices
             //blobSasBuilder.SetPermissions(Azure.Storage.Sas.BlobSasPermissions.Read);//User will only be able to read the blob and it's properties
             //var sasToken = blobSasBuilder.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, accountKey)).ToString();
             //var sasUrl = blobClient.Uri.AbsoluteUri + "?" + sasToken;
-            return client.GenerateSasUri(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Create, DateTimeOffset.Now.AddHours(5)).AbsoluteUri;
+
+            return (client.GenerateSasUri(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Create, DateTimeOffset.Now.AddHours(15)).AbsoluteUri, 
+                tableClient.GenerateSasUri(Azure.Data.Tables.Sas.TableSasPermissions.Read, DateTimeOffset.Now.AddHours(15)).AbsoluteUri);
         }
 
         // the server side

@@ -11,22 +11,18 @@ namespace WebApi.Services
     {
         private ConnectionSettings _settings;
         private IProductCodeRepository _productCodeRepository;
-        private ICommitedOrdersRepository _commitedOrdersRepository;
         private IReportEntryRepository _reportsRepository;
 
-        public StructuraReport(ConnectionSettings settings, IProductCodeRepository productCodeRepository, ICommitedOrdersRepository commitedOrdersRepository, IReportEntryRepository reportsRepository)
+        public StructuraReport(ConnectionSettings settings, IProductCodeRepository productCodeRepository, IReportEntryRepository reportsRepository)
         {
             _settings = settings;
             _productCodeRepository = productCodeRepository;
-            _commitedOrdersRepository = commitedOrdersRepository;
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<byte[]> GenerateReport(int dispozitieId, string reportName)
+        public async Task<byte[]> GenerateReport(List<DispozitieLivrareEntry> items, string reportName)
         {
             var reportsRows = await _reportsRepository.GetReportEntry(reportName);
-
-            var items = await _commitedOrdersRepository.GetCommitedOrder(dispozitieId);
             var reportCodes = await _productCodeRepository.GetProductCodes(c =>
                                             reportsRows.Any(r => c.Code.ToLowerInvariant().Contains(r.FindBy.ToLowerInvariant()) && c.Level == r.Level));
 
@@ -65,7 +61,7 @@ namespace WebApi.Services
 
                         if (codes.Any())
                         {
-                            if (currGroup != reportRow.Group)
+                            if (currGroup != reportRow.Group && currIndex > 0)
                             {
                                 TableRow emptyRow = new TableRow();
                                 emptyRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
@@ -74,6 +70,10 @@ namespace WebApi.Services
                                 emptyRow.Append(CreateCell(""));
                                 emptyRow.Append(CreateCell(""));
                                 table.Append(emptyRow);
+                                currGroup = reportRow.Group;
+                            } 
+                            else if (currIndex == 0)
+                            {
                                 currGroup = reportRow.Group;
                             }
 

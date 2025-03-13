@@ -13,6 +13,18 @@ namespace RepositoryContract.Report
             tableStorageService = new TableStorageService();
         }
 
+        public async Task<T> AddEntry<T>(T entity, string tableName) where T : class, ITableEntity
+        {
+            await tableStorageService.Insert(entity, tableName);
+            CacheManager.Bust(tableName, true, null);
+            return entity;
+        }
+
+        public async Task<List<LocationMap>> GetLocationMapPathEntry(string partitionKey, Func<LocationMap, bool> pred)
+        {
+            return tableStorageService.Query<LocationMap>(t => t.PartitionKey == partitionKey).Where(pred).ToList();
+        }
+
         public async Task<List<ReportEntry>> GetReportEntry(string reportName)
         {
             return CacheManager.GetAll((from) => tableStorageService.Query<ReportEntry>(t => t.Timestamp > from).ToList()).Where(x => x.PartitionKey == reportName).OrderBy(x => x.Order).ToList();

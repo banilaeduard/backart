@@ -28,9 +28,9 @@ namespace PollerRecurringJob
         internal static readonly string SyncOrders = "SyncOrders";
         internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(15);
         internal static readonly string MoveTo = "MoveToFolder";
-        internal static readonly TimeSpan MoveToDue = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan MoveToDue = TimeSpan.FromMinutes(3);
         internal static readonly string AddNewMail = "AddNewMailToExistingTasks";
-        internal static readonly TimeSpan AddNewMailDue = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan AddNewMailDue = TimeSpan.FromMinutes(2);
         internal static readonly string SyncMails = "SyncNewMails";
         internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(30);
 
