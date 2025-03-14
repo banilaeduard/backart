@@ -19,7 +19,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                var multi = await connection.QueryMultipleAsync($@"{TransportSql.GetTransport(transportId)}; {TransportSql.GetTransportItems(transportId)}");
+                var multi = await connection.QueryMultipleAsync($@"{TransportSql.GetTransports} WHERE ID = {transportId}; {TransportSql.GetTransportItems(transportId)}");
 
                 var transport = multi.Read<TransportEntry>().First();
                 transport.TransportItems = multi.Read<TransportItem>().ToList();
@@ -32,7 +32,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                return [.. await connection.QueryAsync<TransportEntry>($@"SELECT * FROM [dbo].[Transport] ORDER BY Id DESC")];
+                return [.. await connection.QueryAsync<TransportEntry>($@"{TransportSql.GetTransports} ORDER BY Id DESC")];
             }
         }
 
@@ -87,7 +87,8 @@ namespace SqlTableRepository.Transport
                     transportEntry.ExternalItemId,
                     transportEntry.Delivered,
                 });
-
+                if (transport.Delivered?.Kind == DateTimeKind.Unspecified)
+                    transport.Delivered = DateTime.SpecifyKind(transport.Delivered.Value, DateTimeKind.Utc);
                 if (transportEntry.TransportItems?.Count > 0)
                 {
                     populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);

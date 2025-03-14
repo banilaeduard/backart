@@ -39,6 +39,8 @@ using SqlTableRepository.CommitedOrders;
 using RepositoryContract.Report;
 using RepositoryContract.Transport;
 using SqlTableRepository.Transport;
+using Dapper;
+using System.Data;
 
 namespace WebApi
 {
@@ -77,7 +79,7 @@ namespace WebApi
                                                             opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                                                         });
                         ConfigureServices(builder.Services, serviceContext);
-                        
+
                         builder.WebHost
                                     .UseKestrel(opt =>
                                     {
@@ -173,6 +175,7 @@ namespace WebApi
 
             var tokenKey = Environment.GetEnvironmentVariable("Secret")!;
             var key = Encoding.ASCII.GetBytes(tokenKey);
+            SqlMapper.AddTypeHandler(new DateTimeHandler());
 
             services.AddAuthentication(x =>
             {
@@ -270,6 +273,20 @@ namespace WebApi
             {
                 store.Close();
             }
+        }
+    }
+
+    public class DateTimeHandler : SqlMapper.TypeHandler<DateTime>
+    {
+        public override void SetValue(IDbDataParameter parameter, DateTime value)
+        {
+            parameter.Value = value;
+        }
+
+        public override DateTime Parse(object value)
+        {
+            var v = (DateTime)value;
+            return v.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind((DateTime)value, DateTimeKind.Utc) : v;
         }
     }
 }

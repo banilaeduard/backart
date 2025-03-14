@@ -238,7 +238,7 @@ namespace WorkSheetServices
                         locSheet.Range("A2:C2").Merge();
                         locSheet.Cell(2, 1).Value = $"Numar Intern: {string.Join("; ", lines[idx].Select(x => $"{x.NumarIntern} - {x.DataDocument.ToString("dd/MM/yyyy")}").Distinct())}";
                         locSheet.Cell(2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                        locSheet.Cell(2, 1).Style.Font.FontSize = 9;
+                        locSheet.Cell(2, 1).Style.Font.FontSize = 11;
 
                         locSheet.Cell(3, 1).Value = "Denumire produs";
                         locSheet.Cell(3, 1).Style.Font.Bold = true;

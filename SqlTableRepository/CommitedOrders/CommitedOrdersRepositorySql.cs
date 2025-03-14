@@ -31,11 +31,11 @@ namespace SqlTableRepository.CommitedOrders
             throw new NotImplementedException();
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(Func<DispozitieLivrareEntry, bool> expr)
+        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(int[] ids)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) })).Where(expr))];
+                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) })))];
             }
         }
 
@@ -47,11 +47,11 @@ namespace SqlTableRepository.CommitedOrders
             }
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders()
+        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(DateTime? from)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) }))];
+                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = from ?? DateTime.Now.AddMonths(-2) }))];
             }
         }
 
@@ -77,11 +77,8 @@ namespace SqlTableRepository.CommitedOrders
             throw new NotImplementedException();
         }
 
-        public async Task SetDelivered(int[] internalNumbers)
+        public async Task SetDelivered(int internalNumber, int? numarAviz)
         {
-            //using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
-            //{
-            //}
         }
 
         private string TryAccess(string key)

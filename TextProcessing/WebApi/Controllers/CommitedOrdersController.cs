@@ -13,6 +13,7 @@ using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using WebApi.Models;
 using WorkSheetServices;
+using System.Globalization;
 
 namespace WebApi.Controllers
 {
@@ -43,43 +44,52 @@ namespace WebApi.Controllers
             this.productCodeRepository = productCodeRepository;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetCommitedOrders()
+        [HttpGet("{date}")]
+        public async Task<IActionResult> GetCommitedOrders(string date)
         {
-            var orders = await commitedOrdersRepository.GetCommitedOrders();
-            var storageOrders = (await (new CommitedOrdersRepository()).GetCommitedOrders()).DistinctBy(t => t.NumarIntern).ToDictionary(x => x.NumarIntern, x => x);
-            foreach (var order in orders)
+            var from = DateTime.Parse(date, CultureInfo.InvariantCulture);
+            var orders = await commitedOrdersRepository.GetCommitedOrders(from);
+
+            IList<ProductCodeStatsEntry>? productLinkWeights = null;
+            IList<ProductStatsEntry>? weights = null;
+            IList<TicketEntity>? tickets = null;
+            IList<DataKeyLocationEntry>? synonimLocations = null;
+            IList<TaskEntry>? tasks = null;
+            try
             {
-                if (!order.Livrata && storageOrders.ContainsKey(order.NumarIntern))
-                {
-                    order.Livrata = storageOrders[order.NumarIntern].Livrata;
-                    order.NumarIntern = storageOrders[order.NumarIntern].NumarIntern;
-                }
+                tasks = await taskRepository.GetTasks(TaskInternalState.Open);
+
+                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
+                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
+                //var tickets = await ticketEntryRepository.GetAll();
+                //var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
+            }
+            catch (Exception ex)
+            {
+
             }
 
-            var productLinkWeights = (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate");
-            var weights = (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate");
-
-            var tickets = await ticketEntryRepository.GetAll();
-            var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
-            var tasks = await taskRepository.GetTasks(TaskInternalState.All);
-
-            return Ok(CommitedOrdersResponse.From(orders, tickets, synonimLocations, tasks, [.. productLinkWeights], [.. weights]));
+            return Ok(CommitedOrdersResponse.From(orders, tickets ?? [], synonimLocations ?? [], tasks, productLinkWeights ?? [], weights ?? []));
         }
 
-        [HttpPost("delivered/{internalNumber}")]
-        public async Task<IActionResult> DeliverOrder(int internalNumber)
+        [HttpPost("delivered/{internalNumber}/{numarAviz}")]
+        public async Task<IActionResult> DeliverOrder(int internalNumber, int? numarAviz)
         {
-            var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(nameof(DeliverOrder)), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
-            await proxy.SyncOrdersAndCommited();
-            await (new CommitedOrdersRepository()).SetDelivered([internalNumber]);
+            var commitedRepo = new CommitedOrdersRepository();
+            var commitedOrder = await commitedRepo.GetCommitedOrder(internalNumber);
+            if (commitedOrder?.Count < 1)
+            {
+                var proxy = ActorProxy.Create<IPollerRecurringJob>(new ActorId(nameof(DeliverOrder)), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+                await proxy.SyncOrdersAndCommited();
+            }
+            await commitedRepo.SetDelivered(internalNumber, numarAviz);
             return Ok();
         }
 
         [HttpPost("merge")]
         public async Task<IActionResult> ExportDispozitii(string[] internalNumber)
         {
-            var items = await commitedOrdersRepository.GetCommitedOrders(t => internalNumber.Any(x => x == t.NumarIntern));
+            var items = await commitedOrdersRepository.GetCommitedOrders([..internalNumber.Select(int.Parse)]);
             var synonimLocations = (await keyLocationRepository.GetLocations())
                 .Where(t => t.MainLocation && !string.IsNullOrWhiteSpace(t.ShortName) && items.Any(o => o.CodLocatie == t.LocationCode))
                 .DistinctBy(t => t.LocationCode)

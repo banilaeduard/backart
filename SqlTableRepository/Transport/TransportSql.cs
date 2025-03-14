@@ -13,7 +13,17 @@
                         WHERE Id = {transportId}
                         ";
 
-        internal static string GetTransport(int transportId) => $@"SELECT * FROM [dbo].[Transport] WHERE Id = {transportId}";
+        internal static string GetTransports => $@"SELECT [Id] ,
+                                                           [Description] ,
+                                                           [DriverName] ,
+                                                           [CarPlateNumber] ,
+                                                           [Distance] ,
+                                                           [FuelConsumption] ,
+                                                           [CurrentStatus] ,
+                                                           [ExternalItemId] ,
+                                                           [Created] ,
+                                                           [Delivered]
+                                                    FROM [dbo].[Transport]";
         internal static string DeleteTransport(int transportId) => $@"DELETE FROM dbo.TransportItems WHERE TransportId = {transportId};
                                                          DELETE FROM dbo.Transport WHERE Id = {transportId}";
         internal static string GetTransportItems(int transportId) => $@"SELECT * FROM [dbo].[TransportItems] WHERE TransportId = {transportId}";
