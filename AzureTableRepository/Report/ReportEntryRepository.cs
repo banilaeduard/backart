@@ -16,7 +16,7 @@ namespace RepositoryContract.Report
         public async Task<T> AddEntry<T>(T entity, string tableName) where T : class, ITableEntity
         {
             await tableStorageService.Insert(entity, tableName);
-            CacheManager.Bust(tableName, true, null);
+            await CacheManager.Bust(tableName, true, null);
             return entity;
         }
 
@@ -27,7 +27,8 @@ namespace RepositoryContract.Report
 
         public async Task<List<ReportEntry>> GetReportEntry(string reportName)
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<ReportEntry>(t => t.Timestamp > from).ToList()).Where(x => x.PartitionKey == reportName).OrderBy(x => x.Order).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<ReportEntry>(t => t.Timestamp > from).ToList()))
+                    .Where(x => x.PartitionKey == reportName).OrderBy(x => x.Order).ToList();
         }
 
         public async Task<ReportTemplate> GetReportTemplate(string codLocatie, string reportName)

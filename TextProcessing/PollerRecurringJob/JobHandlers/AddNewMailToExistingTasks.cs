@@ -3,6 +3,7 @@ using EntityDto;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using SqlTableRepository.Tasks;
+using ServiceInterface.Storage;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -10,9 +11,8 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var client = await QueueService.GetClient("addmailtotask");
-            var messages = await client.ReceiveMessagesAsync(maxMessages: 32);
-            AddMailToTask[] items = [.. messages.Value.Select(str => QueueService.Deserialize<AddMailToTask[]>(str.Body.ToString())).SelectMany(t => t!)];
+            IWorkflowTrigger service = new QueueService();
+            var items = await service.GetWork<AddMailToTask>("addmailtotask");
 
             if (!items.Any()) return;
 
@@ -20,7 +20,7 @@ namespace PollerRecurringJob.JobHandlers
             var tasks = await repo.GetTasks(TaskInternalState.Open);
             var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 
-            var items2 = items.Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
+            var items2 = items.Select(t => t.Model).Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
 
             // update only active tasks
             foreach (var task in tasks)
@@ -48,13 +48,7 @@ namespace PollerRecurringJob.JobHandlers
                 }
             }
 
-            foreach (var item in messages.Value)
-            {
-                await client.DeleteMessageAsync(item.MessageId, item.PopReceipt);
-            }
-
-            //var processQueue = await QueueService.GetClient("createtaskfrommail");
-            //processQueue.SendMessage(QueueService.Serialize(items.Except(items2).ToArray()));
+            await service.ClearWork("addmailtotask", [.. items]);
         }
     }
 }

@@ -5,6 +5,7 @@ namespace RepositoryContract
 {
     public class TableEntityPK : IEqualityComparer<ITableEntity>, ITableEntity, IEqualityComparer<TableEntityPK>
     {
+        public TableEntityPK() { }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }

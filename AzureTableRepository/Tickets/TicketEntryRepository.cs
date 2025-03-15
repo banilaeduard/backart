@@ -17,20 +17,20 @@ namespace AzureTableRepository.Tickets
         public async Task Delete<T>(string partitionKey, string rowKey) where T : class, ITableEntity
         {
             await tableStorageService.Delete(partitionKey, rowKey, typeof(T).Name);
-            CacheManager.Bust(typeof(T).Name, true, null);
+            await CacheManager.Bust(typeof(T).Name, true, null);
             CacheManager.RemoveFromCache(typeof(T).Name, [TableEntityPK.From(partitionKey, rowKey)]);
         }
 
         public async Task<IList<TicketEntity>> GetAll()
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList()).Where(t => !t.IsDeleted).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList())).Where(t => !t.IsDeleted).ToList();
         }
 
         public async Task Save(AttachmentEntry entry)
         {
             var from = DateTimeOffset.Now;
             await tableStorageService.Upsert(entry);
-            CacheManager.Bust(typeof(AttachmentEntry).Name, false, from);
+            await CacheManager.Bust(typeof(AttachmentEntry).Name, false, from);
             CacheManager.UpsertCache(typeof(AttachmentEntry).Name, [entry]);
         }
 
@@ -38,7 +38,7 @@ namespace AzureTableRepository.Tickets
         {
             var from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
-            CacheManager.Bust(typeof(TicketEntity).Name, false, from);
+            await CacheManager.Bust(typeof(TicketEntity).Name, false, from);
             CacheManager.UpsertCache(typeof(TicketEntity).Name, entries);
         }
 
@@ -46,8 +46,8 @@ namespace AzureTableRepository.Tickets
         {
             var tableName = typeof(T).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
-            var resp = tableClient.GetEntityIfExists<T>(partitionKey, rowKey);
+            await tableClient.CreateIfNotExistsAsync();
+            var resp = await tableClient.GetEntityIfExistsAsync<T>(partitionKey, rowKey);
             return resp.HasValue ? resp.Value! : null;
         }
 
@@ -55,11 +55,11 @@ namespace AzureTableRepository.Tickets
         {
             if (string.IsNullOrEmpty(partitionKey))
             {
-                return CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.Timestamp > from).ToList()).ToList();
+                return (await CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.Timestamp > from).ToList())).ToList();
             }
             else
             {
-                return CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.PartitionKey == partitionKey).ToList(), nameof(AttachmentEntry) + $"_{partitionKey}").ToList();
+                return (await CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.PartitionKey == partitionKey).ToList(), nameof(AttachmentEntry) + $"_{partitionKey}")).ToList();
             }
         }
     }

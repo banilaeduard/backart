@@ -16,7 +16,6 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Diagnostics;
 using YahooFeeder;
 using AzureServices;
-using Services.Storage;
 using RepositoryContract.Orders;
 using AzureTableRepository.Orders;
 using RepositoryContract.CommitedOrders;
@@ -41,6 +40,8 @@ using RepositoryContract.Transport;
 using SqlTableRepository.Transport;
 using Dapper;
 using System.Data;
+using ServiceInterface.Storage;
+using ServiceImplementation;
 
 namespace WebApi
 {
@@ -117,10 +118,10 @@ namespace WebApi
                             ServiceEventSource.Current.ServiceMessage(serviceContext, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
                         }));
 
-                        app.Services.GetRequiredService<IServiceScopeFactory>()
-                            .CreateScope().ServiceProvider
-                            .GetRequiredService<Initializer>()
-                            .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                        //app.Services.GetRequiredService<IServiceScopeFactory>()
+                        //    .CreateScope().ServiceProvider
+                        //    .GetRequiredService<Initializer>()
+                        //    .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                         return app;
                     }), "bart")
@@ -153,9 +154,11 @@ namespace WebApi
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
-            services.AddScoped<BlobAccessStorageService, BlobAccessStorageService>();
-            services.AddScoped<ITaskRepository, TaskRepository>();
-            services.AddSingleton<Initializer>();
+            services.AddScoped<IMetadataService, BlobAccessStorageService>();
+            services.AddScoped<IWorkflowTrigger, QueueService>();
+            //services.AddSingleton<Initializer>();
+            services.AddSingleton<ITaskRepository, TaskRepository>();
+            services.AddSingleton<ICryptoService, CryptoService>();
             services.AddScoped<IImportsRepository, OrdersImportsRepository>();
             services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();

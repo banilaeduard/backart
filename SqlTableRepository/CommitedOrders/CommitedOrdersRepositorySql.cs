@@ -5,7 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using RepositoryContract;
 using RepositoryContract.CommitedOrders;
-using Services.Storage;
+using ServiceInterface.Storage;
 using SqlTableRepository.Orders;
 using System.Text;
 
@@ -58,7 +58,7 @@ namespace SqlTableRepository.CommitedOrders
         public async Task<DateTime?> GetLastSyncDate()
         {
             var blobAccessStorageService = new BlobAccessStorageService();
-            var metadata = blobAccessStorageService.GetMetadata(syncName);
+            var metadata = await blobAccessStorageService.GetMetadata(syncName);
 
             if (metadata.ContainsKey("data_sync"))
             {

@@ -2,7 +2,6 @@
 using AzureServices;
 using EntityDto;
 using RepositoryContract.CommitedOrders;
-using System.Runtime.InteropServices.Marshalling;
 
 namespace AzureTableRepository.CommitedOrders
 {
@@ -21,19 +20,19 @@ namespace AzureTableRepository.CommitedOrders
             var toRemove = tableStorageService.PrepareDelete(items.ToList());
             await toRemove.ExecuteBatch();
 
-            CacheManager.Bust(nameof(DispozitieLivrareEntry), true, null);
+            await CacheManager.Bust(nameof(DispozitieLivrareEntry), true, null);
             CacheManager.RemoveFromCache(nameof(DispozitieLivrareEntry), toRemove.items.Select(t => t.Entity).ToList());
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(int[] ids)
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList())
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()))
                                .Where(t => ids.Contains(int.Parse(t.PartitionKey))).ToList();
         }
 
         public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(DateTime? _from)
         {
-            return CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()).Where(t => t.DataDocument > _from).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList())).Where(t => t.DataDocument > _from).ToList();
         }
 
         public async Task InsertCommitedOrder(DispozitieLivrareEntry sample)
@@ -41,7 +40,7 @@ namespace AzureTableRepository.CommitedOrders
             var offset = DateTimeOffset.Now;
             await tableStorageService.Insert(sample);
 
-            CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
+            await CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
             CacheManager.UpsertCache(nameof(DispozitieLivrareEntry), [sample]);
         }
 
@@ -68,7 +67,7 @@ namespace AzureTableRepository.CommitedOrders
                 {
                     var offset = DateTimeOffset.Now;
                     await transaction.ExecuteBatch();
-                    CacheManager.Bust(nameof(DispozitieLivrareEntry), transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Any(), offset);
+                    await CacheManager.Bust(nameof(DispozitieLivrareEntry), transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Any(), offset);
                     CacheManager.RemoveFromCache(nameof(DispozitieLivrareEntry),
                         transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
                     CacheManager.UpsertCache(nameof(DispozitieLivrareEntry),
@@ -76,7 +75,7 @@ namespace AzureTableRepository.CommitedOrders
                 }
             }
 
-            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
+            await blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
         public async Task SetDelivered(int internalNumber, int? numarAviz)
@@ -93,13 +92,13 @@ namespace AzureTableRepository.CommitedOrders
             var offset = DateTimeOffset.Now;
             await transactions.ExecuteBatch();
 
-            CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
+            await CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
             CacheManager.UpsertCache(nameof(DispozitieLivrareEntry), transactions.items.Select(t => t.Entity).ToList());
         }
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var metadata = blobAccessStorageService.GetMetadata(syncName);
+            var metadata = await blobAccessStorageService.GetMetadata(syncName);
 
             if (metadata.ContainsKey("data_sync"))
             {

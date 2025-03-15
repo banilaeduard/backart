@@ -21,7 +21,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityDto", "..\EntityDto\E
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureServices", "..\AzureServices\AzureServices.csproj", "{547E0CA0-1BAA-41C7-B452-D7598CCCC7E6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServiceInterface", "..\Services\ServiceInterface.csproj", "{883A26B7-ECAB-41EB-A4AE-614EF61D3FF2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{5EC4FC84-F6A5-465C-A6C9-AE364E7140E6}"
 EndProject

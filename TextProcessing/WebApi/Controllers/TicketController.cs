@@ -9,7 +9,6 @@ namespace WebApi.Controllers
 
     using RepositoryContract.Tickets;
     using global::WebApi.Models;
-    using global::Services.Storage;
     using RepositoryContract.DataKeyLocation;
     using RepositoryContract.Tasks;
     using RepositoryContract;
@@ -17,6 +16,7 @@ namespace WebApi.Controllers
     using MailReader.Interfaces;
     using Microsoft.ServiceFabric.Actors.Client;
     using Microsoft.ServiceFabric.Actors;
+    using ServiceInterface.Storage;
 
     [Authorize(Roles = "admin, basic")]
     public class TicketController : WebApiController2

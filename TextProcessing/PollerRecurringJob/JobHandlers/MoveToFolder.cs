@@ -4,6 +4,7 @@ using MailReader.Interfaces;
 using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Actors;
 using RepositoryContract;
+using ServiceInterface.Storage;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -11,16 +12,15 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var client = await QueueService.GetClient("movemailto");
+            IWorkflowTrigger client = new QueueService();
+            var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
 
-            var messages = await client.ReceiveMessagesAsync(maxMessages: 32);
             var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());
 
-            foreach (var message in messages.Value.OrderBy(x => x.InsertedOn))
+            foreach (var message in items.OrderBy(t => t.Timestamp))
             {
-                var body = QueueService.Deserialize<MoveToMessage<TableEntityPK>>(message.Body.ToString())!;
-                foreach (var item in body.Items)
-                    finalList[item] = body.DestinationFolder;
+                foreach (var item in message.Model.Items)
+                    finalList[item] = message.Model.DestinationFolder;
             }
 
             if (finalList.Any())
@@ -35,10 +35,7 @@ namespace PollerRecurringJob.JobHandlers
                 await proxy.BatchAsync(request);
             }
 
-            foreach (var item in messages.Value)
-            {
-                await client.DeleteMessageAsync(item.MessageId, item.PopReceipt);
-            }
+            await client.ClearWork("movemailto", [.. items]);
         }
     }
 }

@@ -1,5 +1,6 @@
-﻿using Azure.Storage.Files.Shares;
-using Services.Storage;
+﻿using Azure.Storage.Blobs.Models;
+using Azure.Storage.Files.Shares;
+using ServiceInterface.Storage;
 
 namespace AzureServices
 {
@@ -28,22 +29,37 @@ namespace AzureServices
             return BinaryData.FromStream(client.Value.Content).ToArray();
         }
 
-        public void Delete(string fName)
+        public async Task Delete(string fName)
         {
             var rootDirectory = share.GetRootDirectoryClient();
-            rootDirectory.GetFileClient(fName).DeleteIfExists();
+            await rootDirectory.GetFileClient(fName).DeleteAsync();
         }
 
-        public bool Exists(string fName)
+        public async Task<bool> Exists(string fName)
         {
             var rootDirectory = share.GetRootDirectoryClient();
-            return rootDirectory.GetFileClient(fName).Exists();
+            return await rootDirectory.GetFileClient(fName).ExistsAsync();
         }
 
-        public void WriteTo(string fName, BinaryData file)
+        public async Task WriteTo(string fName, BinaryData file, bool replace = false)
         {
             var rootDirectory = share.GetRootDirectoryClient();
-            rootDirectory.GetFileClient(fName).Upload(file.ToStream());
+            var fClient = rootDirectory.GetFileClient(fName);
+            var exists = await fClient.ExistsAsync();
+            if (!replace && exists) return;
+            if (exists)
+            {
+                await fClient.DeleteAsync();
+            }
+            await fClient.UploadAsync(file.ToStream());
+            await fClient.SetHttpHeadersAsync(new Azure.Storage.Files.Shares.Models.ShareFileSetHttpHeadersOptions
+            {
+                HttpHeaders =
+                new Azure.Storage.Files.Shares.Models.ShareFileHttpHeaders()
+                {
+                    CacheControl = "max-age=31536000"
+                }
+            });
         }
     }
 }

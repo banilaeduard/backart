@@ -2,7 +2,8 @@
 {
     public class MoveToMessage<T>
     {
-        public required string DestinationFolder { get; set; }
-        public required IEnumerable<T> Items { get; set; }
+        public MoveToMessage() { }
+        public string DestinationFolder { get; set; }
+        public IEnumerable<T> Items { get; set; }
     }
 }

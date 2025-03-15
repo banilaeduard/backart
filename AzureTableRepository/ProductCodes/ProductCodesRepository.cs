@@ -17,17 +17,17 @@ namespace AzureTableRepository.ProductCodes
 
         public async Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr, string? table = null)
         {
-            return CacheManager.GetAll((from) =>
+            return (await CacheManager.GetAll((from) =>
                     tableStorageService.Query<ProductCodeEntry>(t => t.Timestamp > from, table).ToList()
-                    , table).Select(t => t.Shallowcopy())
+                    , table)).Select(t => t.Shallowcopy())
                 .Where(expr).ToList();
         }
 
         public async Task<IList<ProductCodeEntry>> GetProductCodes(string? table = null)
         {
-            return CacheManager.GetAll((from) =>
+            return (await CacheManager.GetAll((from) =>
                     tableStorageService.Query<ProductCodeEntry>(t => t.Timestamp > from, table).ToList()
-                    , table).Select(t => t.Shallowcopy()).ToList();
+                    , table)).Select(t => t.Shallowcopy()).ToList();
         }
 
         public async Task Delete<T>(string partitionKey, string rowKey, string table = null)
@@ -41,7 +41,7 @@ namespace AzureTableRepository.ProductCodes
 
                 await batch.ExecuteBatch(table);
                 CacheManager.RemoveFromCache(typeof(ProductCodeEntry).Name, batch.items.Select(t => t.Entity).ToList());
-                CacheManager.Bust(typeof(ProductCodeEntry).Name, true, null);
+                await CacheManager.Bust(typeof(ProductCodeEntry).Name, true, null);
             }
             if (typeof(ProductStatsEntry).IsAssignableFrom(typeof(T)))
             {
@@ -63,16 +63,16 @@ namespace AzureTableRepository.ProductCodes
 
         public async Task<IList<ProductStatsEntry>> GetProductStats(string? table = null)
         {
-            return CacheManager.GetAll((from) =>
+            return (await CacheManager.GetAll((from) =>
                     tableStorageService.Query<ProductStatsEntry>(t => t.Timestamp > from, table).ToList()
-                    , table).Select(t => t.Shallowcopy()).ToList();
+                    , table)).Select(t => t.Shallowcopy()).ToList();
         }
 
         public async Task<IList<ProductStatsEntry>> CreateProductStats(IList<ProductStatsEntry> productStats, string? table = null)
         {
             DateTimeOffset from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(productStats).ExecuteBatch();
-            CacheManager.Bust(typeof(ProductStatsEntry).Name, false, from);
+            await CacheManager.Bust(typeof(ProductStatsEntry).Name, false, from);
             CacheManager.UpsertCache(typeof(ProductStatsEntry).Name, [.. productStats]);
             return productStats;
         }
@@ -81,16 +81,16 @@ namespace AzureTableRepository.ProductCodes
         {
             DateTimeOffset from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(productStats).ExecuteBatch();
-            CacheManager.Bust(typeof(ProductCodeStatsEntry).Name, false, from);
+            await CacheManager.Bust(typeof(ProductCodeStatsEntry).Name, false, from);
             CacheManager.UpsertCache(typeof(ProductCodeStatsEntry).Name, [.. productStats]);
             return productStats;
         }
 
         public async Task<IList<ProductCodeStatsEntry>> GetProductCodeStatsEntry(string? table = null)
         {
-            return CacheManager.GetAll((from) =>
+            return (await CacheManager.GetAll((from) =>
                     tableStorageService.Query<ProductCodeStatsEntry>(t => t.Timestamp > from, table).ToList()
-                    , table).Select(t => t.Shallowcopy()).ToList();
+                    , table)).Select(t => t.Shallowcopy()).ToList();
         }
     }
 }

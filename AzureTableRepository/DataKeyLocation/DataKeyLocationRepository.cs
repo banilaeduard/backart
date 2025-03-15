@@ -15,22 +15,22 @@ namespace AzureTableRepository.DataKeyLocation
         public async Task DeleteLocation(DataKeyLocationEntry[] entries)
         {
             await tableStorageService.PrepareDelete(entries).ExecuteBatch();
-            CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, null);
+            await CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, null);
             CacheManager.RemoveFromCache(typeof(DataKeyLocationEntry).Name, entries);
         }
 
         public async Task<IList<DataKeyLocationEntry>> GetLocations()
         {
-            return CacheManager.GetAll((from) =>
+            return (await CacheManager.GetAll((from) =>
                     tableStorageService.Query<DataKeyLocationEntry>(t => t.Timestamp > from).Select(t => t.Shallowcopy()).ToList()
-                    ).ToList();
+                    )).ToList();
         }
 
         public async Task UpdateLocation(DataKeyLocationEntry[] entries)
         {
             DateTimeOffset from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
-            CacheManager.Bust(typeof(DataKeyLocationEntry).Name, false, from);
+            await CacheManager.Bust(typeof(DataKeyLocationEntry).Name, false, from);
             CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
         }
 
@@ -43,7 +43,7 @@ namespace AzureTableRepository.DataKeyLocation
                 entry.RowKey = Guid.NewGuid().ToString();
             }
             await tableStorageService.PrepareInsert(entries).ExecuteBatch();
-            CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, from);
+            await CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, from);
             CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
             return entries;
         }

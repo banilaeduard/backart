@@ -12,4 +12,8 @@
     <PackageReference Include="PragmaticSegmenterNet" Version="1.0.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Services\ServiceInterface.csproj" />
+  </ItemGroup>
+
 </Project>

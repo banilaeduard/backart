@@ -39,7 +39,7 @@
     <ProjectReference Include="..\..\EntityDto\EntityDto.csproj" />
     <ProjectReference Include="..\..\RepositoryContract\RepositoryContract.csproj" />
     <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
-    <ProjectReference Include="..\..\Services\Services.csproj" />
+    <ProjectReference Include="..\..\Services\ServiceInterface.csproj" />
     <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />
     <ProjectReference Include="..\..\WorkSheetServices\WorkSheetServices.csproj" />
     <ProjectReference Include="..\PollerRecurringJob.Interfaces\V2_1.Interfaces.csproj" />

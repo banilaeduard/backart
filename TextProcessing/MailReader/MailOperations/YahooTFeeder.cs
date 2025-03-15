@@ -14,6 +14,7 @@ using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.MailSettings;
 using RepositoryContract.Tickets;
+using ServiceInterface.Storage;
 using UniqueId = MailKit.UniqueId;
 
 namespace YahooTFeeder
@@ -230,11 +231,11 @@ namespace YahooTFeeder
 
                         var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
                         var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
-                        if (!blob.Exists(fname))
+                        if (!await blob.Exists(fname))
                             using (var ms = new MemoryStream())
                             {
                                 msg.WriteTo(FormatOptions.Default, ms);
-                                blob.WriteTo(fname, new BinaryData(ms.ToArray()));
+                                await blob.WriteTo(fname, new BinaryData(ms.ToArray()));
                             }
 
                         await ticketEntryRepository.Save(new AttachmentEntry()
@@ -247,8 +248,8 @@ namespace YahooTFeeder
                             RefPartition = entry.PartitionKey,
                             RefKey = entry.RowKey,
                         });
-                        if (!blob.Exists(details + "body.html"))
-                            blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody));
+                        if (!await blob.Exists(details + "body.html"))
+                            await blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody));
                         await ticketEntryRepository.Save(new AttachmentEntry()
                         {
                             PartitionKey = entry.Uid.ToString(),
@@ -265,7 +266,7 @@ namespace YahooTFeeder
                         {
                             var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
                             var filePath = details + idx + fileName;
-                            if (!blob.Exists(filePath))
+                            if (!await blob.Exists(filePath))
                                 using (var stream = new MemoryStream())
                                 {
                                     if (attachment is MessagePart)
@@ -278,7 +279,7 @@ namespace YahooTFeeder
                                         var part = (MimePart)attachment;
                                         await part.Content.DecodeToAsync(stream);
                                     }
-                                    blob.WriteTo(filePath, new BinaryData(stream.ToArray()));
+                                    await blob.WriteTo(filePath, new BinaryData(stream.ToArray()));
                                 }
 
                             await ticketEntryRepository.Save(new AttachmentEntry()
@@ -389,7 +390,7 @@ namespace YahooTFeeder
                 string body = "";
                 try
                 {
-                    if (storageService.Exists(fname))
+                    if (await storageService.Exists(fname))
                     {
                         body = Encoding.UTF8.GetString(storageService.Access(fname, out var contentType));
                         body = body.Length > 512 ? body.Substring(0, 512) : body;
@@ -400,7 +401,7 @@ namespace YahooTFeeder
                         {
                             using (var stream = new MemoryStream())
                             {
-                                storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(message.PreviewText)));
+                                await storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(message.PreviewText)));
                                 body = message.PreviewText;
                             }
                         }
@@ -411,7 +412,7 @@ namespace YahooTFeeder
                             bodyPart.Accept(bodyVisitor);
                             using (var stream = new MemoryStream())
                             {
-                                storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(bodyVisitor.HtmlBody)));
+                                await storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(bodyVisitor.HtmlBody)));
                                 body = bodyVisitor.HtmlBody;
                             }
                             body = body.Trim().Replace("__", "") ?? "";
@@ -478,8 +479,8 @@ namespace YahooTFeeder
             }
             await ticketEntryRepository.Save([.. toSave]);
 
-            var processQueue = await QueueService.GetClient("addmailtotask");
-            processQueue.SendMessage(QueueService.Serialize(toSave.Select(t => new AddMailToTask()
+            IWorkflowTrigger processQueue = new QueueService();
+            await processQueue.Trigger("addmailtotask", toSave.Select(t => new AddMailToTask()
             {
                 PartitionKey = t.PartitionKey,
                 RowKey = t.RowKey,
@@ -488,7 +489,7 @@ namespace YahooTFeeder
                 TableName = nameof(TicketEntity),
                 LocationRowKey = t?.LocationRowKey ?? "",
                 LocationPartitionKey = t?.LocationPartitionKey ?? ""
-            })));
+            }).ToList());
         }
 
         private static async Task<ImapClient> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)

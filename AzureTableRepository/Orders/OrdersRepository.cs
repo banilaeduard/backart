@@ -17,13 +17,13 @@ namespace AzureTableRepository.Orders
         public async Task<List<ComandaVanzareEntry>> GetOrders(string? table = null)
         {
             table = table ?? typeof(ComandaVanzareEntry).Name;
-            return CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => t.Timestamp > from).ToList(), table).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => t.Timestamp > from).ToList(), table)).ToList();
         }
 
         public async Task<List<ComandaVanzareEntry>> GetOrders(Func<ComandaVanzareEntry, bool> expr, string? table = null)
         {
             table = table ?? typeof(ComandaVanzareEntry).Name;
-            return CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => expr(t) && t.Timestamp > from).ToList(), table).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => expr(t) && t.Timestamp > from).ToList(), table)).ToList();
         }
 
         public async Task ImportOrders(IList<ComandaVanzare> items, DateTime when)
@@ -65,10 +65,10 @@ namespace AzureTableRepository.Orders
                                         .Concat(tableStorageService.PrepareInsert(exceptAdd))
                                         .Concat(tableStorageService.PrepareDelete(exceptDelete))
                                         .ExecuteBatch();
-                CacheManager.Bust(typeof(ComandaVanzareEntry).Name, true, null);
+                await CacheManager.Bust(typeof(ComandaVanzareEntry).Name, true, null);
                 CacheManager.InvalidateOurs(typeof(ComandaVanzareEntry).Name);
             }
-            blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
+            await blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
         private IEnumerable<ComandaVanzareEntry> MergeByHash(IEnumerable<ComandaVanzareEntry> list)
@@ -85,7 +85,7 @@ namespace AzureTableRepository.Orders
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var metadata = blobAccessStorageService.GetMetadata(syncName);
+            var metadata = await blobAccessStorageService.GetMetadata(syncName);
 
             if (metadata.ContainsKey("data_sync"))
             {

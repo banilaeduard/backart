@@ -23,7 +23,7 @@ namespace WebApi.Controllers
         UserManager<AppIdentityUser> _userManager;
         EmailSender _emailService;
         SaSToken sasTokenService;
-        private static MemoryCache _userCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromDays(2) } );
+        private static MemoryCache _userCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromDays(2) });
 
         public UsersController(
             IUserService userService,
@@ -176,8 +176,8 @@ namespace WebApi.Controllers
             var identityUser = await this._userManager.FindByEmailAsync(userModel.Email);
             if (identityUser == null) return NotFound();
 
-/*            var tempKey = identityUser.DataKey;
-            identityUser.fromUserModel(userModel).DataKey = tempKey;*/
+            /*            var tempKey = identityUser.DataKey;
+                        identityUser.fromUserModel(userModel).DataKey = tempKey;*/
             var result = await this._userManager.UpdateAsync(identityUser);
             if (result.Succeeded)
             {
@@ -200,8 +200,8 @@ namespace WebApi.Controllers
         [HttpGet("sastoken")]
         public async Task<IActionResult> GetToken()
         {
-            var token = sasTokenService.GenerateSaSToken();
-            return Ok(new { sasToken = token.Item1, tableToken = token.Item2 });
+            var token = sasTokenService.GenerateSaSTokens();
+            return Ok(token.ToDictionary(x => x.key, y => y.connection));
         }
     }
 }

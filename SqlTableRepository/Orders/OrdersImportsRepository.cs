@@ -3,7 +3,7 @@ using Dapper;
 using EntityDto;
 using Microsoft.Data.SqlClient;
 using RepositoryContract.Imports;
-using Services.Storage;
+using ServiceInterface.Storage;
 using System.Text;
 
 namespace SqlTableRepository.Orders
