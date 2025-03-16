@@ -31,8 +31,8 @@
     <ProjectReference Include="..\..\Services\ServiceInterface.csproj" />
     <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />
     <ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />
-    <ProjectReference Include="..\PollerRecurringJob.Interfaces\V2_1.Interfaces.csproj" />
     <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
+    <ProjectReference Include="..\V2_1.Interfaces\V2_1.Interfaces.csproj" />
   </ItemGroup>
 
 </Project>

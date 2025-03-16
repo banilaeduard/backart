@@ -43,14 +43,7 @@
     <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />
     <ProjectReference Include="..\..\WorkSheetServices\WorkSheetServices.csproj" />
     <ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />
-    <ProjectReference Include="..\PollerRecurringJob.Interfaces\V2_1.Interfaces.csproj" />
     <ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
+    <ProjectReference Include="..\V2_1.Interfaces\V2_1.Interfaces.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Update="MySetup.bat">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

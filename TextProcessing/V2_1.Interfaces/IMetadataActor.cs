@@ -1,6 +1,6 @@
 ﻿using Microsoft.ServiceFabric.Actors;
 
-namespace V2_1.Interfaces
+namespace MetadataService.Interfaces
 {
     public interface IMetadataActor : IActor
     {

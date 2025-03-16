@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Actors;
-using PollerRecurringJob.Interfaces;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.ProductCodes;
@@ -16,6 +15,7 @@ using System.Globalization;
 using EntityDto.CommitedOrders;
 using ServiceInterface.Storage;
 using ServiceInterface;
+using PollerRecurringJob.Interfaces;
 
 namespace WebApi.Controllers
 {

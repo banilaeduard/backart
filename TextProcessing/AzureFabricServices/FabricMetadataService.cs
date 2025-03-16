@@ -1,7 +1,7 @@
 ﻿using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Client;
 using ServiceInterface.Storage;
-using V2_1.Interfaces;
+using MetadataService.Interfaces;
 
 namespace AzureFabricServices
 {

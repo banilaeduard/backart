@@ -1,6 +1,6 @@
+using MetadataService.Interfaces;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
-using V2_1.Interfaces;
 
 namespace MetadataActor
 {
