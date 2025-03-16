@@ -18,6 +18,7 @@ namespace DataAccess
         }
         public async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            return;
             try
             {
                 using (var provider = providerScope.CreateScope())

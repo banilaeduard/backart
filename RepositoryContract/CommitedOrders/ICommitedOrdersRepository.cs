@@ -1,16 +1,16 @@
-﻿using EntityDto;
+﻿using EntityDto.CommitedOrders;
 
 namespace RepositoryContract.CommitedOrders
 {
     public interface ICommitedOrdersRepository
     {
-        Task<List<DispozitieLivrareEntry>> GetCommitedOrder(int id);
-        Task<List<DispozitieLivrareEntry>> GetCommitedOrders(int[] ids);
-        Task<List<DispozitieLivrareEntry>> GetCommitedOrders(DateTime? from);
+        Task<List<CommitedOrderEntry>> GetCommitedOrder(int id);
+        Task<List<CommitedOrderEntry>> GetCommitedOrders(int[] ids);
+        Task<List<CommitedOrderEntry>> GetCommitedOrders(DateTime? from);
         Task<DateTime?> GetLastSyncDate();
-        Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items);
-        Task InsertCommitedOrder(DispozitieLivrareEntry item);
+        Task DeleteCommitedOrders(List<CommitedOrderEntry> items);
+        Task InsertCommitedOrder(CommitedOrderEntry item);
         Task SetDelivered(int internalNumbers, int? numarAviz);
-        Task ImportCommitedOrders(IList<DispozitieLivrare> items, DateTime when);
+        Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when);
     }
 }

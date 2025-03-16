@@ -20,7 +20,7 @@ namespace WebApi.Services
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<byte[]> GenerateReport(List<DispozitieLivrareEntry> items, string reportName)
+        public async Task<byte[]> GenerateReport(List<CommitedOrderEntry> items, string reportName)
         {
             var reportsRows = await _reportsRepository.GetReportEntry(reportName);
             var reportCodes = await _productCodeRepository.GetProductCodes(c =>

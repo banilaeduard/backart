@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ServiceManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="MailReaderPkg" Version="1.0.0" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <ServiceTypes>
-    <StatefulServiceType ServiceTypeName="MailReaderActorServiceType" HasPersistedState="true">
+    <StatefulServiceType ServiceTypeName="MailReaderActorServiceType">
       <Extensions>
-        <Extension Name="__GeneratedServiceType__" GeneratedId="68c006a0-c6ae-4aac-93d0-08be5ed2673e|Persisted">
+        <Extension Name="__GeneratedServiceType__" GeneratedId="30d0a9f1-63d5-4697-8d7d-2190152a6c80|None">
           <GeneratedNames xmlns="http://schemas.microsoft.com/2015/03/fabact-no-schema">
             <DefaultService Name="MailReaderActorService" />
             <ReplicatorEndpoint Name="MailReaderActorServiceReplicatorEndpoint" />

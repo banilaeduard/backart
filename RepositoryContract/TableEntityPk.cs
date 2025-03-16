@@ -1,15 +1,18 @@
 ﻿using Azure.Data.Tables;
 using Azure;
+using EntityDto;
 
 namespace RepositoryContract
 {
-    public class TableEntityPK : IEqualityComparer<ITableEntity>, ITableEntity, IEqualityComparer<TableEntityPK>
+    public class TableEntityPK : ITableEntryDto<ITableEntity>, ITableEntryDto<TableEntityPK>, ITableEntity
     {
         public TableEntityPK() { }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
+        public int Id { get; set; }
+
         public static TableEntityPK From(string partitionKey, string rowKey)
         {
             return new TableEntityPK()
@@ -19,7 +22,7 @@ namespace RepositoryContract
             };
         }
 
-        public static IEqualityComparer<T> GetComparer<T>() where T: TableEntityPK, ITableEntity
+        public static IEqualityComparer<T> GetComparer<T>() where T : TableEntityPK, ITableEntity
         {
             return new TableEntityPK();
         }
@@ -56,12 +59,32 @@ namespace RepositoryContract
 
         public int GetHashCode(ITableEntity other)
         {
-            return other.PartitionKey.GetHashCode() ^ other.RowKey.GetHashCode();
+            return GetStableHashCode(other.PartitionKey) ^ GetStableHashCode(other.RowKey);
         }
 
         public int GetHashCode(TableEntityPK other)
         {
-            return other.PartitionKey.GetHashCode() ^ other.RowKey.GetHashCode();
+            return GetStableHashCode(other.PartitionKey) ^ GetStableHashCode(other.RowKey);
+        }
+
+        private static int GetStableHashCode(string? str)
+        {
+            if (str == null) return 0;
+            unchecked
+            {
+                int hash1 = 5381;
+                int hash2 = hash1;
+
+                for (int i = 0; i < str.Length && str[i] != '\0'; i += 2)
+                {
+                    hash1 = ((hash1 << 5) + hash1) ^ str[i];
+                    if (i == str.Length - 1 || str[i + 1] == '\0')
+                        break;
+                    hash2 = ((hash2 << 5) + hash2) ^ str[i + 1];
+                }
+
+                return hash1 + (hash2 * 1566083941);
+            }
         }
     }
 }

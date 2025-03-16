@@ -1,4 +1,5 @@
-﻿using RepositoryContract.Tasks;
+﻿using EntityDto.Tasks;
+using RepositoryContract.Tasks;
 
 namespace SqlTableRepository.Tasks
 {

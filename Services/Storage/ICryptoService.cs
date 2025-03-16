@@ -2,6 +2,7 @@
 {
     public interface ICryptoService
     {
-        public string GetMd5(string input);
+        string GetMd5(string input);
+        int GetStableHashCode(string? str);
     }
 }

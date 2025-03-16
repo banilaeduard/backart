@@ -10,4 +10,8 @@
     <PackageReference Include="System.Memory.Data" Version="9.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\EntityDto\EntityDto.csproj" />
+  </ItemGroup>
+
 </Project>

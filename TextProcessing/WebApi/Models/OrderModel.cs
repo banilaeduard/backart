@@ -3,7 +3,7 @@ using RepositoryContract.ProductCodes;
 
 namespace WebApi.Models
 {
-    public class OrderModel: ComandaVanzareEntry
+    public class OrderModel: OrderEntry
     {
         public int? Greutate { get; set; }
 

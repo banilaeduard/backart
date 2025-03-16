@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
-using RepositoryContract.Transport;
+using RepositoryContract.Transports;
 using WebApi.Models;
 
 namespace WebApi.Controllers
@@ -11,7 +11,6 @@ namespace WebApi.Controllers
     public class TransportController : WebApiController2
     {
         private readonly ITransportRepository transportRepository;
-        private ICommitedOrdersRepository commitedOrdersRepository;
         public TransportController(
            ILogger<UsersController> logger,
            IMapper mapper,
@@ -20,7 +19,6 @@ namespace WebApi.Controllers
            ) : base(logger, mapper)
         {
             this.transportRepository = transportRepository;
-            this.commitedOrdersRepository = commitedOrdersRepository;
         }
 
         [HttpGet]

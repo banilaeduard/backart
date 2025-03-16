@@ -1,22 +1,23 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using EntityDto;
+using EntityDto.ProductCodes;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.ProductCodes
 {
-    public class ProductStatsEntry : ITableEntity
+    public class ProductStatsEntry : ProductStats, ITableEntity, ITableEntryDto<ProductStatsEntry>
     {
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
-        public string PropertyName { get; set; }
-        public string PropertyValue { get; set; }
-        public string PropertyType { get; set; }
-        public string PropertyCategory { get; set; }
 
-        public ProductStatsEntry Shallowcopy()
+        public bool Equals(ProductStatsEntry? x, ProductStatsEntry? y)
         {
-            return (ProductStatsEntry)MemberwiseClone();
+            return base.Equals(x, y);
+        }
+
+        public int GetHashCode([DisallowNull] ProductStatsEntry obj)
+        {
+            return base.GetHashCode(obj);
         }
     }
 }

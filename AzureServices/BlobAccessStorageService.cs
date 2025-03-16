@@ -107,9 +107,10 @@ namespace AzureServices
         }
         public string LeaseId => internalClient.LeaseId;
 
-        public async Task Acquire(TimeSpan time)
+        public async Task<ILeaseClient> Acquire(TimeSpan time)
         {
             await internalClient.AcquireAsync(time);
+            return this;
         }
 
         public void Dispose()

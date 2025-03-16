@@ -14,7 +14,7 @@ namespace MailReader
     ///  - Volatile: State is kept in memory only and replicated.
     ///  - None: State is kept in memory only and not replicated.
     /// </remarks>
-    [StatePersistence(StatePersistence.Persisted)]
+    [StatePersistence(StatePersistence.None)]
     internal class MailReader : Actor, IMailReader
     {
         internal static string Source;

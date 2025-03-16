@@ -1,5 +1,6 @@
 ﻿namespace WebApi.Models
 {
+    using EntityDto.Tasks;
     using RepositoryContract.Tasks;
     using RepositoryContract.Tickets;
     using System;

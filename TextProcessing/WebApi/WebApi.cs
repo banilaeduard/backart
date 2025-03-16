@@ -36,12 +36,15 @@ using RepositoryContract;
 using AzureSerRepositoryContract.ProductCodesvices;
 using SqlTableRepository.CommitedOrders;
 using RepositoryContract.Report;
-using RepositoryContract.Transport;
+using RepositoryContract.Transports;
 using SqlTableRepository.Transport;
 using Dapper;
 using System.Data;
 using ServiceInterface.Storage;
 using ServiceImplementation;
+using AzureFabricServices;
+using AzureTableRepository;
+using ServiceInterface;
 
 namespace WebApi
 {
@@ -94,20 +97,14 @@ namespace WebApi
                                     .UseServiceFabricIntegration(listener, ServiceFabricIntegrationOptions.None)
                                     .UseUrls(url);
                         builder.Services.AddEndpointsApiExplorer();
-                        //builder.Services.AddSwaggerGen();
                         var app = builder.Build();
-
-                        //if (app.Environment.IsDevelopment())
-                        //{
-                        //app.UseSwagger();
-                        //app.UseSwaggerUI();
-                        //}
 
                          app.UseCors(x => x
                             .SetIsOriginAllowed(origin => true)
                             .AllowAnyMethod()
                             .AllowAnyHeader()
                             .AllowCredentials());
+
                         app.UseRouting();
                         app.UseAuthentication();
                         app.UseAuthorization();
@@ -118,10 +115,10 @@ namespace WebApi
                             ServiceEventSource.Current.ServiceMessage(serviceContext, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
                         }));
 
-                        //app.Services.GetRequiredService<IServiceScopeFactory>()
-                        //    .CreateScope().ServiceProvider
-                        //    .GetRequiredService<Initializer>()
-                        //    .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                        app.Services.GetRequiredService<IServiceScopeFactory>()
+                            .CreateScope().ServiceProvider
+                            .GetRequiredService<Initializer>()
+                            .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                         return app;
                     }), "bart")
@@ -142,10 +139,22 @@ namespace WebApi
 
             services.AddSingleton(new ConnectionSettings()
             {
-                ConnectionString = Environment.GetEnvironmentVariable("ConnectionString"),
-                ExternalConnectionString = Environment.GetEnvironmentVariable("external_sql_server"),
-                SqlQueryCache = Environment.GetEnvironmentVariable("path_to_sql"),
+                ConnectionString = Environment.GetEnvironmentVariable("ConnectionString")!,
+                ExternalConnectionString = Environment.GetEnvironmentVariable("external_sql_server")!,
+                SqlQueryCache = Environment.GetEnvironmentVariable("path_to_sql")!,
             });
+            services.AddSingleton<Initializer>();
+            services.AddSingleton<IMetadataService, FabricMetadataService>();
+            services.AddSingleton<ITaskRepository, TaskRepository>();
+            services.AddSingleton<ICryptoService, CryptoService>();
+            services.AddSingleton<ICacheManager<CommitedOrderEntry>, CacheManager<CommitedOrderEntry>>();
+            services.AddSingleton<ICacheManager<DataKeyLocationEntry>, CacheManager<DataKeyLocationEntry>>();
+            services.AddSingleton<ICacheManager<OrderEntry>, CacheManager<OrderEntry>>();
+            services.AddSingleton<ICacheManager<ProductCodeEntry>, CacheManager<ProductCodeEntry>>();
+            services.AddSingleton<ICacheManager<ProductStatsEntry>, CacheManager<ProductStatsEntry>>();
+            services.AddSingleton<ICacheManager<ProductCodeStatsEntry>, CacheManager<ProductCodeStatsEntry>>();
+            services.AddSingleton<ICacheManager<TicketEntity>, CacheManager<TicketEntity>>();
+            services.AddSingleton<ICacheManager<AttachmentEntry>, CacheManager<AttachmentEntry>>();
 
             services.AddScoped<SaSToken, SaSToken>();
             services.AddScoped<ReclamatiiReport, ReclamatiiReport>();
@@ -154,11 +163,7 @@ namespace WebApi
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
-            services.AddScoped<IMetadataService, BlobAccessStorageService>();
             services.AddScoped<IWorkflowTrigger, QueueService>();
-            //services.AddSingleton<Initializer>();
-            services.AddSingleton<ITaskRepository, TaskRepository>();
-            services.AddSingleton<ICryptoService, CryptoService>();
             services.AddScoped<IImportsRepository, OrdersImportsRepository>();
             services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
@@ -223,14 +228,14 @@ namespace WebApi
                 cfg.CreateMap<ProductCodeStatsModel, ProductCodeStatsEntry>();
                 cfg.CreateMap<ProductCodeStatsEntry, ProductCodeStatsModel>();
 
-                cfg.CreateMap<OrderModel, RepositoryContract.Orders.ComandaVanzareEntry>();
-                cfg.CreateMap<RepositoryContract.Orders.ComandaVanzareEntry, OrderModel>();
+                cfg.CreateMap<OrderModel, RepositoryContract.Orders.OrderEntry>();
+                cfg.CreateMap<RepositoryContract.Orders.OrderEntry, OrderModel>();
 
                 cfg.CreateMap<TransportEntry, TransportModel>();
                 cfg.CreateMap<TransportModel, TransportEntry>();
 
-                cfg.CreateMap<TransportItem, TransportItemModel>();
-                cfg.CreateMap<TransportItemModel, TransportItem>();
+                cfg.CreateMap<TransportItemEntry, TransportItemModel>();
+                cfg.CreateMap<TransportItemModel, TransportItemEntry>();
             });
             IMapper mapper = config.CreateMapper();
             services.AddSingleton(mapper);

@@ -1,19 +1,23 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using EntityDto;
+using EntityDto.Tickets;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Tickets
 {
-    public class AttachmentEntry : ITableEntity
+    public class AttachmentEntry : Attachment ,ITableEntity, ITableEntryDto<AttachmentEntry>
     {
-        public string Data { get; set; }
-        public string Title { get; set; }
-        public string ContentType { get; set; }
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public string RefPartition { get; set; }
-        public string RefKey { get; set; }
-        public string ContentId { get; set; }
-        public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
+
+        public bool Equals(AttachmentEntry? x, AttachmentEntry? y)
+        {
+            return base.Equals(x, y);
+        }
+
+        public int GetHashCode([DisallowNull] AttachmentEntry obj)
+        {
+            return base.GetHashCode(obj);
+        }
     }
 }

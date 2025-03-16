@@ -5,11 +5,14 @@
     <Parameter Name="MailExtrasExtractor_InstanceCount" DefaultValue="1" />
     <Parameter Name="WebApi_InstanceCount" DefaultValue="1" />
     <Parameter Name="PollerRecurringJobActorService_PartitionCount" DefaultValue="10" />
-    <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" DefaultValue="3" />
-    <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" DefaultValue="3" />
+    <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" DefaultValue="1" />
     <Parameter Name="MailReaderActorService_PartitionCount" DefaultValue="10" />
-    <Parameter Name="MailReaderActorService_MinReplicaSetSize" DefaultValue="3" />
-    <Parameter Name="MailReaderActorService_TargetReplicaSetSize" DefaultValue="3" />
+    <Parameter Name="MailReaderActorService_MinReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="MailReaderActorService_TargetReplicaSetSize" DefaultValue="1" />
+    <Parameter Name="MetadataActorService_PartitionCount" DefaultValue="10" />
+    <Parameter Name="MetadataActorService_MinReplicaSetSize" DefaultValue="3" />
+    <Parameter Name="MetadataActorService_TargetReplicaSetSize" DefaultValue="3" />
   </Parameters>
   <Services>
     <!-- The section below creates instances of service types, when an instance of this 
@@ -27,14 +30,19 @@
         <SingletonPartition />
       </StatelessService>
     </Service>
-    <Service Name="MailReaderActorService" GeneratedIdRef="68c006a0-c6ae-4aac-93d0-08be5ed2673e|Persisted">
+    <Service Name="MailReaderActorService" GeneratedIdRef="30d0a9f1-63d5-4697-8d7d-2190152a6c80|None">
       <StatefulService ServiceTypeName="MailReaderActorServiceType" TargetReplicaSetSize="[MailReaderActorService_TargetReplicaSetSize]" MinReplicaSetSize="[MailReaderActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[MailReaderActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
     </Service>
-    <Service Name="PollerRecurringJobActorService" GeneratedIdRef="d573a202-8575-49fc-a502-b4a39fab97a1|Persisted">
+    <Service Name="PollerRecurringJobActorService" GeneratedIdRef="41155992-6e4f-4bfb-9709-39294ed9790e|None">
       <StatefulService ServiceTypeName="PollerRecurringJobActorServiceType" TargetReplicaSetSize="[PollerRecurringJobActorService_TargetReplicaSetSize]" MinReplicaSetSize="[PollerRecurringJobActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[PollerRecurringJobActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+      </StatefulService>
+    </Service>
+    <Service Name="MetadataActorService" GeneratedIdRef="95a4a808-6c42-46af-acdf-fc02dd987f3a|Volatile">
+      <StatefulService ServiceTypeName="MetadataActorServiceType" TargetReplicaSetSize="[MetadataActorService_TargetReplicaSetSize]" MinReplicaSetSize="[MetadataActorService_MinReplicaSetSize]">
+        <UniformInt64Partition PartitionCount="[MetadataActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
     </Service>
   </Services>

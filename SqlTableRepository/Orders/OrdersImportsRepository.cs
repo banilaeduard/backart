@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using Dapper;
-using EntityDto;
+using EntityDto.CommitedOrders;
 using Microsoft.Data.SqlClient;
 using RepositoryContract.Imports;
 using ServiceInterface.Storage;
@@ -15,12 +15,12 @@ namespace SqlTableRepository.Orders
 
         private static MapperConfiguration config = new MapperConfiguration(cfg =>
         {
-            cfg.CreateMap<ComandaVanzare, ComandaVanzareEntry>();
-            cfg.CreateMap<ComandaVanzareEntry, ComandaVanzare>();
+            cfg.CreateMap<Order, ComandaVanzareEntry>();
+            cfg.CreateMap<ComandaVanzareEntry, Order>();
 
-            cfg.CreateMap<DispozitieLivrareEntry, DispozitieLivrare>()
+            cfg.CreateMap<DispozitieLivrareEntry, CommitedOrder>()
             .ForMember(t => t.NumarIntern, opt => opt.MapFrom(src => src.NumarIntern.ToString()));
-            cfg.CreateMap<DispozitieLivrare, DispozitieLivrareEntry>()
+            cfg.CreateMap<CommitedOrder, DispozitieLivrareEntry>()
             .ForMember(t => t.NumarIntern, opt => opt.MapFrom(src => int.Parse(src.NumarIntern)));
         });
 
@@ -30,7 +30,7 @@ namespace SqlTableRepository.Orders
             mapper = config.CreateMapper();
         }
 
-        public async Task<(IList<DispozitieLivrare> commited, IList<ComandaVanzare> orders)> GetImportCommitedOrders(DateTime? when = null, DateTime? when2 = null)
+        public async Task<(IList<CommitedOrder> commited, IList<Order> orders)> GetImportCommitedOrders(DateTime? when = null, DateTime? when2 = null)
         {
             var ro = when ?? new DateTime(2024, 9, 1);
             var ro2 = when2 ?? new DateTime(2024, 1, 1);
@@ -46,11 +46,11 @@ namespace SqlTableRepository.Orders
                 var items = await connection.QueryMultipleAsync($"{sqlCommited} ; {sqlOrders}", new { Date1 = ro, Date2 = ro2 });
                 var commited = items.Read<DispozitieLivrareEntry>();
                 var orders = items.Read<ComandaVanzareEntry>();
-                return (commited.Select(mapper.Map<DispozitieLivrare>).ToList(), orders.Select(mapper.Map<ComandaVanzare>).ToList());
+                return (commited.Select(mapper.Map<CommitedOrder>).ToList(), orders.Select(mapper.Map<Order>).ToList());
             }
         }
 
-        public async Task<IList<DispozitieLivrare>> GetImportCommited(DateTime? when = null)
+        public async Task<IList<CommitedOrder>> GetImportCommited(DateTime? when = null)
         {
             var ro = when ?? new DateTime(2024, 9, 1);
 
@@ -60,11 +60,11 @@ namespace SqlTableRepository.Orders
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
             {
                 var commited = await connection.QueryAsync<DispozitieLivrareEntry>($"{sqlCommited}", new { Date1 = ro });
-                return commited.Select(mapper.Map<DispozitieLivrare>).ToList();
+                return commited.Select(mapper.Map<CommitedOrder>).ToList();
             }
         }
 
-        public async Task<IList<ComandaVanzare>> GetImportOrders(DateTime? when = null)
+        public async Task<IList<Order>> GetImportOrders(DateTime? when = null)
         {
             var ro = when ?? new DateTime(2024, 9, 1);
 
@@ -74,7 +74,7 @@ namespace SqlTableRepository.Orders
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
             {
                 var orders = await connection.QueryAsync<ComandaVanzareEntry>($"{sqlOrders}", new { Date2 = ro });
-                return orders.Select(mapper.Map<ComandaVanzare>).ToList();
+                return orders.Select(mapper.Map<Order>).ToList();
             }
         }
 

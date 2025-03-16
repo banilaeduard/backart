@@ -1,41 +1,45 @@
 ﻿using AzureServices;
-using EntityDto;
-using Microsoft.Extensions.Logging;
+using EntityDto.CommitedOrders;
 using RepositoryContract.Orders;
+using ServiceInterface;
+using ServiceInterface.Storage;
 
 namespace AzureTableRepository.Orders
 {
     public class OrdersRepository : IOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(ComandaVanzareEntry).Name}";
-        static BlobAccessStorageService blobAccessStorageService = new();
+        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(OrderEntry).Name}";
+        IMetadataService metadataService;
+        ICacheManager<OrderEntry> CacheManager;
         TableStorageService tableStorageService;
-        public OrdersRepository()
+        public OrdersRepository(ICacheManager<OrderEntry> CacheManager,IMetadataService metadataService)
         {
             tableStorageService = new TableStorageService();
+            this.metadataService = metadataService;
+            this.CacheManager = CacheManager;
         }
-        public async Task<List<ComandaVanzareEntry>> GetOrders(string? table = null)
+        public async Task<List<OrderEntry>> GetOrders(string? table = null)
         {
-            table = table ?? typeof(ComandaVanzareEntry).Name;
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => t.Timestamp > from).ToList(), table)).ToList();
+            table = table ?? typeof(OrderEntry).Name;
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<OrderEntry>(t => t.Timestamp > from).ToList(), table)).ToList();
         }
 
-        public async Task<List<ComandaVanzareEntry>> GetOrders(Func<ComandaVanzareEntry, bool> expr, string? table = null)
+        public async Task<List<OrderEntry>> GetOrders(Func<OrderEntry, bool> expr, string? table = null)
         {
-            table = table ?? typeof(ComandaVanzareEntry).Name;
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<ComandaVanzareEntry>(t => expr(t) && t.Timestamp > from).ToList(), table)).ToList();
+            table = table ?? typeof(OrderEntry).Name;
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<OrderEntry>(t => expr(t) && t.Timestamp > from).ToList(), table)).ToList();
         }
 
-        public async Task ImportOrders(IList<ComandaVanzare> items, DateTime when)
+        public async Task ImportOrders(IList<Order> items, DateTime when)
         {
             if (items.Count == 0) return;
-            var newEntries = items.Select(ComandaVanzareEntry.create).GroupBy(ComandaVanzareEntry.PKey).ToDictionary(t => t.Key, MergeByHash);
+            var newEntries = items.Select(OrderEntry.create).GroupBy(OrderEntry.PKey).ToDictionary(t => t.Key, MergeByHash);
 
             foreach (var item in newEntries)
             {
-                var oldEntries = tableStorageService.Query<ComandaVanzareEntry>(t => t.PartitionKey == item.Key).ToList();
-                var comparer = ComandaVanzareEntry.GetEqualityComparer();
-                var comparerQuantity = ComandaVanzareEntry.GetEqualityComparer(true);
+                var oldEntries = tableStorageService.Query<OrderEntry>(t => t.PartitionKey == item.Key).ToList();
+                var comparer = OrderEntry.GetEqualityComparer();
+                var comparerQuantity = OrderEntry.GetEqualityComparer(true);
 
                 var currentEntries = newEntries[item.Key];
 
@@ -59,21 +63,21 @@ namespace AzureTableRepository.Orders
                 }
 
                 await tableStorageService.PrepareUpsert(exceptDelete.Concat(intersectOld.Values))
-                                         .ExecuteBatch(ComandaVanzareEntry.GetProgressTableName());
+                                         .ExecuteBatch(OrderEntry.GetProgressTableName());
 
                 await tableStorageService.PrepareUpsert(intersectNew.Values)
                                         .Concat(tableStorageService.PrepareInsert(exceptAdd))
                                         .Concat(tableStorageService.PrepareDelete(exceptDelete))
                                         .ExecuteBatch();
-                await CacheManager.Bust(typeof(ComandaVanzareEntry).Name, true, null);
-                CacheManager.InvalidateOurs(typeof(ComandaVanzareEntry).Name);
+                await CacheManager.Bust(typeof(OrderEntry).Name, true, null);
+                CacheManager.InvalidateOurs(typeof(OrderEntry).Name);
             }
-            await blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
+            await metadataService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
-        private IEnumerable<ComandaVanzareEntry> MergeByHash(IEnumerable<ComandaVanzareEntry> list)
+        private IEnumerable<OrderEntry> MergeByHash(IEnumerable<OrderEntry> list)
         {
-            var comparer = ComandaVanzareEntry.GetEqualityComparer();
+            var comparer = OrderEntry.GetEqualityComparer();
             foreach (var items in list.GroupBy(comparer.GetHashCode))
             {
                 var sample = items.ElementAt(0);
@@ -85,7 +89,7 @@ namespace AzureTableRepository.Orders
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var metadata = await blobAccessStorageService.GetMetadata(syncName);
+            var metadata = await metadataService.GetMetadata(syncName);
 
             if (metadata.ContainsKey("data_sync"))
             {

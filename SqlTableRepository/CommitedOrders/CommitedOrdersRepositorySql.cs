@@ -1,6 +1,6 @@
 ﻿using AzureServices;
 using Dapper;
-using EntityDto;
+using EntityDto.CommitedOrders;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using RepositoryContract;
@@ -13,7 +13,7 @@ namespace SqlTableRepository.CommitedOrders
 {
     public class CommitedOrdersRepositorySql : ICommitedOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${nameof(DispozitieLivrareEntry)}";
+        static readonly string syncName = $"sync_control/LastSyncDate_${nameof(CommitedOrderEntry)}";
 
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;
@@ -26,32 +26,32 @@ namespace SqlTableRepository.CommitedOrders
             this.ConnectionSettings = ConnectionSettings;
         }
 
-        public Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items)
+        public Task DeleteCommitedOrders(List<CommitedOrderEntry> items)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(int[] ids)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrders(int[] ids)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate((await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) })))];
+                return [.. Aggregate((await connection.QueryAsync<CommitedOrderEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) })))];
             }
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrder(int id)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrder(int id)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("dispOrder.sql"), new { NumarIntern = id }))];
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(TryAccess("dispOrder.sql"), new { NumarIntern = id }))];
             }
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(DateTime? from)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrders(DateTime? from)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<DispozitieLivrareEntry>(TryAccess("disp.sql"), new { Date1 = from ?? DateTime.Now.AddMonths(-2) }))];
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(TryAccess("disp.sql"), new { Date1 = from ?? DateTime.Now.AddMonths(-2) }))];
             }
         }
 
@@ -67,12 +67,12 @@ namespace SqlTableRepository.CommitedOrders
             return null;
         }
 
-        public Task ImportCommitedOrders(IList<DispozitieLivrare> items, DateTime when)
+        public Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when)
         {
             throw new NotImplementedException();
         }
 
-        public Task InsertCommitedOrder(DispozitieLivrareEntry item)
+        public Task InsertCommitedOrder(CommitedOrderEntry item)
         {
             throw new NotImplementedException();
         }
@@ -93,10 +93,10 @@ namespace SqlTableRepository.CommitedOrders
             }
         }
 
-        private IEnumerable<DispozitieLivrareEntry> Aggregate(IEnumerable<DispozitieLivrareEntry> items)
+        private IEnumerable<CommitedOrderEntry> Aggregate(IEnumerable<CommitedOrderEntry> items)
         {
             foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
-                yield return DispozitieLivrareEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate), group.Sum(x => x.Greutate ?? 0) * group.Sum(t => t.Cantitate));
+                yield return CommitedOrderEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate), group.Sum(x => x.Greutate ?? 0) * group.Sum(t => t.Cantitate));
         }
     }
 }

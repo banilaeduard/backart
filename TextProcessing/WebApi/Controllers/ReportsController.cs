@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using EntityDto;
+using EntityDto.CommitedOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.Orders;
@@ -29,13 +29,13 @@ namespace WebApi.Controllers
         [HttpPost("MergeDispozitii")]
         public async Task<IActionResult> MergeDispozitii()
         {
-            List<DispozitieLivrare> items = new();
+            List<CommitedOrder> items = new();
 
             foreach (var file in Request.Form.Files)
             {
                 using (var stream = file.OpenReadStream())
                 {
-                    var current = WorkbookReader.ReadWorkBook<DispozitieLivrare>(stream, 4);
+                    var current = WorkbookReader.ReadWorkBook<CommitedOrder>(stream, 4);
                     items.AddRange(current);
                 }
             }
@@ -52,9 +52,9 @@ namespace WebApi.Controllers
         [HttpPost("orderColete/{type}")]
         public async Task<IActionResult> OrderColete(int type, DispozitieModel[] orders)
         {
-            List<DispozitieLivrare> items = new();
+            List<CommitedOrder> items = new();
 
-            List<DispozitieLivrare> dItems = [.. (orders.Select(x => new DispozitieLivrare {
+            List<CommitedOrder> dItems = [.. (orders.Select(x => new CommitedOrder {
                 CodLocatie = x.CodLocatie,
                 Cantitate = x.Cantitate,
                 CodProdus = x.CodProdus,
@@ -64,7 +64,7 @@ namespace WebApi.Controllers
 
             if (!dItems.Any())
             {
-                dItems.AddRange((await ordersRepository.GetOrders()).Select(t => new DispozitieLivrare()
+                dItems.AddRange((await ordersRepository.GetOrders()).Select(t => new CommitedOrder()
                 {
                     Cantitate = t.Cantitate,
                     CodLocatie = t.CodLocatie,
@@ -84,7 +84,7 @@ namespace WebApi.Controllers
                         if (codes?.Count > 0)
                             foreach (var code in codes)
                             {
-                                items.Add(new DispozitieLivrare()
+                                items.Add(new CommitedOrder()
                                 {
                                     CodProdus = code.Code,
                                     Cantitate = disp.Cantitate,
@@ -105,13 +105,13 @@ namespace WebApi.Controllers
         [HttpPost("MergeDispozitiiColete")]
         public async Task<IActionResult> MergeDispozitiiColete()
         {
-            List<DispozitieLivrare> items = new();
+            List<CommitedOrder> items = new();
 
             foreach (var file in Request.Form.Files)
             {
                 using (var stream = file.OpenReadStream())
                 {
-                    var dItems = WorkbookReader.ReadWorkBook<DispozitieLivrare>(stream, 4);
+                    var dItems = WorkbookReader.ReadWorkBook<CommitedOrder>(stream, 4);
 
                     foreach (var structure in dItems.GroupBy(t => t.CodProdus))
                     {
@@ -122,7 +122,7 @@ namespace WebApi.Controllers
                             if (codes.Count() > 0)
                                 foreach (var code2 in codes)
                                 {
-                                    items.Add(new DispozitieLivrare()
+                                    items.Add(new CommitedOrder()
                                     {
                                         CodProdus = code2.Code,
                                         Cantitate = disp.Cantitate,

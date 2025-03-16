@@ -32,7 +32,7 @@ namespace WebApi.Models
 
             taskModel.ExternalReferenceEntries = ExternalMailReferences?.SelectMany(t => t.Tickets).Select(t => new ExternalReferenceEntry()
             {
-                Id = t.Id,
+                Id = t.Id ?? 0,
                 ExternalGroupId = t.ThreadId,
                 PartitionKey = t.PartitionKey,
                 RowKey = t.RowKey,

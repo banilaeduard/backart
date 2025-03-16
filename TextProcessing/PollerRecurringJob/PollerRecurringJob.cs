@@ -1,11 +1,17 @@
+using AzureFabricServices;
+using AzureTableRepository;
 using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.Orders;
+using AzureTableRepository.Tickets;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using PollerRecurringJob.Interfaces;
 using PollerRecurringJob.JobHandlers;
+using RepositoryContract.CommitedOrders;
+using RepositoryContract.Orders;
+using ServiceInterface.Storage;
 
 namespace PollerRecurringJob
 {
@@ -17,8 +23,8 @@ namespace PollerRecurringJob
     ///  - Volatile: State is kept in memory only and replicated.
     ///  - None: State is kept in memory only and not replicated.
     /// </remarks>
-    [StatePersistence(StatePersistence.Persisted)]
-    internal class PollerRecurringJob : Actor, IPollerRecurringJob, IActor1, IRemindable
+    [StatePersistence(StatePersistence.None)]
+    internal class PollerRecurringJob : Actor, IPollerRecurringJob, IRemindable
     {
         internal ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
             {
@@ -122,8 +128,10 @@ namespace PollerRecurringJob
         protected override async Task OnActivateAsync()
         {
             ActorEventSource.Current.ActorMessage(this, "Polling Actor activated.");
-            var commitedOrdersRepository = new CommitedOrdersRepository();
-            var ordersRepository = new OrdersRepository();
+            IMetadataService metadataService = new FabricMetadataService();
+
+            var commitedOrdersRepository = new CommitedOrdersRepository(new CacheManager<CommitedOrderEntry>(metadataService), metadataService);
+            var ordersRepository = new OrdersRepository(new CacheManager<OrderEntry>(metadataService), metadataService);
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
         }

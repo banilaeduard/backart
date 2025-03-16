@@ -1,5 +1,4 @@
 ﻿using AzureServices;
-using Microsoft.Extensions.Logging;
 using RepositoryContract.MailSettings;
 
 namespace AzureTableRepository.MailSettings

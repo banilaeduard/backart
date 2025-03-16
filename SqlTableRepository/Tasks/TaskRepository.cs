@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using EntityDto.Tasks;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
 using RepositoryContract.Tasks;
@@ -50,7 +51,7 @@ namespace SqlTableRepository.Tasks
             var count = task.ExternalReferenceEntries?.Count();
 
             TaskEntry taskEntry;
-            TaskAction taskAction;
+            TaskActionEntry taskAction;
             List<ExternalReferenceEntry>? externalRef = null;
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
@@ -65,7 +66,7 @@ namespace SqlTableRepository.Tasks
                                           TaskDate = task.TaskDate.ToUniversalTime(),
                                       });
                 taskEntry = result.Read<TaskEntry>().First();
-                taskAction = result.Read<TaskAction>().First();
+                taskAction = result.Read<TaskActionEntry>().First();
 
                 if (count > 0)
                 {
@@ -89,7 +90,7 @@ namespace SqlTableRepository.Tasks
         public async Task<TaskEntry> UpdateTask(TaskEntry task)
         {
             dynamic taskResult;
-            TaskAction taskAction = new();
+            TaskActionEntry taskAction = new();
             List<ExternalReferenceEntry>? externalRef = null;
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
@@ -99,7 +100,7 @@ namespace SqlTableRepository.Tasks
                     WHERE Id = @TaskId";
                 taskResult = await connection.QueryFirstAsync<dynamic>(updateTask, new { TaskId = task.Id, task.Name, task.Details, task.IsClosed, TaskDate = task.TaskDate.ToUniversalTime() });
 
-                var newExternal = task.ExternalReferenceEntries.Where(e => !e.Id.HasValue || e.Id < 1).ToList();
+                var newExternal = task.ExternalReferenceEntries.Where(e => e.Id < 1).ToList();
                 if (taskResult.Details != taskResult.old_details || taskResult.Name != taskResult.old_name
                     || taskResult.IsClosed != taskResult.old_isclosed || taskResult.TaskDate != taskResult.old_taskdate || newExternal.Count > 0)
                 {
@@ -116,7 +117,7 @@ namespace SqlTableRepository.Tasks
                         desc = string.IsNullOrEmpty(desc?.Replace(";", "")) ? "EXTERNAL_ACTION" : $"EXTERNAL;{desc}";
                     }
 
-                    taskAction = await connection.QueryFirstAsync<TaskAction>($"{insertAction};", new { TaskId = task.Id, Description = desc, External = externalAction != null, Value = taskResult.IsClosed ? -1 : 1 });
+                    taskAction = await connection.QueryFirstAsync<TaskActionEntry>($"{insertAction};", new { TaskId = task.Id, Description = desc, External = externalAction != null, Value = taskResult.IsClosed ? -1 : 1 });
                     if (newExternal.Count > 0)
                     {
                         DynamicParameters dParam = new();
@@ -186,7 +187,7 @@ namespace SqlTableRepository.Tasks
             if (!_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
             {
                 IList<TaskEntry> tasks;
-                IList<TaskAction> actions;
+                IList<TaskActionEntry> actions;
                 IList<ExternalReferenceEntry> externalRef;
                 using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
                 {
@@ -195,7 +196,7 @@ namespace SqlTableRepository.Tasks
                     var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId = TaskId ?? -1 });
 
                     tasks = [.. multi.Read<TaskEntry>()];
-                    actions = [.. multi.Read<TaskAction>()];
+                    actions = [.. multi.Read<TaskActionEntry>()];
 
                     externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE {(TaskId.HasValue ? "ta.TaskId = @TaskId" : "@TaskId = @TaskId")}",
                         TaskSql.ExternalRefs.mapper,

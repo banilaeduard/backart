@@ -1,26 +1,28 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using EntityDto;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Tasks
 {
-    public class TaskEntry
+    public class TaskEntry : EntityDto.Tasks.TaskWork, ITableEntryDto<TaskEntry>
     {
-        public int Id { get; set; }
-
-        [ColumnAttribute("Name")]
-        public string Name { get; set; }
-        public string LocationCode { get; set; }
-        public string Details { get; set; }
-        public bool IsClosed { get; set; }
-        public DateTime Created { get; set; }
-        public DateTime TaskDate { get; set; }
-        public List<TaskAction> Actions { get; set; }
+        public List<TaskActionEntry> Actions { get; set; }
         public List<ExternalReferenceEntry> ExternalReferenceEntries { get; set; }
 
-        public static TaskEntry From(TaskEntry entry, IList<TaskAction> actions, IList<ExternalReferenceEntry>? externalReferenceEntries)
+        public static TaskEntry From(TaskEntry entry, IList<TaskActionEntry> actions, IList<ExternalReferenceEntry>? externalReferenceEntries)
         {
             entry.Actions = [.. actions.Where(a => a.TaskId == entry.Id)];
             entry.ExternalReferenceEntries = [.. (externalReferenceEntries ?? []).Where(e => e.TaskId == entry.Id)];
             return entry;
+        }
+
+        public bool Equals(TaskEntry? x, TaskEntry? y)
+        {
+            return base.Equals(x, y);
+        }
+
+        public int GetHashCode([DisallowNull] TaskEntry obj)
+        {
+            return base.GetHashCode(obj);
         }
     }
 }

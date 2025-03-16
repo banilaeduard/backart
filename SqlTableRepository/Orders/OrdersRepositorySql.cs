@@ -1,6 +1,6 @@
 ﻿using AzureServices;
 using Dapper;
-using EntityDto;
+using EntityDto.CommitedOrders;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using RepositoryContract;
@@ -12,7 +12,7 @@ namespace SqlTableRepository.Orders
 {
     public class OrdersRepositorySql : IOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(ComandaVanzareEntry).Name}";
+        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(OrderEntry).Name}";
 
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;
@@ -37,23 +37,23 @@ namespace SqlTableRepository.Orders
             return null;
         }
 
-        public async Task<List<ComandaVanzareEntry>> GetOrders(Func<ComandaVanzareEntry, bool> expr, string? table = null)
+        public async Task<List<OrderEntry>> GetOrders(Func<OrderEntry, bool> expr, string? table = null)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. (await connection.QueryAsync<ComandaVanzareEntry>(TryAccess("orders.sql"), new { Date2 = DateTime.Now.AddMonths(-6) })).Where(expr)];
+                return [.. (await connection.QueryAsync<OrderEntry>(TryAccess("orders.sql"), new { Date2 = DateTime.Now.AddMonths(-6) })).Where(expr)];
             }
         }
 
-        public async Task<List<ComandaVanzareEntry>> GetOrders(string? table = null)
+        public async Task<List<OrderEntry>> GetOrders(string? table = null)
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. await connection.QueryAsync<ComandaVanzareEntry>(TryAccess("orders.sql"), new { Date2 = DateTime.Now.AddMonths(-6) })];
+                return [.. await connection.QueryAsync<OrderEntry>(TryAccess("orders.sql"), new { Date2 = DateTime.Now.AddMonths(-6) })];
             }
         }
 
-        public async Task ImportOrders(IList<ComandaVanzare> items, DateTime when)
+        public async Task ImportOrders(IList<Order> items, DateTime when)
         {
             throw new NotImplementedException();
         }

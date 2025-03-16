@@ -1,9 +1,8 @@
 ﻿namespace ServiceInterface.Storage
 {
-    public interface ILeaseClient
+    public interface ILeaseClient: IDisposable
     {
         string LeaseId {  get; }
-        Task Acquire(TimeSpan time);
-        Task Release();
+        Task<ILeaseClient> Acquire(TimeSpan time);
     }
 }

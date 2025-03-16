@@ -1,5 +1,7 @@
 using System.Text;
+using AzureFabricServices;
 using AzureServices;
+using AzureTableRepository;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.MailSettings;
 using AzureTableRepository.Tickets;
@@ -37,7 +39,10 @@ namespace YahooTFeeder
             CancellationToken cancellationToken)
         {
             var mailSettings = new MailSettingsRepository();
-            var ticketEntryRepository = new TicketEntryRepository();
+            IMetadataService metadataService = new FabricMetadataService();
+            var ticketEntryRepository = new TicketEntryRepository(
+                new CacheManager<TicketEntity>(metadataService), 
+                new CacheManager<AttachmentEntry>(metadataService));
             IList<TicketEntity> tickets = null;
             IList<AttachmentEntry> attachments = null;
             Dictionary<string, List<string>> folderRecipients = null;
@@ -90,7 +95,9 @@ namespace YahooTFeeder
         internal static async Task ReadMails(ImapClient client, Dictionary<string, List<string>> folderRecipients, int daysBefore, CancellationToken cancellationToken)
         {
             var tableStorageService = new TableStorageService();
-            var ticketEntryRepository = new TicketEntryRepository();
+            IMetadataService metadataService = new FabricMetadataService();
+            var ticketEntryRepository = new TicketEntryRepository(new CacheManager<TicketEntity>(metadataService),
+                new CacheManager<AttachmentEntry>(metadataService));
 
             foreach (var (folderName, recipientsList) in folderRecipients)
             {
@@ -137,7 +144,7 @@ namespace YahooTFeeder
                                 | MessageSummaryItems.EmailId
                                 | MessageSummaryItems.UniqueId))
                             {
-                                if (await ticketEntryRepository.GetIfExists<TicketEntity>(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null)
+                                if (await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null)
                                     continue;
 
                                 toProcess.Add(messageSummary);
@@ -188,7 +195,9 @@ namespace YahooTFeeder
             TableEntityPK[] uids)
         {
             var blob = new BlobAccessStorageService();
-            var ticketEntryRepository = new TicketEntryRepository();
+            IMetadataService metadataService = new FabricMetadataService();
+            var ticketEntryRepository = new TicketEntryRepository(new CacheManager<TicketEntity>(metadataService),
+                new CacheManager<AttachmentEntry>(metadataService));
             List<TableEntityPK> result = new();
             try
             {
@@ -315,7 +324,9 @@ namespace YahooTFeeder
             IList<TicketEntity> tickets,
             MoveToMessage<TableEntityPK>[] messages)
         {
-            var ticketEntryRepository = new TicketEntryRepository();
+            IMetadataService metadataService = new FabricMetadataService();
+            var ticketEntryRepository = new TicketEntryRepository(new CacheManager<TicketEntity>(metadataService),
+                new CacheManager<AttachmentEntry>(metadataService));
 
             var allFolders = mailSettingEntries.SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries))
                 .Distinct()
@@ -368,7 +379,8 @@ namespace YahooTFeeder
         private static async Task AddComplaint(IList<IMessageSummary> messages, ITicketEntryRepository ticketEntryRepository, IMailFolder folder)
         {
             BlobAccessStorageService storageService = new();
-            DataKeyLocationRepository locationRepository = new();
+            IMetadataService metadataService = new FabricMetadataService();
+            DataKeyLocationRepository locationRepository = new(new CacheManager<DataKeyLocationEntry>(metadataService));
             messages = await folder.FetchAsync([.. messages.Select(t => t.UniqueId)],
                          MessageSummaryItems.UniqueId
                                         | MessageSummaryItems.InternalDate
@@ -455,7 +467,6 @@ namespace YahooTFeeder
                     Locations = string.Join(";", []),
                     CreatedDate = message.Date.Date.ToUniversalTime(),
                     NrComanda = "",
-                    TicketSource = "Mail",
                     PartitionKey = GetPartitionKey(message),
                     RowKey = GetRowKey(message),
                     InReplyTo = message.Envelope.InReplyTo,
@@ -465,7 +476,6 @@ namespace YahooTFeeder
                     Description = body,
                     ThreadId = message.ThreadId + "_" + message.UniqueId.Validity,
                     EmailId = message.EmailId,
-                    ContentId = contentId,
                     Uid = Convert.ToInt32(message.UniqueId.Id),
                     Validity = Convert.ToInt32(message.UniqueId.Validity),
                     OriginalBodyPath = fname,
@@ -505,7 +515,7 @@ namespace YahooTFeeder
         private static string GetRowKey(IMessageSummary id) => id.UniqueId.Id.ToString();
         private static void LogError(Exception ex)
         {
-            logger.ActorMessage(actor,"{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
+            logger.ActorMessage(actor, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
         }
         private static IEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, CancellationToken cancellationToken)
         {

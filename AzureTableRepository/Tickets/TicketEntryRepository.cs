@@ -1,53 +1,50 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
-using RepositoryContract;
 using RepositoryContract.Tickets;
+using ServiceInterface;
 
 namespace AzureTableRepository.Tickets
 {
     public class TicketEntryRepository : ITicketEntryRepository
     {
         TableStorageService tableStorageService;
+        ICacheManager<TicketEntity> CacheManagerTicket;
+        ICacheManager<AttachmentEntry> CacheManagerAttachment;
 
-        public TicketEntryRepository()
+        public TicketEntryRepository(ICacheManager<TicketEntity> CacheManagerTicket, ICacheManager<AttachmentEntry> CacheManagerAttachment)
         {
             tableStorageService = new TableStorageService();
-        }
-
-        public async Task Delete<T>(string partitionKey, string rowKey) where T : class, ITableEntity
-        {
-            await tableStorageService.Delete(partitionKey, rowKey, typeof(T).Name);
-            await CacheManager.Bust(typeof(T).Name, true, null);
-            CacheManager.RemoveFromCache(typeof(T).Name, [TableEntityPK.From(partitionKey, rowKey)]);
+            this.CacheManagerTicket = CacheManagerTicket;
+            this.CacheManagerAttachment = CacheManagerAttachment;
         }
 
         public async Task<IList<TicketEntity>> GetAll()
         {
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList())).Where(t => !t.IsDeleted).ToList();
+            return (await CacheManagerTicket.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from).ToList())).Where(t => !t.IsDeleted).ToList();
         }
 
         public async Task Save(AttachmentEntry entry)
         {
             var from = DateTimeOffset.Now;
             await tableStorageService.Upsert(entry);
-            await CacheManager.Bust(typeof(AttachmentEntry).Name, false, from);
-            CacheManager.UpsertCache(typeof(AttachmentEntry).Name, [entry]);
+            await CacheManagerAttachment.Bust(typeof(AttachmentEntry).Name, false, from);
+            CacheManagerAttachment.UpsertCache(typeof(AttachmentEntry).Name, [entry]);
         }
 
         public async Task Save(TicketEntity[] entries)
         {
             var from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
-            await CacheManager.Bust(typeof(TicketEntity).Name, false, from);
-            CacheManager.UpsertCache(typeof(TicketEntity).Name, entries);
+            await CacheManagerTicket.Bust(typeof(TicketEntity).Name, false, from);
+            CacheManagerTicket.UpsertCache(typeof(TicketEntity).Name, entries);
         }
 
-        public async Task<T?> GetIfExists<T>(string partitionKey, string rowKey) where T : class, ITableEntity
+        public async Task<TicketEntity> GetTicket(string partitionKey, string rowKey, string tableName = null)
         {
-            var tableName = typeof(T).Name;
+            tableName = tableName ?? nameof(TicketEntity);
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             await tableClient.CreateIfNotExistsAsync();
-            var resp = await tableClient.GetEntityIfExistsAsync<T>(partitionKey, rowKey);
+            var resp = await tableClient.GetEntityIfExistsAsync<TicketEntity>(partitionKey, rowKey);
             return resp.HasValue ? resp.Value! : null;
         }
 
@@ -55,11 +52,13 @@ namespace AzureTableRepository.Tickets
         {
             if (string.IsNullOrEmpty(partitionKey))
             {
-                return (await CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.Timestamp > from).ToList())).ToList();
+                return (await CacheManagerAttachment.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.Timestamp > from).ToList()))
+                    .Select(x => x.Shallowcopy<AttachmentEntry>()).ToList();
             }
             else
             {
-                return (await CacheManager.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.PartitionKey == partitionKey).ToList(), nameof(AttachmentEntry) + $"_{partitionKey}")).ToList();
+                return (await CacheManagerAttachment.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.PartitionKey == partitionKey).ToList(), nameof(AttachmentEntry) + $"_{partitionKey}"))
+                    .Select(x => x.Shallowcopy<AttachmentEntry>()).ToList();
             }
         }
     }

@@ -1,5 +1,4 @@
-﻿using Azure.Storage.Blobs.Models;
-using Azure.Storage.Files.Shares;
+﻿using Azure.Storage.Files.Shares;
 using ServiceInterface.Storage;
 
 namespace AzureServices

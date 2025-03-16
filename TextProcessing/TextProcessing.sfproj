@@ -38,6 +38,7 @@
   <ItemGroup>
     <ProjectReference Include="MailExtrasExtractor\MailExtrasExtractor.csproj" />
     <ProjectReference Include="MailReader\MailReader.csproj" />
+    <ProjectReference Include="MetadataActor\MetadataActor.csproj" />
     <ProjectReference Include="PollerRecurringJob\PollerRecurringJob.csproj" />
     <ProjectReference Include="WebApi\WebApi.csproj">
       <ServiceLaunchUrl>https://localhost:{ServicePort}/swagger</ServiceLaunchUrl>

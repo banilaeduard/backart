@@ -1,6 +1,5 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
-using AzureTableRepository;
 
 namespace RepositoryContract.Report
 {
@@ -13,30 +12,28 @@ namespace RepositoryContract.Report
             tableStorageService = new TableStorageService();
         }
 
-        public async Task<T> AddEntry<T>(T entity, string tableName) where T : class, ITableEntity
+        public async Task<LocationMapEntry> AddEntry(LocationMapEntry entity, string tableName)
         {
             await tableStorageService.Insert(entity, tableName);
-            await CacheManager.Bust(tableName, true, null);
             return entity;
         }
 
-        public async Task<List<LocationMap>> GetLocationMapPathEntry(string partitionKey, Func<LocationMap, bool> pred)
+        public async Task<List<LocationMapEntry>> GetLocationMapPathEntry(string partitionKey, Func<LocationMapEntry, bool> pred)
         {
-            return tableStorageService.Query<LocationMap>(t => t.PartitionKey == partitionKey).Where(pred).ToList();
+            return tableStorageService.Query<LocationMapEntry>(t => t.PartitionKey == partitionKey).Where(pred).ToList();
         }
 
         public async Task<List<ReportEntry>> GetReportEntry(string reportName)
         {
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<ReportEntry>(t => t.Timestamp > from).ToList()))
-                    .Where(x => x.PartitionKey == reportName).OrderBy(x => x.Order).ToList();
+            return tableStorageService.Query<ReportEntry>(t => true).ToList();
         }
 
-        public async Task<ReportTemplate> GetReportTemplate(string codLocatie, string reportName)
+        public async Task<ReportTemplateEntry> GetReportTemplate(string codLocatie, string reportName)
         {
-            var tableName = typeof(ReportTemplate).Name;
+            var tableName = typeof(ReportTemplateEntry).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
-            var resp = tableClient.GetEntityIfExists<ReportTemplate>(codLocatie, reportName);
+            var resp = tableClient.GetEntityIfExists<ReportTemplateEntry>(codLocatie, reportName);
             return resp.HasValue ? resp.Value! : null;
         }
     }

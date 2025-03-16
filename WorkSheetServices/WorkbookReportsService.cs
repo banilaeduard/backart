@@ -1,14 +1,14 @@
 ﻿using ClosedXML.Excel;
-using EntityDto;
+using EntityDto.CommitedOrders;
 
 namespace WorkSheetServices
 {
     public static class WorkbookReportsService
     {
-        public static byte[] GenerateReport(List<DispozitieLivrare> dispozitii,
-            Func<DispozitieLivrare, string> keyResolver,
-            Func<DispozitieLivrare, string> grouping1,
-            Func<DispozitieLivrare, string> grouping2,
+        public static byte[] GenerateReport(List<CommitedOrder> dispozitii,
+            Func<CommitedOrder, string> keyResolver,
+            Func<CommitedOrder, string> grouping1,
+            Func<CommitedOrder, string> grouping2,
             string pageOrientation = "landscape")
         {
             using (var ms = new MemoryStream())

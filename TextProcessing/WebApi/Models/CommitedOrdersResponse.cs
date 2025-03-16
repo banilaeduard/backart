@@ -8,7 +8,7 @@ namespace WebApi.Models
 {
     public class CommitedOrdersResponse
     {
-        public List<CommitedOrderEntry> Entry { get; set; }
+        public List<CommitedOrderModel> Entry { get; set; }
         public List<TicketSeriesModel> Tickets { get; set; }
         public List<TaskModel> Tasks { get; set; }
 
@@ -25,7 +25,7 @@ namespace WebApi.Models
         public string StatusName { get; set; }
         public bool HasReports { get; set; }
 
-        public static IEnumerable<CommitedOrdersResponse> From(IList<DispozitieLivrareEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
+        public static IEnumerable<CommitedOrdersResponse> From(IList<RepositoryContract.CommitedOrders.CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
             IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
         {
             var externalRefs = tasks.SelectMany(t => t.ExternalReferenceEntries).DistinctBy(t => new { t.PartitionKey, t.RowKey }).ToList();
@@ -55,7 +55,7 @@ namespace WebApi.Models
 
                 var response = new CommitedOrdersResponse()
                 {
-                    Entry = group.Select(t => CommitedOrderEntry.create(t, t.Cantitate, int.Parse(weights.FirstOrDefault(w =>
+                    Entry = group.Select(t => CommitedOrderModel.create(t, t.Cantitate, int.Parse(weights.FirstOrDefault(w =>
                     {
                         var pw = productLinkWeights.FirstOrDefault(x => x.PartitionKey == t.CodProdus);
                         return w.RowKey == pw?.StatsRowKey && w.PartitionKey == pw?.StatsPartitionKey;

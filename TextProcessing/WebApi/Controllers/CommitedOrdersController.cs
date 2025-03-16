@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using AzureTableRepository.CommitedOrders;
-using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Actors.Client;
@@ -14,6 +13,9 @@ using RepositoryContract.Tickets;
 using WebApi.Models;
 using WorkSheetServices;
 using System.Globalization;
+using EntityDto.CommitedOrders;
+using ServiceInterface.Storage;
+using ServiceInterface;
 
 namespace WebApi.Controllers
 {
@@ -27,6 +29,8 @@ namespace WebApi.Controllers
         private IDataKeyLocationRepository keyLocationRepository;
         private IProductCodeRepository productCodeRepository;
         private ITaskRepository taskRepository;
+        ICacheManager<CommitedOrderEntry> cacheManager;
+        IMetadataService metadataService;
 
         public CommitedOrdersController(
             ILogger<CommitedOrdersController> logger,
@@ -35,6 +39,8 @@ namespace WebApi.Controllers
             IDataKeyLocationRepository keyLocationRepository,
             IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
+            ICacheManager<CommitedOrderEntry> cacheManager, 
+            IMetadataService metadataService,
             IMapper mapper) : base(logger, mapper)
         {
             this.commitedOrdersRepository = commitedOrdersRepository;
@@ -42,6 +48,8 @@ namespace WebApi.Controllers
             this.keyLocationRepository = keyLocationRepository;
             this.taskRepository = taskRepository;
             this.productCodeRepository = productCodeRepository;
+            this.cacheManager = cacheManager;
+            this.metadataService = metadataService;
         }
 
         [HttpGet("{date}")]
@@ -75,7 +83,7 @@ namespace WebApi.Controllers
         [HttpPost("delivered/{internalNumber}/{numarAviz}")]
         public async Task<IActionResult> DeliverOrder(int internalNumber, int? numarAviz)
         {
-            var commitedRepo = new CommitedOrdersRepository();
+            var commitedRepo = new CommitedOrdersRepository(cacheManager, metadataService);
             var commitedOrder = await commitedRepo.GetCommitedOrder(internalNumber);
             if (commitedOrder?.Count < 1)
             {
@@ -100,7 +108,7 @@ namespace WebApi.Controllers
             if (missing.Any()) return NotFound(string.Concat(", ", missing));
 
             var reportData = WorkbookReportsService.GenerateReport(
-                items.Cast<DispozitieLivrare>().ToList(),
+                items.Cast<CommitedOrder>().ToList(),
                 t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
                 t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
                 t => t.NumeProdus);

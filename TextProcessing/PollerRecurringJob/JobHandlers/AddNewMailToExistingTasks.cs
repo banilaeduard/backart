@@ -4,6 +4,7 @@ using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using SqlTableRepository.Tasks;
 using ServiceInterface.Storage;
+using EntityDto.Tasks;
 
 namespace PollerRecurringJob.JobHandlers
 {

@@ -1,31 +1,33 @@
-﻿using Azure.Data.Tables;
-using AzureServices;
-using RepositoryContract;
+﻿using EntityDto;
+using ServiceInterface;
+using ServiceInterface.Storage;
 using System.Collections.Concurrent;
 
 namespace AzureTableRepository
 {
-    internal class CacheManager
+    public class CacheManager<T>: ICacheManager<T> where T: ITableEntryDto<T>
     {
-        private static ConcurrentDictionary<string, DateTimeOffset> lastModified = new();
-        private static ConcurrentDictionary<string, string?> tokens = new();
-        private static ConcurrentDictionary<string, ConcurrentBag<ITableEntity>> cache = new();
-        private static ConcurrentDictionary<string, object> lockers = new();
+        private IMetadataService metadataService;
+        private ConcurrentDictionary<string, DateTimeOffset> lastModified = new();
+        private ConcurrentDictionary<string, string?> tokens = new();
+        private ConcurrentDictionary<string, ConcurrentBag<T>> cache = new();
 
-        private static volatile bool syncing;
+        public CacheManager(IMetadataService metadataService)
+        {
+            this.metadataService = metadataService;
+        }
+
         private static readonly DateTimeOffset minValueForAzure = new(2024, 1, 1, 1, 1, 1, TimeSpan.Zero);
 
-        public static async Task<IList<T>> GetAll<T>(Func<DateTimeOffset, IList<T>> getContent, string? tableName = null) where T : ITableEntity
+        public async Task<IList<T>> GetAll(Func<DateTimeOffset, IList<T>> getContent, string? tableName = null)
         {
-            BlobAccessStorageService blobAccessStorageService = new();
             tableName = tableName ?? typeof(T).Name;
             cache.GetOrAdd(tableName, s => []);
 
             var lM = lastModified.GetOrAdd(tableName, s => minValueForAzure);
-            var lk = lockers.GetOrAdd(tableName, s => new object());
             var token = tokens.GetOrAdd(tableName, s => null);
 
-            var metaData = await blobAccessStorageService.GetMetadata($"cache_control/{tableName}");
+            var metaData = await metadataService.GetMetadata($"cache_control/{tableName}");
             metaData.TryGetValue("token", out var tokenSync);
 
             DateTimeOffset? dateSync = null;
@@ -38,89 +40,77 @@ namespace AzureTableRepository
                 return cache[tableName].Cast<T>().ToList();
             else
             {
-                syncing = true;
-                lock (lk)
+                using (GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15)))
                 {
-                    try
+                    metaData = await metadataService.GetMetadata($"cache_control/{tableName}");
+                    metaData.TryGetValue("token", out tokenSync);
+                    dateSync = null;
+                    if (metaData.TryGetValue("timestamp", out dSync))
                     {
-                        syncing = true;
-                        metaData = blobAccessStorageService.GetMetadata($"cache_control/{tableName}").GetAwaiter().GetResult();
-                        metaData.TryGetValue("token", out tokenSync);
-                        dateSync = null;
-                        if (metaData.TryGetValue("timestamp", out dSync))
-                        {
-                            dateSync = DateTimeOffset.Parse(dSync);
-                        }
+                        dateSync = DateTimeOffset.Parse(dSync);
+                    }
 
-                        if (metaData.Any() && (tokenSync == null || tokenSync == token) && lM != minValueForAzure && (dateSync == null || dateSync <= lM))
-                            return cache[tableName].Cast<T>().ToList();
-
-                        if (tokenSync != null && tokenSync != token || !metaData.Any())
-                        {
-                            lM = minValueForAzure;
-                            tokens.AddOrUpdate(tableName, tokenSync, (_, _) => tokenSync);
-                        }
-
-                        var content = getContent(lM);
-
-                        if (lM == minValueForAzure) // full bust
-                        {
-                            var items = new ConcurrentBag<ITableEntity>(content.Cast<ITableEntity>());
-                            if (items.Any())
-                            {
-                                lastModified[tableName] = items.Max(t => t.Timestamp)!.Value;
-                                try
-                                {
-                                    metaData["timestamp"] = lastModified[tableName].ToString();
-                                    blobAccessStorageService.SetMetadata($"cache_control/{tableName}", null, metaData).GetAwaiter().GetResult();
-                                }
-                                catch (Exception e) { }
-                            }
-
-                            cache[tableName] = items;
-                        }
-                        else
-                        {
-                            UpsertCache(tableName, content.Cast<ITableEntity>().ToList());
-                            if (content.Any())
-                            {
-                                lastModified[tableName] = content.Max(t => t.Timestamp)!.Value;
-                                try
-                                {
-                                    metaData["timestamp"] = lastModified[tableName].ToString();
-                                    blobAccessStorageService.SetMetadata($"cache_control/{tableName}", null, metaData).GetAwaiter().GetResult();
-                                }
-                                catch (Exception e) { }
-                            }
-                        }
-
+                    if (metaData.Any() && (tokenSync == null || tokenSync == token) && lM != minValueForAzure && (dateSync == null || dateSync <= lM))
                         return cache[tableName].Cast<T>().ToList();
-                    }
-                    finally
+
+                    if (tokenSync != null && tokenSync != token || !metaData.Any())
                     {
-                        syncing = false;
+                        lM = minValueForAzure;
+                        tokens.AddOrUpdate(tableName, tokenSync, (_, _) => tokenSync);
                     }
+
+                    var content = getContent(lM);
+
+                    if (lM == minValueForAzure) // full bust
+                    {
+                        var items = new ConcurrentBag<T>(content.Cast<T>());
+                        if (items.Any())
+                        {
+                            lastModified[tableName] = items.Max(t => t.Timestamp)!.Value;
+                            try
+                            {
+                                metaData["timestamp"] = lastModified[tableName].ToString();
+                                await metadataService.SetMetadata($"cache_control/{tableName}", null, metaData);
+                            }
+                            catch (Exception e) { }
+                        }
+
+                        cache[tableName] = items;
+                    }
+                    else
+                    {
+                        UpsertCache(tableName, content.Cast<T>().ToList());
+                        if (content.Any())
+                        {
+                            lastModified[tableName] = content.Max(t => t.Timestamp)!.Value;
+                            try
+                            {
+                                metaData["timestamp"] = lastModified[tableName].ToString();
+                                await metadataService.SetMetadata($"cache_control/{tableName}", null, metaData);
+                            }
+                            catch (Exception e) { }
+                        }
+                    }
+
+                    return cache[tableName].Cast<T>().ToList();
                 }
             }
         }
 
-        public static void InvalidateOurs(string tableName)
+        public void InvalidateOurs(string tableName)
         {
             lastModified.AddOrUpdate(tableName, minValueForAzure, (x, y) => minValueForAzure);
         }
 
-        public static async Task Bust(string tableName, bool invalidate, DateTimeOffset? stamp) // some sort of merge strategy on domain
+        public async Task Bust(string tableName, bool invalidate, DateTimeOffset? stamp) // some sort of merge strategy on domain
         {
-            lock (lastModified)
+            using (GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15)))
             {
-                BlobAccessStorageService blobAccessStorageService = new();
-
-                var lease = blobAccessStorageService.GetLease($"cache_control/{tableName}").Result;
-                lease.Acquire(TimeSpan.FromSeconds(15));
-
-                var metaData = blobAccessStorageService.GetMetadata($"cache_control/{tableName}").Result;
-                try
+                using (var lease = await metadataService.GetLease($"cache_control/{tableName}"))
                 {
+                    await lease.Acquire(TimeSpan.FromSeconds(15));
+
+                    var metaData = await metadataService.GetMetadata($"cache_control/{tableName}");
                     if (invalidate)
                     {
                         if (metaData.TryGetValue("token", out var tokenSync))
@@ -135,53 +125,60 @@ namespace AzureTableRepository
                         metaData["token"] = Guid.NewGuid().ToString();
                         tokens.AddOrUpdate(tableName, metaData["token"], (x, y) => metaData["token"]);
 
-                        blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData).GetAwaiter().GetResult();
+                        await metadataService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
                     }
                     else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
                     {
                         if (stamp > dateSync)
                         {
                             metaData["timestamp"] = (stamp ?? dateSync).ToString();
-                            blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData).GetAwaiter().GetResult();
+                            await metadataService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
                         }
                     }
                     else if (stamp.HasValue)
                     {
                         metaData["timestamp"] = stamp.Value.ToString();
-                        blobAccessStorageService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData).GetAwaiter().GetResult();
+                        await metadataService.SetMetadata($"cache_control/{tableName}", lease.LeaseId, metaData);
                     }
                 }
-                finally
+            }
+        }
+
+        public async Task BustAll()
+        {
+            List<Task> tasks = [];
+            foreach (var table in cache)
+                tasks.Add(metadataService.SetMetadata($@"cache_control/{table.Key}", null));
+            lastModified.Clear();
+            tokens.Clear();
+            cache.Clear();
+            await Task.WhenAll(tasks);
+        }
+
+        public void RemoveFromCache(string tableName, IList<T> entities)
+        {
+            using (GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15)))
+            {
+                if (entities.Any())
                 {
-                    lease.Release();
+                    var entries = cache.GetOrAdd(tableName, s => []);
+
+                    var xcept = new ConcurrentBag<T>(entries.Except(entities));
+
+                    cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
                 }
             }
         }
 
-        public static void RemoveFromCache(string tableName, IList<ITableEntity> entities)
+        public void UpsertCache(string tableName, IList<T> entities)
         {
-            if (syncing)
-                lock (lockers.GetOrAdd(tableName, s => new object())) { }
+            using (GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15))) { }
             if (entities.Any())
             {
                 var entries = cache.GetOrAdd(tableName, s => []);
 
-                var xcept = new ConcurrentBag<ITableEntity>(entries.Except(entities, new TableEntityPK()));
-
-                cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
-            }
-        }
-
-        public static void UpsertCache(string tableName, IList<ITableEntity> entities)
-        {
-            if (syncing)
-                lock (lockers.GetOrAdd(tableName, s => new object())) { }
-            if (entities.Any())
-            {
-                var entries = cache.GetOrAdd(tableName, s => []);
-
-                entries.Except(entities, new TableEntityPK());
-                var xcept = new ConcurrentBag<ITableEntity>(entries.Except(entities, new TableEntityPK()));
+                entries.Except(entities);
+                var xcept = new ConcurrentBag<T>(entries.Except(entities));
                 foreach (var entry in entities)
                 {
                     xcept.Add(entry);
@@ -189,6 +186,33 @@ namespace AzureTableRepository
 
                 cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
             }
+        }
+
+        private static WrapLock GetSemaphore(string name)
+        {
+            return new(new(0, 1, $@"{nameof(CacheManager<T>)}-{name}"));
+        }
+    }
+
+    class WrapLock : IDisposable
+    {
+        Semaphore semaphore;
+        public WrapLock(Semaphore semaphore)
+        {
+            this.semaphore = semaphore;
+        }
+
+        public WrapLock Acquire(TimeSpan ms)
+        {
+            semaphore.WaitOne(ms);
+            return this;
+        }
+
+        public void Dispose()
+        {
+            semaphore.Release();
+            semaphore.Dispose();
+            semaphore = null;
         }
     }
 }

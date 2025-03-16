@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using EntityDto;
+using EntityDto.CommitedOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.Imports;
@@ -38,7 +38,7 @@ namespace WebApi.Controllers
 
             using (var stream = file.OpenReadStream())
             {
-                var items = WorkbookReader.ReadWorkBook<ComandaVanzare>(stream, 4);
+                var items = WorkbookReader.ReadWorkBook<Order>(stream, 4);
                 await ordersRepository.ImportOrders(items, DateTime.Now);
             }
 

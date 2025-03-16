@@ -1,57 +1,62 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
-using EntityDto;
+using EntityDto.CommitedOrders;
 using RepositoryContract.CommitedOrders;
+using ServiceInterface;
+using ServiceInterface.Storage;
 
 namespace AzureTableRepository.CommitedOrders
 {
     public class CommitedOrdersRepository : ICommitedOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${nameof(DispozitieLivrareEntry)}";
-        static BlobAccessStorageService blobAccessStorageService = new();
+        static readonly string syncName = $"sync_control/LastSyncDate_${nameof(CommitedOrderEntry)}";
+        IMetadataService metadataService;
+        ICacheManager<CommitedOrderEntry> CacheManager;
         TableStorageService tableStorageService;
-        public CommitedOrdersRepository()
+        public CommitedOrdersRepository(ICacheManager<CommitedOrderEntry> CacheManager, IMetadataService metadataService)
         {
             tableStorageService = new TableStorageService();
+            this.CacheManager = CacheManager;
+            this.metadataService = metadataService;
         }
 
-        public async Task DeleteCommitedOrders(List<DispozitieLivrareEntry> items)
+        public async Task DeleteCommitedOrders(List<CommitedOrderEntry> items)
         {
             var toRemove = tableStorageService.PrepareDelete(items.ToList());
             await toRemove.ExecuteBatch();
 
-            await CacheManager.Bust(nameof(DispozitieLivrareEntry), true, null);
-            CacheManager.RemoveFromCache(nameof(DispozitieLivrareEntry), toRemove.items.Select(t => t.Entity).ToList());
+            await CacheManager.Bust(nameof(CommitedOrderEntry), true, null);
+            CacheManager.RemoveFromCache(nameof(CommitedOrderEntry), toRemove.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(int[] ids)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrders(int[] ids)
         {
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList()))
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<CommitedOrderEntry>(t => t.Timestamp > from).ToList()))
                                .Where(t => ids.Contains(int.Parse(t.PartitionKey))).ToList();
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrders(DateTime? _from)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrders(DateTime? _from)
         {
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<DispozitieLivrareEntry>(t => t.Timestamp > from).ToList())).Where(t => t.DataDocument > _from).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<CommitedOrderEntry>(t => t.Timestamp > from).ToList())).Where(t => t.DataDocument > _from).ToList();
         }
 
-        public async Task InsertCommitedOrder(DispozitieLivrareEntry sample)
+        public async Task InsertCommitedOrder(CommitedOrderEntry sample)
         {
             var offset = DateTimeOffset.Now;
             await tableStorageService.Insert(sample);
 
-            await CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
-            CacheManager.UpsertCache(nameof(DispozitieLivrareEntry), [sample]);
+            await CacheManager.Bust(nameof(CommitedOrderEntry), false, offset);
+            CacheManager.UpsertCache(nameof(CommitedOrderEntry), [sample]);
         }
 
-        public async Task ImportCommitedOrders(IList<DispozitieLivrare> items, DateTime when)
+        public async Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when)
         {
             if (items.Count == 0) return;
             var newEntries = items.GroupBy(t => t.NumarIntern).ToDictionary(t => t.Key);
 
             foreach (var groupedEntries in newEntries)
             {
-                var oldEntries = tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == groupedEntries.Key).ToList();
+                var oldEntries = tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == groupedEntries.Key).ToList();
                 if (oldEntries.Count > 0 && oldEntries.Any(t => t.Livrata)) continue;
 
                 (List<TableTransactionAction> items, TableStorageService self) transaction = ([], tableStorageService);
@@ -60,27 +65,27 @@ namespace AzureTableRepository.CommitedOrders
                 foreach (var group in groupedEntries.Value.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
                 {
                     var sample = group.ElementAt(0);
-                    transaction = transaction.Concat(tableStorageService.PrepareInsert([DispozitieLivrareEntry.create(sample, group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0))]));
+                    transaction = transaction.Concat(tableStorageService.PrepareInsert([CommitedOrderEntry.create(sample, group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0))]));
                 };
 
                 if (transaction.items.Any())
                 {
                     var offset = DateTimeOffset.Now;
                     await transaction.ExecuteBatch();
-                    await CacheManager.Bust(nameof(DispozitieLivrareEntry), transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Any(), offset);
-                    CacheManager.RemoveFromCache(nameof(DispozitieLivrareEntry),
-                        transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
-                    CacheManager.UpsertCache(nameof(DispozitieLivrareEntry),
-                        transaction.items.Where(t => t.ActionType != TableTransactionActionType.Delete).Select(t => t.Entity).ToList());
+                    await CacheManager.Bust(nameof(CommitedOrderEntry), transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Any(), offset);
+                    CacheManager.RemoveFromCache(nameof(CommitedOrderEntry),
+                        transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Select(t => (CommitedOrderEntry)t.Entity).ToList());
+                    CacheManager.UpsertCache(nameof(CommitedOrderEntry),
+                        transaction.items.Where(t => t.ActionType != TableTransactionActionType.Delete).Select(t => (CommitedOrderEntry)t.Entity).ToList());
                 }
             }
 
-            await blobAccessStorageService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
+            await metadataService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
 
         public async Task SetDelivered(int internalNumber, int? numarAviz)
         {
-            var entries = tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == internalNumber.ToString()).ToList();
+            var entries = tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == internalNumber.ToString()).ToList();
             foreach (var entry in entries)
             {
                 entry.Livrata = true;
@@ -92,13 +97,13 @@ namespace AzureTableRepository.CommitedOrders
             var offset = DateTimeOffset.Now;
             await transactions.ExecuteBatch();
 
-            await CacheManager.Bust(nameof(DispozitieLivrareEntry), false, offset);
-            CacheManager.UpsertCache(nameof(DispozitieLivrareEntry), transactions.items.Select(t => t.Entity).ToList());
+            await CacheManager.Bust(nameof(CommitedOrderEntry), false, offset);
+            CacheManager.UpsertCache(nameof(CommitedOrderEntry), transactions.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
         }
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var metadata = await blobAccessStorageService.GetMetadata(syncName);
+            var metadata = await metadataService.GetMetadata(syncName);
 
             if (metadata.ContainsKey("data_sync"))
             {
@@ -107,9 +112,9 @@ namespace AzureTableRepository.CommitedOrders
             return null;
         }
 
-        public async Task<List<DispozitieLivrareEntry>> GetCommitedOrder(int id)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrder(int id)
         {
-            return tableStorageService.Query<DispozitieLivrareEntry>(t => t.PartitionKey == id.ToString()).ToList();
+            return tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == id.ToString()).ToList();
         }
     }
 }
