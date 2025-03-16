@@ -30,7 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\AzureTableRepository\AzureTableRepository.csproj" />
     <ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />
-    <ProjectReference Include="..\V2_1.Interfaces\V2_1.Interfaces.csproj" />
+    <ProjectReference Include="..\V21.Interfaces\V21.Interfaces.csproj" />
   </ItemGroup>
 
 </Project>

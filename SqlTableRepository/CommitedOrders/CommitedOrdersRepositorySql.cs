@@ -13,7 +13,7 @@ namespace SqlTableRepository.CommitedOrders
 {
     public class CommitedOrdersRepositorySql : ICommitedOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${nameof(CommitedOrderEntry)}";
+        static readonly string syncName = $"sync_control_LastSyncDate_${nameof(CommitedOrderEntry)}";
 
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;

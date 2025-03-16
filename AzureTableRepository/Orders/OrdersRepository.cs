@@ -8,7 +8,7 @@ namespace AzureTableRepository.Orders
 {
     public class OrdersRepository : IOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${typeof(OrderEntry).Name}";
+        static readonly string syncName = $"sync_control_LastSyncDate_${typeof(OrderEntry).Name}";
         IMetadataService metadataService;
         ICacheManager<OrderEntry> CacheManager;
         TableStorageService tableStorageService;

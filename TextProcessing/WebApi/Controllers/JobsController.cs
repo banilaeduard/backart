@@ -6,6 +6,10 @@ using System.Fabric;
 using AutoMapper;
 using MailReader.Interfaces;
 using PollerRecurringJob.Interfaces;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+using Microsoft.ServiceFabric.Services.Client;
+using MetadataService.Interfaces;
 
 namespace WebApi.Controllers
 {
@@ -13,6 +17,10 @@ namespace WebApi.Controllers
     public class JobsController : WebApiController2
     {
         private StatelessServiceContext context;
+        internal ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
+        {
+            return new FabricTransportServiceRemotingClientFactory();
+        });
 
         public JobsController(
             ILogger<JobsController> logger,
@@ -53,8 +61,30 @@ namespace WebApi.Controllers
             catch (Exception ex)
             {
                 ServiceEventSource.Current.ServiceMessage(this.context, ex.Message);
-                return Ok(ex);
+                return BadRequest(ex.Message);
             }
+        }
+
+        [HttpGet("bust/{collection}")]
+        public async Task<IActionResult> BustCache(string collection)
+        {
+            var serviceUri = new Uri("fabric:/TextProcessing/MetadataService");
+
+            var service = serviceProxy.CreateServiceProxy<IMetadataServiceFabric>(serviceUri, ServicePartitionKey.Singleton);
+            await service.DeleteDataAsync(collection);
+
+            return Ok();
+        }
+
+        [HttpGet("cache-keys")]
+        public async Task<IActionResult> CacheKeys()
+        {
+            var serviceUri = new Uri("fabric:/TextProcessing/MetadataService");
+
+            var service = serviceProxy.CreateServiceProxy<IMetadataServiceFabric>(serviceUri, ServicePartitionKey.Singleton);
+            var result = await service.GetAllCollectionKeys();
+
+            return Ok(result);
         }
     }
 }

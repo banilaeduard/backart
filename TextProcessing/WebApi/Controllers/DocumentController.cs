@@ -25,7 +25,7 @@ namespace WebApi.Controllers
         private ICommitedOrdersRepository commitedOrdersRepository;
         private ICryptoService cryptoService;
 
-        public DocumentController(ILogger logger,
+        public DocumentController(ILogger<DocumentController> logger,
          IStorageService storageService,
          IMetadataService metadataService,
          IDataKeyLocationRepository keyLocationRepository,
@@ -34,7 +34,7 @@ namespace WebApi.Controllers
          IReportEntryRepository reportEntry,
          ICommitedOrdersRepository commitedOrdersRepository,
          ICryptoService cryptoService,
-            IMapper mapper) : base(logger, mapper)
+         IMapper mapper) : base(logger, mapper)
         {
             this.storageService = storageService;
             this.metadataService = metadataService;
@@ -78,7 +78,8 @@ namespace WebApi.Controllers
                     await leaseObj.Acquire(TimeSpan.FromMinutes(1));
 
                     var fName = $"reclamatii-drafts/{locMap.Folder}/{document.NumarIntern}.docx";
-                    var metaData = await metadataService.GetMetadata(fName);
+                    var metaName = $"reclamatii-drafts_{cryptoService.GetMd5(locMap.Folder)}_{document.NumarIntern}";
+                    var metaData = await metadataService.GetMetadata(metaName);
 
                     if (metaData.ContainsKey("md5"))
                     {
@@ -93,7 +94,7 @@ namespace WebApi.Controllers
                     await storageService.WriteTo(fName, new BinaryData(reportBytes), true);
                     metaData["json"] = JsonConvert.SerializeObject(document);
                     metaData["md5"] = md5;
-                    await metadataService.SetMetadata(fName, null, metaData);
+                    await metadataService.SetMetadata(metaName, leaseObj.LeaseId, metaData);
 
                     return File(reportBytes, wordType);
                 }
@@ -124,7 +125,8 @@ namespace WebApi.Controllers
                 }
 
                 var fName = $"pv_accesorii/{locMap.Folder}/{dispozitie}.docx";
-                var metaData = await metadataService.GetMetadata(fName);
+                var metaName = $"pv_accesorii_{cryptoService.GetMd5(locMap.Folder)}_{dispozitie}.docx";
+                var metaData = await metadataService.GetMetadata(metaName);
 
                 List<string> list = new List<string>();
                 foreach (var item in items)
@@ -155,7 +157,7 @@ namespace WebApi.Controllers
                     if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
                         metaData["aviz"] = items[0].NumarAviz?.ToString();
                     metaData["md5"] = md5;
-                    await metadataService.SetMetadata(fName, null, metaData);
+                    await metadataService.SetMetadata(metaName, leaseObj.LeaseId, metaData);
 
                     return File(reportBytes, wordType);
 

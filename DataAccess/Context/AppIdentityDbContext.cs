@@ -26,17 +26,19 @@ namespace DataAccess.Context
                            .Property(e.Name).HasConversion<System.Int16>();
                 }
 
-                //var props2 = entity.ClrType.GetProperties().Where(t => (t.PropertyType == typeof(DateTimeOffset?)
-                //    || t.PropertyType == typeof(DateTimeOffset)
-                //) && t.CanWrite);
-                //foreach (var e in props2)
-                //{
-                //    modelBuilder.Entity(entity.ClrType)
-                //           .Property(e.Name).HasConversion(new ValueConverter<DateTimeOffset?, DateTime?>(
-                //                v => v.HasValue ? v.Value.DateTime : null,
-                //                v => v.HasValue ? new DateTimeOffset(v.Value) : null)
-                //           );
-                //}
+#if DEBUG
+                var props2 = entity.ClrType.GetProperties().Where(t => (t.PropertyType == typeof(DateTimeOffset?)
+                    || t.PropertyType == typeof(DateTimeOffset)
+                ) && t.CanWrite);
+                foreach (var e in props2)
+                {
+                    modelBuilder.Entity(entity.ClrType)
+                           .Property(e.Name).HasConversion(new ValueConverter<DateTimeOffset?, DateTime?>(
+                                v => v.HasValue ? v.Value.DateTime : null,
+                                v => v.HasValue ? new DateTimeOffset(v.Value) : null)
+                           );
+                }
+#endif
             }
 
             base.OnModelCreating(modelBuilder);

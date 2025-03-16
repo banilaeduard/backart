@@ -9,7 +9,7 @@ namespace AzureTableRepository.CommitedOrders
 {
     public class CommitedOrdersRepository : ICommitedOrdersRepository
     {
-        static readonly string syncName = $"sync_control/LastSyncDate_${nameof(CommitedOrderEntry)}";
+        static readonly string syncName = $"sync_control_LastSyncDate_${nameof(CommitedOrderEntry)}";
         IMetadataService metadataService;
         ICacheManager<CommitedOrderEntry> CacheManager;
         TableStorageService tableStorageService;
