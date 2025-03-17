@@ -12,7 +12,6 @@ namespace AzureServices
         {
             tableName = tableName ?? typeof(T).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             return tableClient.Query(expr);
         }
 
@@ -20,7 +19,6 @@ namespace AzureServices
         {
             tableName = tableName ?? entry.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             var resp = await tableClient.AddEntityAsync(entry);
         }
 
@@ -28,7 +26,6 @@ namespace AzureServices
         {
             tableName = tableName ?? entry.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             await tableClient.UpsertEntityAsync(entry);
         }
 
@@ -36,7 +33,6 @@ namespace AzureServices
         {
             tableName = tableName ?? entry.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             await tableClient.UpdateEntityAsync(entry, entry.ETag);
         }
 
@@ -44,7 +40,6 @@ namespace AzureServices
         {
             tableName = tableName ?? typeof(T).Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             await tableClient.DeleteEntityAsync(entry.PartitionKey, entry.RowKey);
         }
 
@@ -52,7 +47,6 @@ namespace AzureServices
         {
             Debug.Assert(tableName != null);
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             await tableClient.DeleteEntityAsync(partitionKey, rowKey);
         }
 
@@ -62,7 +56,6 @@ namespace AzureServices
 
             tableName = tableName ?? transactionActions.ElementAt(0).Entity.GetType().Name;
             TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
-            tableClient.CreateIfNotExists();
             foreach (var batch in Batch(transactionActions))
                 if (batch.Any())
                     await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);

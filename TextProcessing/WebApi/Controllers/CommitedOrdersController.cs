@@ -10,20 +10,17 @@ using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using WebApi.Models;
-using WorkSheetServices;
 using System.Globalization;
-using EntityDto.CommitedOrders;
 using ServiceInterface.Storage;
 using ServiceInterface;
 using PollerRecurringJob.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace WebApi.Controllers
 {
     [Authorize(Roles = "admin, basic")]
     public class CommitedOrdersController : WebApiController2
     {
-        const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
         private ICommitedOrdersRepository commitedOrdersRepository;
         private ITicketEntryRepository ticketEntryRepository;
         private IDataKeyLocationRepository keyLocationRepository;
@@ -74,7 +71,7 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
-
+                logger.LogError(new EventId(69), ex, "GetCommitedOrders");
             }
 
             return Ok(CommitedOrdersResponse.From(orders, tickets ?? [], synonimLocations ?? [], tasks, productLinkWeights ?? [], weights ?? []));
@@ -92,28 +89,6 @@ namespace WebApi.Controllers
             }
             await commitedRepo.SetDelivered(internalNumber, numarAviz);
             return Ok();
-        }
-
-        [HttpPost("merge")]
-        public async Task<IActionResult> ExportDispozitii(string[] internalNumber)
-        {
-            var items = await commitedOrdersRepository.GetCommitedOrders([..internalNumber.Select(int.Parse)]);
-            var synonimLocations = (await keyLocationRepository.GetLocations())
-                .Where(t => t.MainLocation && !string.IsNullOrWhiteSpace(t.ShortName) && items.Any(o => o.CodLocatie == t.LocationCode))
-                .DistinctBy(t => t.LocationCode)
-                .ToDictionary(x => x.LocationCode, x => x.ShortName);
-
-            var missing = internalNumber.Except(items.DistinctBy(t => t.NumarIntern).Select(t => t.NumarIntern));
-
-            if (missing.Any()) return NotFound(string.Concat(", ", missing));
-
-            var reportData = WorkbookReportsService.GenerateReport(
-                items.Cast<CommitedOrder>().ToList(),
-                t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
-                t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
-                t => t.NumeProdus);
-
-            return File(reportData, contentType);
         }
     }
 }

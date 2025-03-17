@@ -68,6 +68,6 @@ namespace SqlTableRepository.Orders
             {
                 return Encoding.UTF8.GetString(storageService.Access(key, out var _));
             }
-        }
+        } 
     }
 }

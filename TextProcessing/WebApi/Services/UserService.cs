@@ -38,7 +38,7 @@ namespace WebApi.Services
             var passwordCheck = _userManager.PasswordHasher.VerifyHashedPassword(identityUser, identityUser.PasswordHash, model.Password);
             if (passwordCheck == PasswordVerificationResult.Failed)
             {
-                await _userManager.AccessFailedAsync(identityUser);
+                //await _userManager.AccessFailedAsync(identityUser);
                 return null;
             }
             // authentication successful so generate jwt and refresh tokens

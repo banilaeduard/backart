@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using EntityDto.CommitedOrders;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using RepositoryContract.CommitedOrders;
@@ -8,13 +9,14 @@ using ServiceInterface.Storage;
 using System.Text;
 using WebApi.Models;
 using WebApi.Services;
+using WorkSheetServices;
 
 namespace WebApi.Controllers
 {
     public class DocumentController : WebApiController2
     {
         const string wordType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
+        const string excelType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
         private IStorageService storageService;
         private IMetadataService metadataService;
@@ -73,43 +75,38 @@ namespace WebApi.Controllers
                 sb.Append(document.complaintEntries.Count());
                 var md5 = cryptoService.GetMd5(sb.ToString());
 
-                using (var leaseObj = await metadataService.GetLease($"locks/{document.NumarIntern}REC"))
+                var fName = $"reclamatii-drafts/{locMap.Folder}/{document.NumarIntern}.docx";
+                var metaName = $"reclamatii-drafts_{cryptoService.GetMd5(locMap.Folder)}_{document.NumarIntern}";
+                var metaData = await metadataService.GetMetadata(metaName);
+
+                if (metaData.ContainsKey("md5"))
                 {
-                    await leaseObj.Acquire(TimeSpan.FromMinutes(1));
-
-                    var fName = $"reclamatii-drafts/{locMap.Folder}/{document.NumarIntern}.docx";
-                    var metaName = $"reclamatii-drafts_{cryptoService.GetMd5(locMap.Folder)}_{document.NumarIntern}";
-                    var metaData = await metadataService.GetMetadata(metaName);
-
-                    if (metaData.ContainsKey("md5"))
+                    if (md5.Equals(metaData["md5"]))
                     {
-                        if (md5.Equals(metaData["md5"]))
-                        {
-                            var content = storageService.AccessIfExists(fName, out var contentType2);
-                            return File(content, wordType);
-                        }
+                        var content = storageService.AccessIfExists(fName, out var contentType2);
+                        return File(content, wordType);
                     }
-
-                    var reportBytes = await reclamatiiReport.GenerateReport(document);
-                    await storageService.WriteTo(fName, new BinaryData(reportBytes), true);
-                    metaData["json"] = JsonConvert.SerializeObject(document);
-                    metaData["md5"] = md5;
-                    await metadataService.SetMetadata(metaName, leaseObj.LeaseId, metaData);
-
-                    return File(reportBytes, wordType);
                 }
+
+                var reportBytes = await reclamatiiReport.GenerateReport(document);
+                await storageService.WriteTo(fName, new BinaryData(reportBytes), true);
+                metaData["json"] = JsonConvert.SerializeObject(document);
+                metaData["md5"] = md5;
+                await metadataService.SetMetadata(metaName, null, metaData);
+
+                return File(reportBytes, wordType);
             }
             catch (Exception ex)
             {
-                logger.LogError(new EventId(69), ex, ex.Message);
+                logger.LogError(new EventId(69), ex, "ExportStructuraReport");
                 return File(await reclamatiiReport.GenerateReport(document), wordType);
             }
         }
 
-        [HttpPost("structurareport/{reportName}/{dispozitie}")]
-        public async Task<IActionResult> ExportStructuraReport(string reportName, int dispozitie)
+        [HttpPost("pv-report/{reportName}")]
+        public async Task<IActionResult> ExportStructuraReport(string reportName, int[] dispozitie)
         {
-            var items = (await commitedOrdersRepository.GetCommitedOrder(dispozitie)).ToList();
+            var items = (await commitedOrdersRepository.GetCommitedOrders(dispozitie)).ToList();
             try
             {
                 var locMap = (await reportEntry.GetLocationMapPathEntry("1", t => t.RowKey == items[0].CodLocatie)).FirstOrDefault();
@@ -139,34 +136,51 @@ namespace WebApi.Controllers
                 var stringToHash = string.Join("", list.Order());
                 var md5 = cryptoService.GetMd5(stringToHash);
 
-                using (var leaseObj = await metadataService.GetLease($"locks/{dispozitie}PV"))
+                if (metaData.ContainsKey("md5"))
                 {
-                    await leaseObj.Acquire(TimeSpan.FromMinutes(1));
-
-                    if (metaData.ContainsKey("md5"))
+                    if (md5.Equals(metaData["md5"]))
                     {
-                        if (md5.Equals(metaData["md5"]))
-                        {
-                            var content = storageService.AccessIfExists(fName, out var contentType2);
-                            return File(content, wordType);
-                        }
+                        var content = storageService.AccessIfExists(fName, out var contentType2);
+                        return File(content, wordType);
                     }
-
-                    var reportBytes = await structuraReport.GenerateReport(items, reportName);
-                    await storageService.WriteTo(fName, new BinaryData(reportBytes), true);
-                    if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
-                        metaData["aviz"] = items[0].NumarAviz?.ToString();
-                    metaData["md5"] = md5;
-                    await metadataService.SetMetadata(metaName, leaseObj.LeaseId, metaData);
-
-                    return File(reportBytes, wordType);
-
                 }
+
+                var reportBytes = await structuraReport.GenerateReport(items, reportName);
+                await storageService.WriteTo(fName, new BinaryData(reportBytes), true);
+                if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
+                    metaData["aviz"] = items[0].NumarAviz?.ToString();
+                metaData["md5"] = md5;
+                await metadataService.SetMetadata(metaName, null, metaData);
+
+                return File(reportBytes, wordType);
             }
             catch (Exception ex)
             {
+                logger.LogError(new EventId(69), ex, "ExportStructuraReport");
                 return File(await structuraReport.GenerateReport(items, reportName), wordType);
             }
+        }
+
+        [HttpPost("merge-commited-orders")]
+        public async Task<IActionResult> ExportDispozitii(string[] internalNumber)
+        {
+            var items = await commitedOrdersRepository.GetCommitedOrders([.. internalNumber.Select(int.Parse)]);
+            var synonimLocations = (await keyLocationRepository.GetLocations())
+                .Where(t => t.MainLocation && !string.IsNullOrWhiteSpace(t.ShortName) && items.Any(o => o.CodLocatie == t.LocationCode))
+                .DistinctBy(t => t.LocationCode)
+                .ToDictionary(x => x.LocationCode, x => x.ShortName);
+
+            var missing = internalNumber.Except(items.DistinctBy(t => t.NumarIntern).Select(t => t.NumarIntern));
+
+            if (missing.Any()) return NotFound(string.Concat(", ", missing));
+
+            var reportData = WorkbookReportsService.GenerateReport(
+                items.Cast<CommitedOrder>().ToList(),
+                t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
+                t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
+                t => t.NumeProdus);
+
+            return File(reportData, excelType);
         }
     }
 }

@@ -1,6 +1,5 @@
 using System.Fabric;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.ServiceFabric.Services.Communication.AspNetCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
@@ -14,7 +13,6 @@ using WebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Diagnostics;
-using YahooFeeder;
 using AzureServices;
 using RepositoryContract.Orders;
 using AzureTableRepository.Orders;
@@ -212,6 +210,7 @@ namespace WebApi
                 opts.Password.RequireNonAlphanumeric = false;
                 opts.Password.RequireUppercase = false;
                 opts.SignIn.RequireConfirmedEmail = false;
+                opts.Lockout.MaxFailedAccessAttempts = 30;
             });
 
             MapperConfiguration config = new MapperConfiguration(cfg =>
@@ -239,48 +238,6 @@ namespace WebApi
             });
             IMapper mapper = config.CreateMapper();
             services.AddSingleton(mapper);
-        }
-
-        /// <summary>
-        /// Finds the ASP .NET Core HTTPS development certificate in development environment. Update this method to use the appropriate certificate for production environment.
-        /// </summary>
-        /// <returns>Returns the ASP .NET Core HTTPS development certificate</returns>
-        private static X509Certificate2? GetCertificateFromStore()
-        {
-            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")!;
-            if (string.Equals(aspNetCoreEnvironment, "Development", StringComparison.OrdinalIgnoreCase))
-            {
-                const string aspNetHttpsOid = "1.3.6.1.4.1.311.84.1.1";
-                const string CNName = "CN=localhost";
-                using (X509Store store = new X509Store(StoreName.My, StoreLocation.LocalMachine))
-                {
-                    store.Open(OpenFlags.ReadOnly);
-                    var certCollection = store.Certificates;
-                    var currentCerts = certCollection.Find(X509FindType.FindByExtension, aspNetHttpsOid, true);
-                    currentCerts = currentCerts.Find(X509FindType.FindByIssuerDistinguishedName, CNName, true);
-                    return currentCerts.Count == 0 ? null : currentCerts[0];
-                }
-            }
-            else
-            {
-                return GetCertificateFromStore2();
-            }
-        }
-
-        private static X509Certificate2 GetCertificateFromStore2()
-        {
-            var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
-            try
-            {
-                store.Open(OpenFlags.ReadOnly);
-                var certCollection = store.Certificates;
-                var currentCerts = certCollection.Find(X509FindType.FindBySubjectDistinguishedName, "CN=bartazeu.eastus.cloudapp.azure.com", false);
-                return currentCerts.Count == 0 ? null : currentCerts[0];
-            }
-            finally
-            {
-                store.Close();
-            }
         }
     }
 

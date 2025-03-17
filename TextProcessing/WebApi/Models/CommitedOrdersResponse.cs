@@ -25,9 +25,10 @@ namespace WebApi.Models
         public string StatusName { get; set; }
         public bool HasReports { get; set; }
 
-        public static IEnumerable<CommitedOrdersResponse> From(IList<RepositoryContract.CommitedOrders.CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
+        public static IEnumerable<CommitedOrdersResponse> From(IList<CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
             IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
         {
+            tasks = tasks ?? [];
             var externalRefs = tasks.SelectMany(t => t.ExternalReferenceEntries).DistinctBy(t => new { t.PartitionKey, t.RowKey }).ToList();
 
             foreach (var ticket in tickets)

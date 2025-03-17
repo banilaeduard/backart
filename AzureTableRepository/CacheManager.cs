@@ -5,13 +5,13 @@ using System.Collections.Concurrent;
 
 namespace AzureTableRepository
 {
-    public class CacheManager<T>: ICacheManager<T> where T: ITableEntryDto<T>
+    public class CacheManager<T> : ICacheManager<T> where T : ITableEntryDto<T>
     {
-        private static readonly SemaphoreSlim _semaphoreSlim = new(0, 1);
         private IMetadataService metadataService;
         private ConcurrentDictionary<string, DateTimeOffset> lastModified = new();
         private ConcurrentDictionary<string, string?> tokens = new();
         private ConcurrentDictionary<string, ConcurrentBag<T>> cache = new();
+        private ConcurrentDictionary<string, SemaphoreSlim> locks = new();
 
         public CacheManager(IMetadataService metadataService)
         {
@@ -189,9 +189,9 @@ namespace AzureTableRepository
             }
         }
 
-        private static WrapLock GetSemaphore(string name)
+        private WrapLock GetSemaphore(string name)
         {
-            return new(_semaphoreSlim);
+            return new(locks.GetOrAdd(name, x => new(0, 1)));
         }
     }
 

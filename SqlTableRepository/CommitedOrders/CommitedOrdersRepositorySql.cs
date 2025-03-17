@@ -35,7 +35,8 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate((await connection.QueryAsync<CommitedOrderEntry>(TryAccess("disp.sql"), new { Date1 = DateTime.Now.AddMonths(-2) })))];
+                var sql = TryAccess("dispIds.sql");
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { ids }))];
             }
         }
 
@@ -43,7 +44,8 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(TryAccess("dispOrder.sql"), new { NumarIntern = id }))];
+                var sql = TryAccess("dispOrder.sql");
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { NumarIntern = id }))];
             }
         }
 
@@ -51,7 +53,8 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(TryAccess("disp.sql"), new { Date1 = from ?? DateTime.Now.AddMonths(-2) }))];
+                var sql = TryAccess("disp.sql");
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { Date1 = from ?? DateTime.Now.AddMonths(-2) }))];
             }
         }
 
