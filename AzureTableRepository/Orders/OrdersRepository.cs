@@ -70,7 +70,7 @@ namespace AzureTableRepository.Orders
                                         .Concat(tableStorageService.PrepareDelete(exceptDelete))
                                         .ExecuteBatch();
                 await CacheManager.Bust(typeof(OrderEntry).Name, true, null);
-                CacheManager.InvalidateOurs(typeof(OrderEntry).Name);
+                await CacheManager.InvalidateOurs(typeof(OrderEntry).Name);
             }
             await metadataService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }

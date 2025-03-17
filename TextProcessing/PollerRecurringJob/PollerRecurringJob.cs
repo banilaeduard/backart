@@ -1,8 +1,6 @@
 using AzureFabricServices;
-using AzureTableRepository;
 using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.Orders;
-using AzureTableRepository.Tickets;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
@@ -11,6 +9,7 @@ using PollerRecurringJob.Interfaces;
 using PollerRecurringJob.JobHandlers;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
+using ServiceImplementation.Caching;
 using ServiceInterface.Storage;
 
 namespace PollerRecurringJob
@@ -130,8 +129,8 @@ namespace PollerRecurringJob
             ActorEventSource.Current.ActorMessage(this, "Polling Actor activated.");
             IMetadataService metadataService = new FabricMetadataService();
 
-            var commitedOrdersRepository = new CommitedOrdersRepository(new CacheManager<CommitedOrderEntry>(metadataService), metadataService);
-            var ordersRepository = new OrdersRepository(new CacheManager<OrderEntry>(metadataService), metadataService);
+            var commitedOrdersRepository = new CommitedOrdersRepository(new AlwaysGetCacheManager<CommitedOrderEntry>(metadataService), metadataService);
+            var ordersRepository = new OrdersRepository(new AlwaysGetCacheManager<OrderEntry>(metadataService), metadataService);
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
         }

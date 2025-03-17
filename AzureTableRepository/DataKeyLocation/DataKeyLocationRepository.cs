@@ -19,7 +19,7 @@ namespace AzureTableRepository.DataKeyLocation
         {
             await tableStorageService.PrepareDelete(entries).ExecuteBatch();
             await CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, null);
-            CacheManager.RemoveFromCache(typeof(DataKeyLocationEntry).Name, entries);
+            await CacheManager.RemoveFromCache(typeof(DataKeyLocationEntry).Name, entries);
         }
 
         public async Task<IList<DataKeyLocationEntry>> GetLocations()
@@ -34,7 +34,7 @@ namespace AzureTableRepository.DataKeyLocation
             DateTimeOffset from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
             await CacheManager.Bust(typeof(DataKeyLocationEntry).Name, false, from);
-            CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
+            await CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
         }
 
         public async Task<DataKeyLocationEntry[]> InsertLocation(DataKeyLocationEntry[] entries)
@@ -47,7 +47,7 @@ namespace AzureTableRepository.DataKeyLocation
             }
             await tableStorageService.PrepareInsert(entries).ExecuteBatch();
             await CacheManager.Bust(typeof(DataKeyLocationEntry).Name, true, from);
-            CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
+            await CacheManager.UpsertCache(typeof(DataKeyLocationEntry).Name, entries);
             return entries;
         }
     }

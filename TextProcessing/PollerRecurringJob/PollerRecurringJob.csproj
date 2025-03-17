@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\AzureTableRepository\AzureTableRepository.csproj" />
     <ProjectReference Include="..\..\EntityDto\EntityDto.csproj" />
+    <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
     <ProjectReference Include="..\..\Services\ServiceInterface.csproj" />
     <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />
     <ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />

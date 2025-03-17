@@ -104,9 +104,9 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("pv-report/{reportName}")]
-        public async Task<IActionResult> ExportStructuraReport(string reportName, int[] dispozitie)
+        public async Task<IActionResult> ExportStructuraReport(string reportName, int[] commitedOrders)
         {
-            var items = (await commitedOrdersRepository.GetCommitedOrders(dispozitie)).ToList();
+            var items = (await commitedOrdersRepository.GetCommitedOrders(commitedOrders)).ToList();
             try
             {
                 var locMap = (await reportEntry.GetLocationMapPathEntry("1", t => t.RowKey == items[0].CodLocatie)).FirstOrDefault();
@@ -121,8 +121,9 @@ namespace WebApi.Controllers
                     }, $"{nameof(LocationMapEntry)}");
                 }
 
-                var fName = $"pv_accesorii/{locMap.Folder}/{dispozitie}.docx";
-                var metaName = $"pv_accesorii_{cryptoService.GetMd5(locMap.Folder)}_{dispozitie}.docx";
+                var name = string.Join("-", commitedOrders);
+                var fName = $"pv_accesorii/{locMap.Folder}/{name}.docx";
+                var metaName = $"pv_accesorii_{cryptoService.GetMd5(locMap.Folder)}_{name}.docx";
                 var metaData = await metadataService.GetMetadata(metaName);
 
                 List<string> list = new List<string>();

@@ -43,6 +43,7 @@ using ServiceImplementation;
 using AzureFabricServices;
 using AzureTableRepository;
 using ServiceInterface;
+using ServiceImplementation.Caching;
 
 namespace WebApi
 {
@@ -145,14 +146,14 @@ namespace WebApi
             services.AddSingleton<IMetadataService, FabricMetadataService>();
             services.AddSingleton<ITaskRepository, TaskRepository>();
             services.AddSingleton<ICryptoService, CryptoService>();
-            services.AddSingleton<ICacheManager<CommitedOrderEntry>, CacheManager<CommitedOrderEntry>>();
-            services.AddSingleton<ICacheManager<DataKeyLocationEntry>, CacheManager<DataKeyLocationEntry>>();
-            services.AddSingleton<ICacheManager<OrderEntry>, CacheManager<OrderEntry>>();
-            services.AddSingleton<ICacheManager<ProductCodeEntry>, CacheManager<ProductCodeEntry>>();
-            services.AddSingleton<ICacheManager<ProductStatsEntry>, CacheManager<ProductStatsEntry>>();
-            services.AddSingleton<ICacheManager<ProductCodeStatsEntry>, CacheManager<ProductCodeStatsEntry>>();
-            services.AddSingleton<ICacheManager<TicketEntity>, CacheManager<TicketEntity>>();
-            services.AddSingleton<ICacheManager<AttachmentEntry>, CacheManager<AttachmentEntry>>();
+            services.AddSingleton<ICacheManager<CommitedOrderEntry>, LocalCacheManager<CommitedOrderEntry>>();
+            services.AddSingleton<ICacheManager<DataKeyLocationEntry>, LocalCacheManager<DataKeyLocationEntry>>();
+            services.AddSingleton<ICacheManager<OrderEntry>, LocalCacheManager<OrderEntry>>();
+            services.AddSingleton<ICacheManager<ProductCodeEntry>, LocalCacheManager<ProductCodeEntry>>();
+            services.AddSingleton<ICacheManager<ProductStatsEntry>, LocalCacheManager<ProductStatsEntry>>();
+            services.AddSingleton<ICacheManager<ProductCodeStatsEntry>, LocalCacheManager<ProductCodeStatsEntry>>();
+            services.AddSingleton<ICacheManager<TicketEntity>, LocalCacheManager<TicketEntity>>();
+            services.AddSingleton<ICacheManager<AttachmentEntry>, LocalCacheManager<AttachmentEntry>>();
 
             services.AddScoped<SaSToken, SaSToken>();
             services.AddScoped<ReclamatiiReport, ReclamatiiReport>();

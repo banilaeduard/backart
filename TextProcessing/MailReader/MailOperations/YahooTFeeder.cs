@@ -1,7 +1,6 @@
 using System.Text;
 using AzureFabricServices;
 using AzureServices;
-using AzureTableRepository;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.MailSettings;
 using AzureTableRepository.Tickets;
@@ -16,6 +15,7 @@ using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.MailSettings;
 using RepositoryContract.Tickets;
+using ServiceImplementation.Caching;
 using ServiceInterface.Storage;
 using UniqueId = MailKit.UniqueId;
 
@@ -41,8 +41,8 @@ namespace YahooTFeeder
             var mailSettings = new MailSettingsRepository();
             IMetadataService metadataService = new FabricMetadataService();
             var ticketEntryRepository = new TicketEntryRepository(
-                new CacheManager<TicketEntity>(metadataService), 
-                new CacheManager<AttachmentEntry>(metadataService));
+                new AlwaysGetCacheManager<TicketEntity>(metadataService), 
+                new AlwaysGetCacheManager<AttachmentEntry>(metadataService));
             IList<TicketEntity> tickets = null;
             IList<AttachmentEntry> attachments = null;
             Dictionary<string, List<string>> folderRecipients = null;
@@ -96,8 +96,8 @@ namespace YahooTFeeder
         {
             var tableStorageService = new TableStorageService();
             IMetadataService metadataService = new FabricMetadataService();
-            var ticketEntryRepository = new TicketEntryRepository(new CacheManager<TicketEntity>(metadataService),
-                new CacheManager<AttachmentEntry>(metadataService));
+            var ticketEntryRepository = new TicketEntryRepository(new AlwaysGetCacheManager<TicketEntity>(metadataService),
+                new AlwaysGetCacheManager<AttachmentEntry>(metadataService));
 
             foreach (var (folderName, recipientsList) in folderRecipients)
             {
@@ -196,8 +196,10 @@ namespace YahooTFeeder
         {
             var blob = new BlobAccessStorageService();
             IMetadataService metadataService = new FabricMetadataService();
-            var ticketEntryRepository = new TicketEntryRepository(new CacheManager<TicketEntity>(metadataService),
-                new CacheManager<AttachmentEntry>(metadataService));
+            var ticketEntryRepository = new TicketEntryRepository(
+                new AlwaysGetCacheManager<TicketEntity>(metadataService),
+                new AlwaysGetCacheManager<AttachmentEntry>(metadataService)
+                );
             List<TableEntityPK> result = new();
             try
             {
@@ -325,8 +327,10 @@ namespace YahooTFeeder
             MoveToMessage<TableEntityPK>[] messages)
         {
             IMetadataService metadataService = new FabricMetadataService();
-            var ticketEntryRepository = new TicketEntryRepository(new CacheManager<TicketEntity>(metadataService),
-                new CacheManager<AttachmentEntry>(metadataService));
+            var ticketEntryRepository = new TicketEntryRepository(
+                new AlwaysGetCacheManager<TicketEntity>(metadataService),
+                new AlwaysGetCacheManager<AttachmentEntry>(metadataService)
+                );
 
             var allFolders = mailSettingEntries.SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries))
                 .Distinct()
@@ -380,7 +384,7 @@ namespace YahooTFeeder
         {
             BlobAccessStorageService storageService = new();
             IMetadataService metadataService = new FabricMetadataService();
-            DataKeyLocationRepository locationRepository = new(new CacheManager<DataKeyLocationEntry>(metadataService));
+            DataKeyLocationRepository locationRepository = new(new AlwaysGetCacheManager<DataKeyLocationEntry>(metadataService));
             messages = await folder.FetchAsync([.. messages.Select(t => t.UniqueId)],
                          MessageSummaryItems.UniqueId
                                         | MessageSummaryItems.InternalDate

@@ -31,7 +31,7 @@ namespace AzureFabricServices
         {
             fName = args != null ? string.Format(fName, args) : fName;
             var kvpList = new V2.Interfaces.KeyValuePairList();
-            kvpList.Items = metadata.ToList();
+            kvpList.Items = metadata?.ToList() ?? [];
             await GetService().ClearAndSetDataAsync(kvpList, fName);
         }
 
@@ -48,7 +48,7 @@ namespace AzureFabricServices
         }
     }
 
-    public class WrapLock : IDisposable, ILeaseClient
+    public class WrapLock : ILeaseClient
     {
         SemaphoreSlim semaphore;
         string leaseId;
@@ -68,7 +68,11 @@ namespace AzureFabricServices
 
         public void Dispose()
         {
-            semaphore.Release();
+            try
+            {
+                semaphore?.Release();
+            }
+            catch { }
             semaphore = null;
         }
     }

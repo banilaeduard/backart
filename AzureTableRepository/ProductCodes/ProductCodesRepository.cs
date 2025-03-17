@@ -50,7 +50,7 @@ namespace AzureTableRepository.ProductCodes
                 await DeleteRecursive(item, batch);
 
                 await batch.ExecuteBatch(table);
-                CacheManagerProductCodeEntry.RemoveFromCache(typeof(ProductCodeEntry).Name, batch.items.Select(t => (ProductCodeEntry)t.Entity).ToList());
+                await CacheManagerProductCodeEntry.RemoveFromCache(typeof(ProductCodeEntry).Name, batch.items.Select(t => (ProductCodeEntry)t.Entity).ToList());
                 await CacheManagerProductCodeEntry.Bust(typeof(ProductCodeEntry).Name, true, null);
             }
         }
@@ -79,7 +79,7 @@ namespace AzureTableRepository.ProductCodes
             DateTimeOffset from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(productStats).ExecuteBatch();
             await CacheManagerProductStatsEntry.Bust(typeof(ProductStatsEntry).Name, false, from);
-            CacheManagerProductStatsEntry.UpsertCache(typeof(ProductStatsEntry).Name, [.. productStats]);
+            await CacheManagerProductStatsEntry.UpsertCache(typeof(ProductStatsEntry).Name, [.. productStats]);
             return productStats;
         }
 
@@ -88,7 +88,7 @@ namespace AzureTableRepository.ProductCodes
             DateTimeOffset from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(productStats).ExecuteBatch();
             await CacheManagerProductCodeStatsEntry.Bust(typeof(ProductCodeStatsEntry).Name, false, from);
-            CacheManagerProductCodeStatsEntry.UpsertCache(typeof(ProductCodeStatsEntry).Name, [.. productStats]);
+            await CacheManagerProductCodeStatsEntry.UpsertCache(typeof(ProductCodeStatsEntry).Name, [.. productStats]);
             return productStats;
         }
 

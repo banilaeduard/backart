@@ -14,7 +14,6 @@ using System.Globalization;
 using ServiceInterface.Storage;
 using ServiceInterface;
 using PollerRecurringJob.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace WebApi.Controllers
 {

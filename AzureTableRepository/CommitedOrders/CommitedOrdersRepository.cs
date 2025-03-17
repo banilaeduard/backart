@@ -26,7 +26,7 @@ namespace AzureTableRepository.CommitedOrders
             await toRemove.ExecuteBatch();
 
             await CacheManager.Bust(nameof(CommitedOrderEntry), true, null);
-            CacheManager.RemoveFromCache(nameof(CommitedOrderEntry), toRemove.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
+            await CacheManager.RemoveFromCache(nameof(CommitedOrderEntry), toRemove.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
         }
 
         public async Task<List<CommitedOrderEntry>> GetCommitedOrders(int[] ids)
@@ -46,7 +46,7 @@ namespace AzureTableRepository.CommitedOrders
             await tableStorageService.Insert(sample);
 
             await CacheManager.Bust(nameof(CommitedOrderEntry), false, offset);
-            CacheManager.UpsertCache(nameof(CommitedOrderEntry), [sample]);
+            await CacheManager.UpsertCache(nameof(CommitedOrderEntry), [sample]);
         }
 
         public async Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when)
@@ -73,9 +73,9 @@ namespace AzureTableRepository.CommitedOrders
                     var offset = DateTimeOffset.Now;
                     await transaction.ExecuteBatch();
                     await CacheManager.Bust(nameof(CommitedOrderEntry), transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Any(), offset);
-                    CacheManager.RemoveFromCache(nameof(CommitedOrderEntry),
+                    await CacheManager.RemoveFromCache(nameof(CommitedOrderEntry),
                         transaction.items.Where(t => t.ActionType == TableTransactionActionType.Delete).Select(t => (CommitedOrderEntry)t.Entity).ToList());
-                    CacheManager.UpsertCache(nameof(CommitedOrderEntry),
+                    await CacheManager.UpsertCache(nameof(CommitedOrderEntry),
                         transaction.items.Where(t => t.ActionType != TableTransactionActionType.Delete).Select(t => (CommitedOrderEntry)t.Entity).ToList());
                 }
             }
@@ -98,7 +98,7 @@ namespace AzureTableRepository.CommitedOrders
             await transactions.ExecuteBatch();
 
             await CacheManager.Bust(nameof(CommitedOrderEntry), false, offset);
-            CacheManager.UpsertCache(nameof(CommitedOrderEntry), transactions.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
+            await CacheManager.UpsertCache(nameof(CommitedOrderEntry), transactions.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
         }
 
         public async Task<DateTime?> GetLastSyncDate()

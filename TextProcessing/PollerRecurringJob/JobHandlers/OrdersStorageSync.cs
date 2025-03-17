@@ -1,10 +1,10 @@
 ﻿using AzureFabricServices;
 using AzureServices;
-using AzureTableRepository;
 using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.Orders;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
+using ServiceImplementation.Caching;
 using SqlTableRepository.Orders;
 
 namespace PollerRecurringJob.JobHandlers
@@ -17,8 +17,8 @@ namespace PollerRecurringJob.JobHandlers
             var ordersImportsRepository = new OrdersImportsRepository(storage);
 
             var metadataService = new FabricMetadataService();
-            var commitedOrdersRepository = new CommitedOrdersRepository(new CacheManager<CommitedOrderEntry>(metadataService), metadataService);
-            var ordersRepository = new OrdersRepository(new CacheManager<OrderEntry>(metadataService), metadataService);
+            var commitedOrdersRepository = new CommitedOrdersRepository(new AlwaysGetCacheManager<CommitedOrderEntry>(metadataService), metadataService);
+            var ordersRepository = new OrdersRepository(new AlwaysGetCacheManager<OrderEntry>(metadataService), metadataService);
 
             var lastCommited = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var lastOrder = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);

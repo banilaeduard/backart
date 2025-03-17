@@ -13,7 +13,7 @@ namespace PollerRecurringJob.JobHandlers
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
             IWorkflowTrigger service = new QueueService();
-            var items = await service.GetWork<AddMailToTask>("addmailtotask");
+            var items = await service.GetWork<List<AddMailToTask>>("addmailtotask");
 
             if (!items.Any()) return;
 
@@ -21,7 +21,7 @@ namespace PollerRecurringJob.JobHandlers
             var tasks = await repo.GetTasks(TaskInternalState.Open);
             var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 
-            var items2 = items.Select(t => t.Model).Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
+            var items2 = items.SelectMany(t => t.Model).Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
 
             // update only active tasks
             foreach (var task in tasks)

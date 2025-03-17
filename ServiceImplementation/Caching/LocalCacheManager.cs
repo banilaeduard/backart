@@ -1,19 +1,22 @@
 ﻿using EntityDto;
 using ServiceInterface;
 using ServiceInterface.Storage;
+using System;
 using System.Collections.Concurrent;
+using System.Threading;
 
-namespace AzureTableRepository
+namespace ServiceImplementation.Caching
 {
-    public class CacheManager<T> : ICacheManager<T> where T : ITableEntryDto<T>
+    // Not really local as it depends on IMetadata implementation
+    public class LocalCacheManager<T> : ICacheManager<T> where T : ITableEntryDto<T>
     {
         private IMetadataService metadataService;
         private ConcurrentDictionary<string, DateTimeOffset> lastModified = new();
         private ConcurrentDictionary<string, string?> tokens = new();
         private ConcurrentDictionary<string, ConcurrentBag<T>> cache = new();
-        private ConcurrentDictionary<string, SemaphoreSlim> locks = new();
+        private SemaphoreSlim _semaphoreSlim = new(0, 1);
 
-        public CacheManager(IMetadataService metadataService)
+        public LocalCacheManager(IMetadataService metadataService)
         {
             this.metadataService = metadataService;
         }
@@ -41,7 +44,7 @@ namespace AzureTableRepository
                 return cache[tableName].Cast<T>().ToList();
             else
             {
-                using (await GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15)))
+                using (await GetSemaphoreLock(tableName, TimeSpan.FromSeconds(45)))
                 {
                     metaData = await metadataService.GetMetadata($"cache_control-{tableName}");
                     metaData.TryGetValue("token", out tokenSync);
@@ -105,42 +108,37 @@ namespace AzureTableRepository
 
         public async Task Bust(string tableName, bool invalidate, DateTimeOffset? stamp) // some sort of merge strategy on domain
         {
-            using (await GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15)))
+            using (await GetSemaphoreLock(tableName, TimeSpan.FromSeconds(15)))
             {
-                using (var lease = await metadataService.GetLease($"cache_control-{tableName}"))
+                var metaData = await metadataService.GetMetadata($"cache_control-{tableName}");
+                if (invalidate)
                 {
-                    await lease.Acquire(TimeSpan.FromSeconds(15));
-
-                    var metaData = await metadataService.GetMetadata($"cache_control-{tableName}");
-                    if (invalidate)
+                    if (metaData.TryGetValue("token", out var tokenSync))
                     {
-                        if (metaData.TryGetValue("token", out var tokenSync))
+                        if (tokenSync != null && tokenSync != tokens.GetOrAdd(tableName, (x) => ""))
                         {
-                            if (tokenSync != null && tokenSync != tokens.GetOrAdd(tableName, (x) => ""))
-                            {
-                                // means we got invalidated by some other guy. We update the token with our invalidation
-                                // but we also invalidate our cache
-                                lastModified.AddOrUpdate(tableName, minValueForAzure, (x, y) => minValueForAzure);
-                            }
-                        }
-                        metaData["token"] = Guid.NewGuid().ToString();
-                        tokens.AddOrUpdate(tableName, metaData["token"], (x, y) => metaData["token"]);
-
-                        await metadataService.SetMetadata($"cache_control-{tableName}", lease.LeaseId, metaData);
-                    }
-                    else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
-                    {
-                        if (stamp > dateSync)
-                        {
-                            metaData["timestamp"] = (stamp ?? dateSync).ToString();
-                            await metadataService.SetMetadata($"cache_control-{tableName}", lease.LeaseId, metaData);
+                            // means we got invalidated by some other guy. We update the token with our invalidation
+                            // but we also invalidate our cache
+                            lastModified.AddOrUpdate(tableName, minValueForAzure, (x, y) => minValueForAzure);
                         }
                     }
-                    else if (stamp.HasValue)
+                    metaData["token"] = Guid.NewGuid().ToString();
+                    tokens.AddOrUpdate(tableName, metaData["token"], (x, y) => metaData["token"]);
+
+                    await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                }
+                else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
+                {
+                    if (stamp > dateSync)
                     {
-                        metaData["timestamp"] = stamp.Value.ToString();
-                        await metadataService.SetMetadata($"cache_control-{tableName}", lease.LeaseId, metaData);
+                        metaData["timestamp"] = (stamp ?? dateSync).ToString();
+                        await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
                     }
+                }
+                else if (stamp.HasValue)
+                {
+                    metaData["timestamp"] = stamp.Value.ToString();
+                    await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
                 }
             }
         }
@@ -158,7 +156,7 @@ namespace AzureTableRepository
 
         public async Task RemoveFromCache(string tableName, IList<T> entities)
         {
-            using (await GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15)))
+            using (await GetSemaphoreLock(tableName, TimeSpan.FromSeconds(15)))
             {
                 if (entities.Any())
                 {
@@ -173,25 +171,33 @@ namespace AzureTableRepository
 
         public async Task UpsertCache(string tableName, IList<T> entities)
         {
-            using (await GetSemaphore(tableName).Acquire(TimeSpan.FromSeconds(15))) { }
-            if (entities.Any())
+            using (await GetSemaphoreLock(tableName, TimeSpan.FromSeconds(15)))
             {
-                var entries = cache.GetOrAdd(tableName, s => []);
-
-                entries.Except(entities);
-                var xcept = new ConcurrentBag<T>(entries.Except(entities));
-                foreach (var entry in entities)
+                if (entities.Any())
                 {
-                    xcept.Add(entry);
-                }
+                    var entries = cache.GetOrAdd(tableName, s => []);
 
-                cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
+                    entries.Except(entities);
+                    var xcept = new ConcurrentBag<T>(entries.Except(entities));
+                    foreach (var entry in entities)
+                    {
+                        xcept.Add(entry);
+                    }
+
+                    cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
+                }
             }
         }
 
-        private WrapLock GetSemaphore(string name)
+        private async Task<WrapLock> GetSemaphoreLock(string name, TimeSpan ms)
         {
-            return new(locks.GetOrAdd(name, x => new(0, 1)));
+            bool timedOut = !await _semaphoreSlim.WaitAsync(ms).ConfigureAwait(false);
+
+            if (timedOut)
+            {
+                throw new TimeoutException("The request to semaphore timed out after: " + ms);
+            }
+            return new WrapLock(_semaphoreSlim);
         }
     }
 
@@ -201,12 +207,6 @@ namespace AzureTableRepository
         public WrapLock(SemaphoreSlim semaphore)
         {
             this.semaphore = semaphore;
-        }
-
-        public async Task<WrapLock> Acquire(TimeSpan ms)
-        {
-            await semaphore.WaitAsync(ms);
-            return this;
         }
 
         public void Dispose()
