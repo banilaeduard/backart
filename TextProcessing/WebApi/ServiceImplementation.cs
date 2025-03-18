@@ -82,7 +82,7 @@ namespace WebApi
             services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
-            NOT READY YET FOR THIS
+            //NOT READY YET FOR THIS
             //services.AddScoped<IProductCodeRepository, ProductCodesRepositorySql>();
 #endif
 
@@ -101,8 +101,8 @@ namespace WebApi
                 cfg.CreateMap<ProductCodeStatsModel, ProductCodeStatsEntry>();
                 cfg.CreateMap<ProductCodeStatsEntry, ProductCodeStatsModel>();
 
-                cfg.CreateMap<OrderModel, RepositoryContract.Orders.OrderEntry>();
-                cfg.CreateMap<RepositoryContract.Orders.OrderEntry, OrderModel>();
+                cfg.CreateMap<OrderModel, OrderEntry>();
+                cfg.CreateMap<OrderEntry, OrderModel>();
 
                 cfg.CreateMap<TransportEntry, TransportModel>();
                 cfg.CreateMap<TransportModel, TransportEntry>();

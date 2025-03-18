@@ -34,7 +34,7 @@
       </StatelessService>
     </Service>
     <Service Name="WebApiType" ServicePackageActivationMode="ExclusiveProcess">
-      <StatelessService ServiceTypeName="WebApiType">
+      <StatelessService ServiceTypeName="WebApiType" InstanceCount="[WebApi_InstanceCount]">
         <SingletonPartition />
       </StatelessService>
     </Service>
