@@ -28,6 +28,9 @@ using Dapper;
 using System.Data;
 using WebApi.Models;
 using RepositoryContract;
+using AzureTableRepository.ProductCodes;
+using AzureTableRepository.Orders;
+using AzureTableRepository.CommitedOrders;
 
 namespace WebApi
 {
@@ -71,14 +74,16 @@ namespace WebApi
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
-#if (RELEASE)
+#if (DEBUG)
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
-#elif (DEBUG)
+#elif (RELEASE)
             services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
-            services.AddScoped<IProductCodeRepository, ProductCodesRepositorySql>();
+            services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
+            NOT READY YET FOR THIS
+            //services.AddScoped<IProductCodeRepository, ProductCodesRepositorySql>();
 #endif
 
             // MAPPINGS FOR AUTOMAPPER

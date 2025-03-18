@@ -11,7 +11,7 @@ namespace WebApi.Services
         string key;
         string fromEmail;
         string fromName;
-        public EmailSender(StatelessServiceContext settings, ILogger<EmailSender> logger)
+        public EmailSender(ILogger<EmailSender> logger)
         {
             key = Environment.GetEnvironmentVariable("SendGridKey")!;
             fromEmail = "banila.eduard@gmail.com";
