@@ -79,13 +79,11 @@ namespace WebApi.Controllers
                 var metaName = $"reclamatii-drafts_{cryptoService.GetMd5(locMap.Folder)}_{document.NumarIntern}";
                 var metaData = await metadataService.GetMetadata(metaName);
 
-                if (metaData.ContainsKey("md5"))
+                if (metaData.ContainsKey("md5")
+                    && md5.Equals(metaData["md5"])
+                    && storageService.AccessIfExists(fName, out var contentType2, out var content))
                 {
-                    if (md5.Equals(metaData["md5"]))
-                    {
-                        var content = storageService.AccessIfExists(fName, out var contentType2);
-                        return File(content, wordType);
-                    }
+                    return File(content, wordType);
                 }
 
                 var reportBytes = await reclamatiiReport.GenerateReport(document);
@@ -137,13 +135,11 @@ namespace WebApi.Controllers
                 var stringToHash = string.Join("", list.Order());
                 var md5 = cryptoService.GetMd5(stringToHash);
 
-                if (metaData.ContainsKey("md5"))
+                if (metaData.ContainsKey("md5") 
+                    && md5.Equals(metaData["md5"]) 
+                    && storageService.AccessIfExists(fName, out var contentType2, out var content))
                 {
-                    if (md5.Equals(metaData["md5"]))
-                    {
-                        var content = storageService.AccessIfExists(fName, out var contentType2);
-                        return File(content, wordType);
-                    }
+                    return File(content, wordType);
                 }
 
                 var reportBytes = await structuraReport.GenerateReport(items, reportName);

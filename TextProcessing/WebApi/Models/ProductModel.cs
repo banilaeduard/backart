@@ -1,4 +1,4 @@
-﻿using AzureSerRepositoryContract.ProductCodesvices;
+﻿using RepositoryContract.ProductCodes;
 
 namespace WebApi.Models
 {

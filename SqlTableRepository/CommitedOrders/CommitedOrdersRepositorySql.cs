@@ -92,6 +92,7 @@ namespace SqlTableRepository.CommitedOrders
             }
             catch (Exception ex)
             {
+                logger.LogInformation(new EventId(69), ex, @$"Accessing cloud for missing {key}");
                 return Encoding.UTF8.GetString(storageService.Access(key, out var _));
             }
         }

@@ -71,7 +71,7 @@ namespace DataAccess
                             Email = "banila.eduard@gmail.com",
                             Tenant = "cubik"
                         };
-                        var result = await userManager.CreateAsync(user, "123EWQasd!@#");
+                        var result = await userManager.CreateAsync(user, "123ewqasd");
                         if (result.Succeeded)
                         {
                             await userManager.ConfirmEmailAsync(user, await userManager.GenerateEmailConfirmationTokenAsync(user));

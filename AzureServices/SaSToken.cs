@@ -18,7 +18,8 @@ namespace AzureServices
         {
             return [
                 ("blob", EncodeTo64(client.GenerateSasUri(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Create, DateTimeOffset.Now.AddHours(1)).AbsoluteUri)),
-                ("locationMapEntryToken", EncodeTo64(getTableSaS($@"{nameof(LocationMap)}Entry", 1)))];
+                //("locationMapEntryToken", EncodeTo64(getTableSaS($@"{nameof(LocationMap)}Entry", 1)))
+                ];
         }
 
         private string getTableSaS(string tableName, int hours)

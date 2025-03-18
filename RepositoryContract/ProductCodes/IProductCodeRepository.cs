@@ -1,15 +1,15 @@
-﻿using AzureSerRepositoryContract.ProductCodesvices;
+﻿using EntityDto;
 
 namespace RepositoryContract.ProductCodes
 {
     public interface IProductCodeRepository
     {
-        Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr, string? table = null);
-        Task<IList<ProductCodeEntry>> GetProductCodes(string? table = null);
-        Task<IList<ProductStatsEntry>> GetProductStats(string? table = null); 
-        Task<IList<ProductStatsEntry>> CreateProductStats(IList<ProductStatsEntry> productStats, string? table = null);
-        Task<IList<ProductCodeStatsEntry>> CreateProductCodeStatsEntry(IList<ProductCodeStatsEntry> productStats, string? table = null);
-        Task<IList<ProductCodeStatsEntry>> GetProductCodeStatsEntry(string? table = null);
-        Task Delete<T>(string partitionKey, string rowKey, string tableName = null);
+        Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr);
+        Task<IList<ProductCodeEntry>> GetProductCodes();
+        Task<IList<ProductStatsEntry>> GetProductStats();
+        Task<IList<ProductStatsEntry>> CreateProductStats(IList<ProductStatsEntry> productStats);
+        Task<IList<ProductCodeStatsEntry>> CreateProductCodeStatsEntry(IList<ProductCodeStatsEntry> productStats);
+        Task<IList<ProductCodeStatsEntry>> GetProductCodeStatsEntry();
+        Task Delete<T>(T entity) where T : ITableEntryDto<T>;
     }
 }

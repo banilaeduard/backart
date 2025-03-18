@@ -3,47 +3,14 @@ using System.Net;
 using Microsoft.ServiceFabric.Services.Communication.AspNetCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
-using DataAccess;
 using System.Text.Json.Serialization;
 using DataAccess.Context;
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.Text;
-using WebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Diagnostics;
-using AzureServices;
-using RepositoryContract.Orders;
-using AzureTableRepository.Orders;
-using RepositoryContract.CommitedOrders;
-using AzureTableRepository.CommitedOrders;
-using RepositoryContract.ProductCodes;
-using AzureTableRepository.ProductCodes;
-using RepositoryContract.DataKeyLocation;
-using AzureTableRepository.DataKeyLocation;
-using RepositoryContract.Tickets;
-using AzureTableRepository.Tickets;
-using RepositoryContract.Imports;
-using SqlTableRepository.Orders;
-using RepositoryContract.Tasks;
-using SqlTableRepository.Tasks;
-using AutoMapper;
-using WebApi.Models;
-using RepositoryContract;
-using AzureSerRepositoryContract.ProductCodesvices;
-using SqlTableRepository.CommitedOrders;
-using RepositoryContract.Report;
-using RepositoryContract.Transports;
-using SqlTableRepository.Transport;
-using Dapper;
-using System.Data;
-using ServiceInterface.Storage;
-using ServiceImplementation;
-using AzureFabricServices;
-using AzureTableRepository;
-using ServiceInterface;
-using ServiceImplementation.Caching;
 
 namespace WebApi
 {
@@ -69,10 +36,7 @@ namespace WebApi
                     new KestrelCommunicationListener(serviceContext, endpoint,
                     (url, listener) =>
                     {
-                        //ServiceEventSource.Current.ServiceMessage(serviceContext, $"Starting Kestrel on {url}");
-
                         var builder = WebApplication.CreateBuilder();
-                        builder.Services.AddSingleton(serviceContext);
                         builder.Services.AddControllers().AddJsonOptions(opt =>
                                                         {
                                                             opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -108,16 +72,17 @@ namespace WebApi
                         app.UseAuthentication();
                         app.UseAuthorization();
                         app.MapControllers();
+
                         app.UseExceptionHandler(cfg => cfg.Run(async context => {
                             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
                             var exception = exceptionHandlerPathFeature.Error;
                             ServiceEventSource.Current.ServiceMessage(serviceContext, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
                         }));
 
-                        app.Services.GetRequiredService<IServiceScopeFactory>()
-                            .CreateScope().ServiceProvider
-                            .GetRequiredService<Initializer>()
-                            .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                        //app.Services.GetRequiredService<IServiceScopeFactory>()
+                        //    .CreateScope().ServiceProvider
+                        //    .GetRequiredService<Initializer>()
+                        //    .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                         return app;
                     }), "bart")
@@ -126,70 +91,32 @@ namespace WebApi
 
         public void ConfigureServices(IServiceCollection services, StatelessServiceContext serviceContext)
         {
+            services.AddLogging(logging =>
+            {
+                logging.ClearProviders(); // Remove default providers
+                logging.AddApplicationInsights(); // Log to Application Insights
+            });
+
             services.Configure<CookiePolicyOptions>(options =>
             {
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"));
+            ServiceImplementation.ConfigureServices(services, serviceContext);
 
-            var cfg = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
-
-            services.AddSingleton(new ConnectionSettings()
-            {
-                ConnectionString = Environment.GetEnvironmentVariable("ConnectionString")!,
-                ExternalConnectionString = Environment.GetEnvironmentVariable("external_sql_server")!,
-                SqlQueryCache = Environment.GetEnvironmentVariable("path_to_sql")!,
-            });
-            services.AddSingleton<Initializer>();
-            services.AddSingleton<IMetadataService, FabricMetadataService>();
-            services.AddSingleton<ITaskRepository, TaskRepository>();
-            services.AddSingleton<ICryptoService, CryptoService>();
-            services.AddSingleton<ICacheManager<CommitedOrderEntry>, LocalCacheManager<CommitedOrderEntry>>();
-            services.AddSingleton<ICacheManager<DataKeyLocationEntry>, LocalCacheManager<DataKeyLocationEntry>>();
-            services.AddSingleton<ICacheManager<OrderEntry>, LocalCacheManager<OrderEntry>>();
-            services.AddSingleton<ICacheManager<ProductCodeEntry>, LocalCacheManager<ProductCodeEntry>>();
-            services.AddSingleton<ICacheManager<ProductStatsEntry>, LocalCacheManager<ProductStatsEntry>>();
-            services.AddSingleton<ICacheManager<ProductCodeStatsEntry>, LocalCacheManager<ProductCodeStatsEntry>>();
-            services.AddSingleton<ICacheManager<TicketEntity>, LocalCacheManager<TicketEntity>>();
-            services.AddSingleton<ICacheManager<AttachmentEntry>, LocalCacheManager<AttachmentEntry>>();
-
-            services.AddScoped<SaSToken, SaSToken>();
-            services.AddScoped<ReclamatiiReport, ReclamatiiReport>();
-            services.AddScoped<StructuraReport, StructuraReport>();
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<AzureFileStorage, AzureFileStorage>();
-            services.AddScoped<EmailSender, EmailSender>();
-            services.AddScoped<IStorageService, BlobAccessStorageService>();
-            services.AddScoped<IWorkflowTrigger, QueueService>();
-            services.AddScoped<IImportsRepository, OrdersImportsRepository>();
-            services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
-            services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
-            services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
-            services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
-            services.AddScoped<ITransportRepository, TransportRepository>();
-#if (DEBUG)
-            services.AddScoped<IOrdersRepository, OrdersRepository>();
-            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
-#elif (RELEASE)
-            services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
-            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
-#endif
             services.AddIdentity<AppIdentityUser, AppIdentityRole>()
                     .AddEntityFrameworkStores<AppIdentityDbContext>()
                     .AddDefaultTokenProviders();
 
             var tokenKey = Environment.GetEnvironmentVariable("Secret")!;
             var key = Encoding.ASCII.GetBytes(tokenKey);
-            SqlMapper.AddTypeHandler(new DateTimeHandler());
 
             services.AddAuthentication(x =>
             {
                 x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(x =>
+            }).AddJwtBearer(x =>
             {
                 x.RequireHttpsMetadata = false;
                 x.SaveToken = true;
@@ -213,46 +140,6 @@ namespace WebApi
                 opts.SignIn.RequireConfirmedEmail = false;
                 opts.Lockout.MaxFailedAccessAttempts = 30;
             });
-
-            MapperConfiguration config = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<AttachmentEntry, AttachmentModel>();
-                cfg.CreateMap<AttachmentModel, AttachmentEntry>();
-
-                cfg.CreateMap<ProductStatsEntry, ProductStatsModel>();
-                cfg.CreateMap<ProductStatsModel, ProductStatsEntry>();
-
-                cfg.CreateMap<ProductCodeEntry, ProductModel>();
-                cfg.CreateMap<ProductModel, ProductCodeEntry>();
-
-                cfg.CreateMap<ProductCodeStatsModel, ProductCodeStatsEntry>();
-                cfg.CreateMap<ProductCodeStatsEntry, ProductCodeStatsModel>();
-
-                cfg.CreateMap<OrderModel, RepositoryContract.Orders.OrderEntry>();
-                cfg.CreateMap<RepositoryContract.Orders.OrderEntry, OrderModel>();
-
-                cfg.CreateMap<TransportEntry, TransportModel>();
-                cfg.CreateMap<TransportModel, TransportEntry>();
-
-                cfg.CreateMap<TransportItemEntry, TransportItemModel>();
-                cfg.CreateMap<TransportItemModel, TransportItemEntry>();
-            });
-            IMapper mapper = config.CreateMapper();
-            services.AddSingleton(mapper);
-        }
-    }
-
-    public class DateTimeHandler : SqlMapper.TypeHandler<DateTime>
-    {
-        public override void SetValue(IDbDataParameter parameter, DateTime value)
-        {
-            parameter.Value = value;
-        }
-
-        public override DateTime Parse(object value)
-        {
-            var v = (DateTime)value;
-            return v.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind((DateTime)value, DateTimeKind.Utc) : v;
         }
     }
 }

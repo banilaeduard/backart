@@ -1,9 +1,8 @@
 ﻿using EntityDto;
+using Microsoft.Extensions.Logging;
 using ServiceInterface;
 using ServiceInterface.Storage;
-using System;
 using System.Collections.Concurrent;
-using System.Threading;
 
 namespace ServiceImplementation.Caching
 {
@@ -14,11 +13,14 @@ namespace ServiceImplementation.Caching
         private ConcurrentDictionary<string, DateTimeOffset> lastModified = new();
         private ConcurrentDictionary<string, string?> tokens = new();
         private ConcurrentDictionary<string, ConcurrentBag<T>> cache = new();
-        private SemaphoreSlim _semaphoreSlim = new(0, 1);
+        private Semaphore _semaphore = new(1, 1);
+        private ILogger<T> logger;
 
-        public LocalCacheManager(IMetadataService metadataService)
+        public LocalCacheManager(IMetadataService metadataService, ILogger<T> logger)
         {
             this.metadataService = metadataService;
+            this.logger = logger;
+            logger.LogInformation(@$"Initialized {nameof(LocalCacheManager<T>)}");
         }
 
         private static readonly DateTimeOffset minValueForAzure = new(2024, 1, 1, 1, 1, 1, TimeSpan.Zero);
@@ -76,7 +78,10 @@ namespace ServiceImplementation.Caching
                                 metaData["timestamp"] = lastModified[tableName].ToString();
                                 await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
                             }
-                            catch (Exception e) { }
+                            catch (Exception e)
+                            {
+                                logger.LogError(new EventId(69), e, nameof(LocalCacheManager<T>));
+                            }
                         }
 
                         cache[tableName] = items;
@@ -92,7 +97,7 @@ namespace ServiceImplementation.Caching
                                 metaData["timestamp"] = lastModified[tableName].ToString();
                                 await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
                             }
-                            catch (Exception e) { }
+                            catch (Exception e) { logger.LogError(new EventId(69), e, nameof(LocalCacheManager<T>)); }
                         }
                     }
 
@@ -191,27 +196,28 @@ namespace ServiceImplementation.Caching
 
         private async Task<WrapLock> GetSemaphoreLock(string name, TimeSpan ms)
         {
-            bool timedOut = !await _semaphoreSlim.WaitAsync(ms).ConfigureAwait(false);
+            return new WrapLock(_semaphore);
+            bool timedOut = _semaphore.WaitOne(ms);
 
             if (timedOut)
             {
                 throw new TimeoutException("The request to semaphore timed out after: " + ms);
             }
-            return new WrapLock(_semaphoreSlim);
+            return new WrapLock(_semaphore);
         }
     }
 
     class WrapLock : IDisposable
     {
-        SemaphoreSlim semaphore;
-        public WrapLock(SemaphoreSlim semaphore)
+        Semaphore semaphore;
+        public WrapLock(Semaphore semaphore)
         {
             this.semaphore = semaphore;
         }
 
         public void Dispose()
         {
-            semaphore.Release();
+            //semaphore.Release(1);
             semaphore = null;
         }
     }

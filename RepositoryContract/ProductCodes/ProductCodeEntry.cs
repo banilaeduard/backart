@@ -4,7 +4,7 @@ using EntityDto;
 using EntityDto.ProductCodes;
 using System.Diagnostics.CodeAnalysis;
 
-namespace AzureSerRepositoryContract.ProductCodesvices
+namespace RepositoryContract.ProductCodes
 {
     public class ProductCodeEntry : ProductCode, ITableEntity, ITableEntryDto<ProductCodeEntry>
     {

@@ -13,17 +13,18 @@ namespace AzureServices
             client = new(Environment.GetEnvironmentVariable("storage_connection"), "importstorage");
         }
 
-        public byte[] AccessIfExists(string fName, out string contentType)
+        public bool AccessIfExists(string fName, out string contentType, out byte[] content)
         {
             contentType = "";
-            if (string.IsNullOrEmpty(fName)) return [];
+            content = [];
+
             var blob = client.GetBlobClient(fName);
+            if (!blob.Exists()) return false;
 
-            if (!blob.Exists()) return [];
-
-            var content = blob.DownloadContent();
-            contentType = content.Value.Details.ContentType;
-            return content.Value.Content.ToArray();
+            var file = blob.DownloadContent();
+            contentType = file.Value.Details.ContentType;
+            content = file.Value.Content.ToArray();
+            return true;
         }
 
         public byte[] Access(string fName, out string contentType)

@@ -41,7 +41,8 @@
     <ProjectReference Include="MetadataService\MetadataService.csproj" />
     <ProjectReference Include="PollerRecurringJob\PollerRecurringJob.csproj" />
     <ProjectReference Include="WebApi\WebApi.csproj">
-      <ServiceLaunchUrl>https://localhost:{ServicePort}/swagger</ServiceLaunchUrl>
+      <ServiceLaunchUrl>
+      </ServiceLaunchUrl>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />

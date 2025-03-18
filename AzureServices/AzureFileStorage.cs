@@ -18,14 +18,16 @@ namespace AzureServices
             return BinaryData.FromStream(client.Value.Content).ToArray();
         }
 
-        public byte[] AccessIfExists(string fName, out string contentType)
+        public bool AccessIfExists(string fName, out string contentType, out byte[] content)
         {
             contentType = "";
+            content = [];
             var rootDirectory = share.GetRootDirectoryClient();
-            if (!rootDirectory.GetFileClient(fName).Exists()) return [];
+            if (!rootDirectory.GetFileClient(fName).Exists()) return false;
             var client = rootDirectory.GetFileClient(fName).Download();
             contentType = client.Value.ContentType;
-            return BinaryData.FromStream(client.Value.Content).ToArray();
+            content = BinaryData.FromStream(client.Value.Content).ToArray();
+            return true;
         }
 
         public async Task Delete(string fName)

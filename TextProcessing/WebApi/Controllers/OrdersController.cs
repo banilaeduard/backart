@@ -30,26 +30,20 @@ namespace WebApi.Controllers
             this.productCodeRepository = productCodeRepository;
         }
 
-        [HttpPost("upload"), DisableRequestSizeLimit]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UploadOrders()
-        {
-            var file = Request.Form.Files[0];
-
-            using (var stream = file.OpenReadStream())
-            {
-                var items = WorkbookReader.ReadWorkBook<Order>(stream, 4);
-                await ordersRepository.ImportOrders(items, DateTime.Now);
-            }
-
-            return Ok();
-        }
-
         [HttpGet()]
         public async Task<IActionResult> GetOrders()
         {
-            var productLinkWeights = (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate");
-            var weights = (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate");
+            List<ProductCodeStatsEntry> productLinkWeights = [];
+            List<ProductStatsEntry> weights = [];
+            try
+            {
+                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
+                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(new EventId(69), ex, "ExportStructuraReport");
+            }
 
             var odersModel = (await ordersRepository.GetOrders()).Select(product => mapper.Map<OrderModel>(product).Weight(weights.FirstOrDefault(w =>
             {

@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Actors;
-using System.Fabric;
 using AutoMapper;
 using MailReader.Interfaces;
 using PollerRecurringJob.Interfaces;
@@ -16,7 +15,6 @@ namespace WebApi.Controllers
     [Authorize(Roles = "admin")]
     public class JobsController : WebApiController2
     {
-        private StatelessServiceContext context;
         internal ServiceProxyFactory serviceProxy = new ServiceProxyFactory((c) =>
         {
             return new FabricTransportServiceRemotingClientFactory();
@@ -24,10 +22,8 @@ namespace WebApi.Controllers
 
         public JobsController(
             ILogger<JobsController> logger,
-            StatelessServiceContext context,
             IMapper mapper) : base(logger, mapper)
         {
-            this.context = context;
         }
 
         [HttpGet()]
@@ -41,7 +37,7 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                logger.LogError(new EventId(69), ex, nameof(JobsController));
                 return NotFound();
             }
         }
@@ -60,7 +56,7 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
-                ServiceEventSource.Current.ServiceMessage(this.context, ex.Message);
+                logger.LogError(new EventId(69), ex, nameof(JobsController));
                 return BadRequest(ex.Message);
             }
         }

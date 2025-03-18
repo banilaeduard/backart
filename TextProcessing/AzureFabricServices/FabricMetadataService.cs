@@ -72,7 +72,8 @@ namespace AzureFabricServices
             {
                 semaphore?.Release();
             }
-            catch { }
+            catch {
+            }
             semaphore = null;
         }
     }
