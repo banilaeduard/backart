@@ -87,8 +87,7 @@ namespace SqlTableRepository.Transport
                     transportEntry.ExternalItemId,
                     transportEntry.Delivered,
                 });
-                if (transport.Delivered?.Kind == DateTimeKind.Unspecified)
-                    transport.Delivered = DateTime.SpecifyKind(transport.Delivered.Value, DateTimeKind.Utc);
+
                 if (transportEntry.TransportItems?.Count > 0)
                 {
                     populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);
