@@ -70,9 +70,8 @@ namespace MetadataService
                             allKeys.Add(dictionaryName);
                         }
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
-
                     }
                 }
             }

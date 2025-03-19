@@ -126,7 +126,6 @@ namespace PollerRecurringJob
         /// </summary>
         protected override async Task OnActivateAsync()
         {
-            ActorEventSource.Current.ActorMessage(this, "Polling Actor activated.");
             IMetadataService metadataService = new FabricMetadataService();
 
             var commitedOrdersRepository = new CommitedOrdersRepository(new AlwaysGetCacheManager<CommitedOrderEntry>(metadataService), metadataService);

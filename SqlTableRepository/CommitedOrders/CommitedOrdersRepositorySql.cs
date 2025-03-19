@@ -13,8 +13,6 @@ namespace SqlTableRepository.CommitedOrders
 {
     public class CommitedOrdersRepositorySql : ICommitedOrdersRepository
     {
-        static readonly string syncName = $"sync_control_LastSyncDate_${nameof(CommitedOrderEntry)}";
-
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;
         private ConnectionSettings ConnectionSettings;
@@ -60,14 +58,7 @@ namespace SqlTableRepository.CommitedOrders
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var blobAccessStorageService = new BlobAccessStorageService();
-            var metadata = await blobAccessStorageService.GetMetadata(syncName);
-
-            if (metadata.ContainsKey("data_sync"))
-            {
-                return DateTime.Parse(metadata["data_sync"]);
-            }
-            return null;
+            throw new NotImplementedException();
         }
 
         public Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when)

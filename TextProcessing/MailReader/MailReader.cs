@@ -59,7 +59,6 @@ namespace MailReader
         /// </summary>
         protected async override Task OnActivateAsync()
         {
-            ActorEventSource.Current.ActorMessage(this, "Actor activated.");
             YahooTFeeder.YahooTFeeder.logger = ActorEventSource.Current;
             YahooTFeeder.YahooTFeeder.actor = this;
 #if DEBUG

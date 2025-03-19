@@ -12,8 +12,6 @@ namespace SqlTableRepository.Orders
 {
     public class OrdersRepositorySql : IOrdersRepository
     {
-        static readonly string syncName = $"sync_control_LastSyncDate_${typeof(OrderEntry).Name}";
-
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;
         ConnectionSettings ConnectionSettings;
@@ -27,14 +25,7 @@ namespace SqlTableRepository.Orders
 
         public async Task<DateTime?> GetLastSyncDate()
         {
-            var blobAccessStorageService = new BlobAccessStorageService();
-            var metadata = await blobAccessStorageService.GetMetadata(syncName);
-
-            if (metadata.ContainsKey("data_sync"))
-            {
-                return DateTime.Parse(metadata["data_sync"]);
-            }
-            return null;
+            throw new NotImplementedException();
         }
 
         public async Task<List<OrderEntry>> GetOrders(Func<OrderEntry, bool> expr, string? table = null)
