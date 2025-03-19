@@ -1,12 +1,11 @@
 ﻿using Azure;
 using Azure.Data.Tables;
-using EntityDto;
 using EntityDto.ProductCodes;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.ProductCodes
 {
-    public class ProductCodeEntry : ProductCode, ITableEntity, ITableEntryDto<ProductCodeEntry>
+    public class ProductCodeEntry : ProductCode, ITableEntity, IEqualityComparer<ProductCodeEntry>
     {
         public ETag ETag { get; set; }
 

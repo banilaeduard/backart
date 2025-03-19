@@ -1,13 +1,13 @@
 ﻿namespace EntityDto
 {
-    public class IdentityEquality<T> where T : ITableEntryDto<T>
+    public class IdentityEquality<T> where T : ITableEntryDto
     {
         public X Shallowcopy<X>() where X : T
         {
             return (X)this.MemberwiseClone();
         }
 
-        public bool Equals(T x, T y)
+        public virtual bool Equals(T x, T y)
         {
             if (ReferenceEquals(x, y)) return true;
 
@@ -22,7 +22,7 @@
             return false;
         }
 
-        public int GetHashCode(T other)
+        public virtual int GetHashCode(T other)
         {
             return GetStableHashCode(other.PartitionKey) ^ GetStableHashCode(other.RowKey) ^ GetStableHashCode(other.Id.ToString());
         }

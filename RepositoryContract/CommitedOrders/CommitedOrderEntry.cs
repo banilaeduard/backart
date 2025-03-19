@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.CommitedOrders
 {
-    public class CommitedOrderEntry : CommitedOrder, ITableEntity, ITableEntryDto<CommitedOrderEntry>
+    public class CommitedOrderEntry : CommitedOrder, ITableEntity, IEqualityComparer<CommitedOrderEntry>
     {
         public ETag ETag { get; set; }
 

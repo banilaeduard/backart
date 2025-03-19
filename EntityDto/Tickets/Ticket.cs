@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.Tickets
 {
-    public class Ticket : IdentityEquality<Ticket>, ITableEntryDto<Ticket>
+    public class Ticket : IdentityEquality<Ticket>, ITableEntryDto
     {
         public int Uid { get; set; }
         public int Validity { get; set; }

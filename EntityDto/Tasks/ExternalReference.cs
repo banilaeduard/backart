@@ -1,7 +1,7 @@
 ﻿
 namespace EntityDto.Tasks
 {
-    public class ExternalReference : IdentityEquality<ExternalReference>, ITableEntryDto<ExternalReference>
+    public class ExternalReference : IdentityEquality<ExternalReference>, ITableEntryDto
     {
         public int Id { get; set; }
         public int TaskId { get; set; }

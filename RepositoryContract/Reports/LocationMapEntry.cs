@@ -1,12 +1,11 @@
 ﻿using Azure;
 using EntityDto.Reports;
-using EntityDto;
 using System.Diagnostics.CodeAnalysis;
 using Azure.Data.Tables;
 
 namespace RepositoryContract.Report
 {
-    public class LocationMapEntry : LocationMap, ITableEntryDto<LocationMapEntry>, ITableEntity
+    public class LocationMapEntry : LocationMap, ITableEntity
     {
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }

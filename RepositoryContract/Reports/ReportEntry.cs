@@ -1,11 +1,10 @@
 ﻿using Azure;
 using Azure.Data.Tables;
-using EntityDto;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Report
 {
-    public class ReportEntry : EntityDto.Reports.Report, ITableEntity, ITableEntryDto<ReportEntry>
+    public class ReportEntry : EntityDto.Reports.Report, ITableEntity
     {
         public ETag ETag { get; set; }
 

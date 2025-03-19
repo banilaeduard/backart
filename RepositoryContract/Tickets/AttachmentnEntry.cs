@@ -1,12 +1,11 @@
 ﻿using Azure;
 using Azure.Data.Tables;
-using EntityDto;
 using EntityDto.Tickets;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Tickets
 {
-    public class AttachmentEntry : Attachment ,ITableEntity, ITableEntryDto<AttachmentEntry>
+    public class AttachmentEntry : Attachment ,ITableEntity, IEqualityComparer<AttachmentEntry>
     {
         public ETag ETag { get; set; }
 

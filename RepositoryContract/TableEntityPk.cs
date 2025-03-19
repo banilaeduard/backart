@@ -1,10 +1,8 @@
 ﻿using Azure.Data.Tables;
 using Azure;
-using EntityDto;
-
 namespace RepositoryContract
 {
-    public class TableEntityPK : ITableEntryDto<ITableEntity>, ITableEntryDto<TableEntityPK>, ITableEntity
+    public class TableEntityPK : IEqualityComparer<TableEntityPK>
     {
         public TableEntityPK() { }
         public string PartitionKey { get; set; }
@@ -22,7 +20,7 @@ namespace RepositoryContract
             };
         }
 
-        public static IEqualityComparer<T> GetComparer<T>() where T : TableEntityPK, ITableEntity
+        public static IEqualityComparer<T> GetComparer<T>() where T : TableEntityPK
         {
             return new TableEntityPK();
         }

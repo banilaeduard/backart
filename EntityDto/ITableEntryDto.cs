@@ -1,6 +1,6 @@
 ﻿namespace EntityDto
 {
-    public interface ITableEntryDto<T> : IEqualityComparer<T>
+    public interface ITableEntryDto
     {
         int Id { get; set; }
         string PartitionKey { get; set; }

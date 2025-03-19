@@ -374,6 +374,15 @@ namespace WorkSheetServices
 
             string GetSummary(string s)
             {
+                if (s.Substring(4, 2) == "NK") return "NOPTIERA KARO";
+                if (s.Substring(4, 2) == "CK") return "COMODA KARO";
+
+                if (s.Substring(4, 2) == "NP" || s.Substring(4, 2) == "NA") return "NOPTIERA PL/ALL";
+                if (s.Substring(4, 2) == "CP" || s.Substring(4, 2) == "CA") return "COMODA PL/ALL";
+
+                if (s.Substring(4, 2) == "NO") return "NOPTIERA OP";
+                if (s.Substring(4, 2) == "CO") return "COMODA OP";
+
                 if (s.Substring(4, 1) == "N") return "NOPTIERA";
                 if (s.Substring(4, 1) == "C") return "COMODA";
 

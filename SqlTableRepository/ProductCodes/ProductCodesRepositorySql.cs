@@ -17,7 +17,7 @@ namespace SqlTableRepository.ProductCodes
             throw new NotImplementedException();
         }
 
-        public Task Delete<T>(T entity) where T : ITableEntryDto<T>
+        public Task Delete<T>(T entity) where T : ITableEntryDto
         {
             throw new NotImplementedException();
         }

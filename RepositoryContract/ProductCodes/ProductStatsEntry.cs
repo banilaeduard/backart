@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.ProductCodes
 {
-    public class ProductStatsEntry : ProductStats, ITableEntity, ITableEntryDto<ProductStatsEntry>
+    public class ProductStatsEntry : ProductStats, ITableEntity, IEqualityComparer<ProductStatsEntry>
     {
         public ETag ETag { get; set; }
 

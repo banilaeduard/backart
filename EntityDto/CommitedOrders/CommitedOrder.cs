@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.CommitedOrders
 {
-    public class CommitedOrder : IdentityEquality<CommitedOrder>, ITableEntryDto<CommitedOrder>
+    public class CommitedOrder : IdentityEquality<CommitedOrder>, ITableEntryDto
     {
         public CommitedOrder() { CodProdus = ""; NumeProdus = ""; }
 

@@ -2,11 +2,10 @@
 using Azure.Data.Tables;
 using EntityDto;
 using EntityDto.CommitedOrders;
-using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Orders
 {
-    public class OrderEntry : Order, ITableEntity, ITableEntryDto<OrderEntry>
+    public class OrderEntry : Order, ITableEntity, IEqualityComparer<OrderEntry>
     {
         public ETag ETag { get; set; }
 
@@ -51,6 +50,16 @@ namespace RepositoryContract.Orders
             return $"{typeof(OrderEntry).Name}Progress";
         }
 
+        public new bool Equals(OrderEntry? x, OrderEntry? y)
+        {
+            return base.Equals(x, y);
+        }
+
+        public int GetHashCode(OrderEntry obj)
+        {
+            return base.GetHashCode();
+        }
+
         internal class ComandaComparer : IEqualityComparer<OrderEntry>
         {
             bool includeQ;
@@ -88,16 +97,6 @@ namespace RepositoryContract.Orders
                     return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9 ^ hash8;
                 return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9;
             }
-        }
-
-        public bool Equals(OrderEntry? x, OrderEntry? y)
-        {
-            return base.Equals(x, y);
-        }
-
-        public int GetHashCode([DisallowNull] OrderEntry obj)
-        {
-            return base.GetHashCode(obj);
         }
     }
 }

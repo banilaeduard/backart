@@ -10,6 +10,6 @@ namespace RepositoryContract.ProductCodes
         Task<IList<ProductStatsEntry>> CreateProductStats(IList<ProductStatsEntry> productStats);
         Task<IList<ProductCodeStatsEntry>> CreateProductCodeStatsEntry(IList<ProductCodeStatsEntry> productStats);
         Task<IList<ProductCodeStatsEntry>> GetProductCodeStatsEntry();
-        Task Delete<T>(T entity) where T : ITableEntryDto<T>;
+        Task Delete<T>(T entity) where T : ITableEntryDto;
     }
 }

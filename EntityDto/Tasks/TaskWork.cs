@@ -2,7 +2,7 @@
 
 namespace EntityDto.Tasks
 {
-    public class TaskWork : IdentityEquality<TaskWork>, ITableEntryDto<TaskWork>
+    public class TaskWork : IdentityEquality<TaskWork>, ITableEntryDto
     {
         public int Id { get; set; }
 

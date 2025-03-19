@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.Transports
 {
-    public class TransportItem : IdentityEquality<TransportItem>, ITableEntryDto<TransportItem>
+    public class TransportItem : IdentityEquality<TransportItem>, ITableEntryDto
     {
         public int ItemId { get; set; }
         public int DocumentType { get; set; }

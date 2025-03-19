@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.Tickets
 {
-    public class Attachment : IdentityEquality<Attachment>, ITableEntryDto<Attachment>
+    public class Attachment : IdentityEquality<Attachment>, ITableEntryDto
     {
         public string Data { get; set; }
         public string Title { get; set; }

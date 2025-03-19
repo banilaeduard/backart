@@ -40,7 +40,7 @@ namespace AzureTableRepository.ProductCodes
                     , nameof(ProductCodeEntry))).Select(t => t.Shallowcopy<ProductCodeEntry>()).ToList();
         }
 
-        public async Task Delete<T>(T entity) where T : ITableEntryDto<T>
+        public async Task Delete<T>(T entity) where T : ITableEntryDto
         {
             if (typeof(ProductCodeEntry).IsAssignableFrom(typeof(T)))
             {

@@ -3,7 +3,6 @@ namespace WebApi.Services
     using SendGrid;
     using SendGrid.Helpers.Mail;
     using Microsoft.Extensions.Logging;
-    using System.Fabric;
 
     public class EmailSender
     {

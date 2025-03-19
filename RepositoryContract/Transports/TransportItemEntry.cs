@@ -1,10 +1,9 @@
-﻿using EntityDto;
-using EntityDto.Transports;
+﻿using EntityDto.Transports;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Transports
 {
-    public class TransportItemEntry : TransportItem, ITableEntryDto<TransportItemEntry>
+    public class TransportItemEntry : TransportItem
     {
         public bool Equals(TransportItemEntry? x, TransportItemEntry? y)
         {

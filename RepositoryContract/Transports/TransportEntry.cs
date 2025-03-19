@@ -1,11 +1,10 @@
 ﻿
-using EntityDto;
 using EntityDto.Transports;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Transports
 {
-    public class TransportEntry : Transport, ITableEntryDto<Transport>
+    public class TransportEntry : Transport
     {
         public List<TransportItemEntry>? TransportItems { get; set; }
 

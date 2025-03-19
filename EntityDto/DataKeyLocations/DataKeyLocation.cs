@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.DataKeyLocations
 {
-    public class DataKeyLocation : IdentityEquality<DataKeyLocation>, ITableEntryDto<DataKeyLocation>
+    public class DataKeyLocation : IdentityEquality<DataKeyLocation>, ITableEntryDto
     {
         public int Id { get; set; }
         public string PartitionKey { get; set; }

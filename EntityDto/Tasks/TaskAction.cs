@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.Tasks
 {
-    public class TaskAction : IdentityEquality<TaskAction>, ITableEntryDto<TaskAction>
+    public class TaskAction : IdentityEquality<TaskAction>, ITableEntryDto
     {
         public int Id { get; set; }
         public int TaskId { get; set; }

@@ -8,7 +8,7 @@ namespace ServiceImplementation.Caching
     /// We use this for the passthrough in some situations. We still implement the BUST because it helps other caches use the metadata provided
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class AlwaysGetCacheManager<T> : ICacheManager<T> where T : ITableEntryDto<T>
+    public class AlwaysGetCacheManager<T> : ICacheManager<T> where T : ITableEntryDto
     {
         private static readonly DateTimeOffset minValueForAzure = new(2024, 1, 1, 1, 1, 1, TimeSpan.Zero);
         private IMetadataService metadataService;

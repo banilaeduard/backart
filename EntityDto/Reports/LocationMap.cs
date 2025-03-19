@@ -1,7 +1,7 @@
 ﻿
 namespace EntityDto.Reports
 {
-    public class LocationMap : IdentityEquality<LocationMap>, ITableEntryDto<LocationMap>
+    public class LocationMap : IdentityEquality<LocationMap>, ITableEntryDto
     {
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }

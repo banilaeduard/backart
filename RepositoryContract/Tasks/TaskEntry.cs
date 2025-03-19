@@ -1,9 +1,8 @@
-﻿using EntityDto;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Tasks
 {
-    public class TaskEntry : EntityDto.Tasks.TaskWork, ITableEntryDto<TaskEntry>
+    public class TaskEntry : EntityDto.Tasks.TaskWork
     {
         public List<TaskActionEntry> Actions { get; set; }
         public List<ExternalReferenceEntry> ExternalReferenceEntries { get; set; }

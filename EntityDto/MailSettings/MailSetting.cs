@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.MailSettings
 {
-    public class MailSetting : IdentityEquality<MailSetting>, ITableEntryDto<MailSetting>
+    public class MailSetting : IdentityEquality<MailSetting>, ITableEntryDto
     {
         public string From { get; set; }
         public string Folders { get; set; }

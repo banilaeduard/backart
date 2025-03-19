@@ -1,10 +1,9 @@
-﻿using EntityDto;
-using EntityDto.Tasks;
+﻿using EntityDto.Tasks;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Tasks
 {
-    public class ExternalReferenceEntry : ExternalReference, ITableEntryDto<ExternalReferenceEntry>
+    public class ExternalReferenceEntry : ExternalReference
     {
         public bool Equals(ExternalReferenceEntry? x, ExternalReferenceEntry? y)
         {

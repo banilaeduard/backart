@@ -1,10 +1,9 @@
-﻿using EntityDto;
-using EntityDto.Tasks;
+﻿using EntityDto.Tasks;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.Tasks
 {
-    public class TaskActionEntry: TaskAction, ITableEntryDto<TaskActionEntry>
+    public class TaskActionEntry: TaskAction
     {
         public int Id { get; set; }
         public int TaskId { get; set; }

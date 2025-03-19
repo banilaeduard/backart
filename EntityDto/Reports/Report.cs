@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.Reports
 {
-    public class Report : IdentityEquality<Report>, ITableEntryDto<Report>
+    public class Report : IdentityEquality<Report>, ITableEntryDto
     {
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }

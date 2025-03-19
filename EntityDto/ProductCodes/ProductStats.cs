@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.ProductCodes
 {
-    public class ProductStats : IdentityEquality<ProductStats>, ITableEntryDto<ProductStats>
+    public class ProductStats : IdentityEquality<ProductStats>, ITableEntryDto
     {
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }

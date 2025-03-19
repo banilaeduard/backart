@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.MailSettings
 {
-    public class MailSource : IdentityEquality<MailSource>, ITableEntryDto<MailSource>
+    public class MailSource : IdentityEquality<MailSource>, ITableEntryDto
     {
         public string UserName { get; set; }
         public string Password { get; set; }

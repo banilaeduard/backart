@@ -74,11 +74,11 @@ namespace WebApi
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
-#if (DEBUG)
+#if (TEST)
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
-#elif (RELEASE)
+#else
             services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();

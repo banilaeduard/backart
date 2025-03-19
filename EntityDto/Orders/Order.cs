@@ -1,6 +1,6 @@
 ﻿namespace EntityDto.CommitedOrders
 {
-    public class Order : IdentityEquality<Order>, ITableEntryDto<Order>
+    public class Order : IdentityEquality<Order>, ITableEntryDto
     {
         public Order() { }
 

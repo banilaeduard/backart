@@ -2,7 +2,7 @@
 
 namespace ServiceInterface
 {
-    public interface ICacheManager<T> where T : ITableEntryDto<T>
+    public interface ICacheManager<T> where T : ITableEntryDto
     {
         Task<IList<T>> GetAll(Func<DateTimeOffset, IList<T>> getContent, string? tableName = null);
 

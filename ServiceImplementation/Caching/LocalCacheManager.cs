@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 namespace ServiceImplementation.Caching
 {
     // Not really local as it depends on IMetadata implementation
-    public class LocalCacheManager<T> : ICacheManager<T> where T : ITableEntryDto<T>
+    public class LocalCacheManager<T> : ICacheManager<T> where T : ITableEntryDto
     {
         private IMetadataService metadataService;
         private ConcurrentDictionary<string, DateTimeOffset> lastModified = new();
@@ -167,7 +167,7 @@ namespace ServiceImplementation.Caching
                 {
                     var entries = cache.GetOrAdd(tableName, s => []);
 
-                    var xcept = new ConcurrentBag<T>(entries.Except(entities));
+                    var xcept = new ConcurrentBag<T>(entries.Except(entities, new IdentityComparer()));
 
                     cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
                 }
@@ -182,8 +182,7 @@ namespace ServiceImplementation.Caching
                 {
                     var entries = cache.GetOrAdd(tableName, s => []);
 
-                    entries.Except(entities);
-                    var xcept = new ConcurrentBag<T>(entries.Except(entities));
+                    var xcept = new ConcurrentBag<T>(entries.Except(entities, new IdentityComparer()));
                     foreach (var entry in entities)
                     {
                         xcept.Add(entry);
@@ -204,6 +203,24 @@ namespace ServiceImplementation.Caching
                 throw new TimeoutException("The request to semaphore timed out after: " + ms);
             }
             return new WrapLock(_semaphore);
+        }
+
+        class IdentityComparer : IdentityEquality<T>, IEqualityComparer<T>
+        {
+            public int Id { get; set; }
+            public string PartitionKey { get; set; }
+            public string RowKey { get; set; }
+            public DateTimeOffset? Timestamp { get; set; }
+
+            public override bool Equals(T? x, T? y)
+            {
+                return base.Equals(x, y);
+            }
+
+            public override int GetHashCode(T obj)
+            {
+                return base.GetHashCode(obj);
+            }
         }
     }
 

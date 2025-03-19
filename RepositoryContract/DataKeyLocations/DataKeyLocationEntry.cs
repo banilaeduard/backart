@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace RepositoryContract.DataKeyLocation
 {
-    public class DataKeyLocationEntry: EntityDto.DataKeyLocations.DataKeyLocation, ITableEntity, ITableEntryDto<DataKeyLocationEntry>
+    public class DataKeyLocationEntry: EntityDto.DataKeyLocations.DataKeyLocation, ITableEntity, IEqualityComparer<DataKeyLocationEntry>
     {
         public ETag ETag { get; set; }
 
