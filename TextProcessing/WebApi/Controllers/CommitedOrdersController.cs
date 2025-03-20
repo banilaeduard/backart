@@ -73,7 +73,7 @@ namespace WebApi.Controllers
                 logger.LogError(new EventId(69), ex, "GetCommitedOrders");
             }
 
-            return Ok(CommitedOrdersResponse.From(orders, tickets ?? [], synonimLocations ?? [], tasks, productLinkWeights ?? [], weights ?? []));
+            return Ok(CommitedOrdersResponse.From(orders, tickets ?? [], synonimLocations ?? [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
         }
 
         [HttpPost("delivered/{internalNumber}/{numarAviz}")]
