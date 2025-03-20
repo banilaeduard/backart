@@ -42,8 +42,8 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                var sql = TryAccess("dispOrder.sql");
-                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { NumarIntern = id }))];
+                var sql = "[dbo].[CommitedOrderId]";
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { NumarIntern = id }, commandType: System.Data.CommandType.StoredProcedure))];
             }
         }
 
@@ -51,8 +51,8 @@ namespace SqlTableRepository.CommitedOrders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                var sql = TryAccess("disp.sql");
-                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { Date1 = from ?? DateTime.Now.AddMonths(-2) }))];
+                var sql = "[dbo].[CommitedOrders]";
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { @Date1 = from ?? DateTime.Now.AddMonths(-2) }, commandType: System.Data.CommandType.StoredProcedure))];
             }
         }
 

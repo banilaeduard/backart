@@ -26,7 +26,7 @@ namespace SqlTableRepository.ProductCodes
         {
             using (var conn = GetConnection())
             {
-                return [.. (await conn.QueryAsync<ProductCodeEntry>(ProductCodesSql.GetProductCodes())).Where(expr)];
+                return [.. (await conn.QueryAsync<ProductCodeEntry>(ProductCodesSql.GetProductCodes(), commandType: System.Data.CommandType.StoredProcedure)).Where(expr)];
             }
         }
 
@@ -34,7 +34,7 @@ namespace SqlTableRepository.ProductCodes
         {
             using (var conn = GetConnection())
             {
-                return [.. await conn.QueryAsync<ProductCodeEntry>(ProductCodesSql.GetProductCodes())];
+                return [.. await conn.QueryAsync<ProductCodeEntry>(ProductCodesSql.GetProductCodes(), commandType: System.Data.CommandType.StoredProcedure)];
             }
         }
 

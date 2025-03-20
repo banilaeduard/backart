@@ -32,7 +32,7 @@ namespace SqlTableRepository.Orders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. (await connection.QueryAsync<OrderEntry>(TryAccess("orders.sql"), new { Date2 = DateTime.Now.AddMonths(-6) })).Where(expr)];
+                return [.. (await connection.QueryAsync<OrderEntry>("dbo.Orders", new { Date2 = DateTime.Now.AddMonths(-6) }, commandType: System.Data.CommandType.StoredProcedure)).Where(expr)];
             }
         }
 
@@ -40,26 +40,13 @@ namespace SqlTableRepository.Orders
         {
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
-                return [.. await connection.QueryAsync<OrderEntry>(TryAccess("orders.sql"), new { Date2 = DateTime.Now.AddMonths(-6) })];
+                return [.. await connection.QueryAsync<OrderEntry>("dbo.Orders", new { Date2 = DateTime.Now.AddMonths(-6) }, commandType: System.Data.CommandType.StoredProcedure)];
             }
         }
 
         public async Task ImportOrders(IList<Order> items, DateTime when)
         {
             throw new NotImplementedException();
-        }
-
-        private string TryAccess(string key)
-        {
-            try
-            {
-                return File.ReadAllText(Path.Combine(ConnectionSettings.SqlQueryCache, key));
-            }
-            catch (Exception ex)
-            {
-                logger.LogInformation(new EventId(69), ex, $@"Accesing cloud for missing {key}");
-                return Encoding.UTF8.GetString(storageService.Access(key, out var _));
-            }
         }
     }
 }
