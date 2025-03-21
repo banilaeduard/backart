@@ -64,7 +64,7 @@ namespace SqlTableRepository.Transport
                         t => t.TransportId,
                         t => t.DocumentType);
                     transport.TransportItems = [.. await connection.QueryAsync<TransportItemEntry>($@"
-                                {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues")};
+                                {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues", true)};
                                 {TransportSql.GetTransportItems(transport.Id)}", dParams)];
                 }
 
@@ -72,7 +72,7 @@ namespace SqlTableRepository.Transport
             }
         }
 
-        public async Task<TransportEntry> UpdateTransport(TransportEntry transportEntry)
+        public async Task<TransportEntry> UpdateTransport(TransportEntry transportEntry, int[] detetedTransportItems)
         {
             using (var connection = GetConnection())
             {
@@ -88,19 +88,23 @@ namespace SqlTableRepository.Transport
                     transportEntry.Delivered,
                 });
 
-                if (transportEntry.TransportItems?.Count > 0)
+                bool hasItems = transportEntry.TransportItems?.Count > 0;
+                bool hasRemove = detetedTransportItems.Count() > 0;
+                if (hasItems || hasRemove)
                 {
-                    populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);
+                    populateTransportItemsWithParentId(transportEntry.TransportItems ?? [], transport.Id);
                     var dParams = new DynamicParameters();
-                    var fromSql = transportEntry.TransportItems.FromValues(dParams, "transportItemValues",
+                    dParams.Add("detetedTransportItems", detetedTransportItems ?? []);
+                    var fromSql = transportEntry.TransportItems!.FromValues(dParams, "transportItemValues",
                         t => t.ExternalItemId2,
                         t => t.ExternalItemId,
                         t => t.ItemId,
                         t => t.ItemName,
                         t => t.TransportId,
                         t => t.DocumentType);
-                    var sql = $@"{TransportSql.UpdateTransportItems(fromSql, "transportItemValues")}; 
-                                {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues")};
+                    var sql = $@"{TransportSql.DeleteTransportItems(transport.Id, hasRemove)}
+                                {TransportSql.UpdateTransportItems(fromSql, "transportItemValues", hasItems)}
+                                {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues", hasItems)}
                                 {TransportSql.GetTransportItems(transport.Id)}";
 
                     transport.TransportItems = [.. await connection.QueryAsync<TransportItemEntry>(sql, dParams)];

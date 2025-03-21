@@ -42,9 +42,9 @@ namespace WebApi.Controllers
         }
 
         [HttpPatch]
-        public async Task<IActionResult> UpdateTransport(TransportModel transport)
+        public async Task<IActionResult> UpdateTransport(TransportModel transport, [FromQuery] int[] transportItemsToRemove)
         {
-            return Ok(await transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport)));
+            return Ok(await transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport), transportItemsToRemove));
         }
 
         [HttpDelete("{transportId}")]
