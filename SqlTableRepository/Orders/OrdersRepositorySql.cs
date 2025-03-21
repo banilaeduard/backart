@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using RepositoryContract;
 using RepositoryContract.Orders;
 using ServiceInterface.Storage;
-using System.Text;
 
 namespace SqlTableRepository.Orders
 {

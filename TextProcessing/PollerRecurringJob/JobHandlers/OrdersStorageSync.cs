@@ -13,8 +13,8 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var storage = new BlobAccessStorageService();
-            var ordersImportsRepository = new OrdersImportsRepository(storage);
+            var storage = new AzureFileStorage();
+            var ordersImportsRepository = new OrdersImportsRepository<AzureFileStorage>(storage);
 
             var metadataService = new FabricMetadataService();
             var commitedOrdersRepository = new CommitedOrdersRepository(new AlwaysGetCacheManager<CommitedOrderEntry>(metadataService), metadataService);

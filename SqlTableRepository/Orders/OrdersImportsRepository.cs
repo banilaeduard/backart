@@ -4,11 +4,10 @@ using EntityDto.CommitedOrders;
 using Microsoft.Data.SqlClient;
 using RepositoryContract.Imports;
 using ServiceInterface.Storage;
-using System.Text;
 
 namespace SqlTableRepository.Orders
 {
-    public class OrdersImportsRepository : IImportsRepository
+    public class OrdersImportsRepository<T> : IImportsRepository where T : IStorageService
     {
         private IStorageService storageService;
         private IMapper mapper;
@@ -24,7 +23,7 @@ namespace SqlTableRepository.Orders
             .ForMember(t => t.NumarIntern, opt => opt.MapFrom(src => int.Parse(src.NumarIntern)));
         });
 
-        public OrdersImportsRepository(IStorageService storageService)
+        public OrdersImportsRepository(T storageService)
         {
             this.storageService = storageService;
             mapper = config.CreateMapper();
@@ -34,12 +33,16 @@ namespace SqlTableRepository.Orders
         {
             var ro = when ?? new DateTime(2024, 9, 1);
             var ro2 = when2 ?? new DateTime(2024, 1, 1);
+            string sqlCommited = string.Empty;
+            string sqlOrders = string.Empty;
 
-            var blob = storageService.Access("QImport/disp.txt", out var contentType);
-            var sqlCommited = Encoding.UTF8.GetString(blob);
+            using (var stream = storageService.Access("QImport/disp.txt", out var contentType))
+            using (var streamReadear = new StreamReader(stream))
+                sqlCommited = streamReadear.ReadToEnd();
 
-            var blob2 = storageService.Access("QImport/orders.txt", out var contentType2);
-            var sqlOrders = Encoding.UTF8.GetString(blob2);
+            using (var stream = storageService.Access("QImport/orders.txt", out var contentType))
+            using (var streamReadear = new StreamReader(stream))
+                sqlOrders = streamReadear.ReadToEnd();
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
             {
@@ -53,9 +56,11 @@ namespace SqlTableRepository.Orders
         public async Task<IList<CommitedOrder>> GetImportCommited(DateTime? when = null)
         {
             var ro = when ?? new DateTime(2024, 9, 1);
+            string sqlCommited = string.Empty;
 
-            var blob = storageService.Access("QImport/disp.txt", out var contentType);
-            var sqlCommited = Encoding.UTF8.GetString(blob);
+            using (var stream = storageService.Access("QImport/disp.txt", out var contentType))
+            using (var streamReadear = new StreamReader(stream))
+                sqlCommited = streamReadear.ReadToEnd();
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
             {
@@ -67,9 +72,11 @@ namespace SqlTableRepository.Orders
         public async Task<IList<Order>> GetImportOrders(DateTime? when = null)
         {
             var ro = when ?? new DateTime(2024, 9, 1);
+            string sqlOrders = string.Empty;
 
-            var blob = storageService.Access("QImport/orders.txt", out var contentType);
-            var sqlOrders = Encoding.UTF8.GetString(blob);
+            using (var stream = storageService.Access("QImport/orders.txt", out var contentType))
+            using (var streamReadear = new StreamReader(stream))
+                sqlOrders = streamReadear.ReadToEnd();
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
             {
@@ -80,8 +87,10 @@ namespace SqlTableRepository.Orders
 
         public async Task<(DateTime commited, DateTime order)> PollForNewContent()
         {
-            var blob2 = storageService.Access("QImport/poll_orders.sql", out var contentType2);
-            var sqlOrders = Encoding.UTF8.GetString(blob2);
+            string sqlOrders = string.Empty;
+            using (var stream = storageService.Access("QImport/poll_orders.sql", out var contentType))
+            using (var streamReadear = new StreamReader(stream))
+                sqlOrders = streamReadear.ReadToEnd();
 
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
             {

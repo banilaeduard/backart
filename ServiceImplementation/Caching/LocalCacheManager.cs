@@ -33,7 +33,7 @@ namespace ServiceImplementation.Caching
             var lM = lastModified.GetOrAdd(tableName, s => minValueForAzure);
             var token = tokens.GetOrAdd(tableName, s => null);
 
-            var metaData = await metadataService.GetMetadata($"cache_control_{tableName}");
+            var metaData = await metadataService.GetMetadata(GetCacheKey(tableName));
             metaData.TryGetValue("token", out var tokenSync);
 
             DateTimeOffset? dateSync = null;
@@ -48,7 +48,7 @@ namespace ServiceImplementation.Caching
             {
                 using (await GetSemaphoreLock(tableName, TimeSpan.FromSeconds(45)))
                 {
-                    metaData = await metadataService.GetMetadata($"cache_control-{tableName}");
+                    metaData = await metadataService.GetMetadata(GetCacheKey(tableName));
                     metaData.TryGetValue("token", out tokenSync);
                     dateSync = null;
                     if (metaData.TryGetValue("timestamp", out dSync))
@@ -76,7 +76,7 @@ namespace ServiceImplementation.Caching
                             try
                             {
                                 metaData["timestamp"] = lastModified[tableName].ToString();
-                                await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                                await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                             }
                             catch (Exception e)
                             {
@@ -95,7 +95,7 @@ namespace ServiceImplementation.Caching
                             try
                             {
                                 metaData["timestamp"] = lastModified[tableName].ToString();
-                                await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                                await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                             }
                             catch (Exception e) { logger.LogError(new EventId(69), e, nameof(LocalCacheManager<T>)); }
                         }
@@ -115,7 +115,7 @@ namespace ServiceImplementation.Caching
         {
             using (await GetSemaphoreLock(tableName, TimeSpan.FromSeconds(15)))
             {
-                var metaData = await metadataService.GetMetadata($"cache_control-{tableName}");
+                var metaData = await metadataService.GetMetadata(GetCacheKey(tableName));
                 if (invalidate)
                 {
                     if (metaData.TryGetValue("token", out var tokenSync))
@@ -130,20 +130,20 @@ namespace ServiceImplementation.Caching
                     metaData["token"] = Guid.NewGuid().ToString();
                     tokens.AddOrUpdate(tableName, metaData["token"], (x, y) => metaData["token"]);
 
-                    await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                    await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                 }
                 else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
                 {
                     if (stamp > dateSync)
                     {
                         metaData["timestamp"] = (stamp ?? dateSync).ToString();
-                        await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                        await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                     }
                 }
                 else if (stamp.HasValue)
                 {
                     metaData["timestamp"] = stamp.Value.ToString();
-                    await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                    await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                 }
             }
         }
@@ -152,7 +152,7 @@ namespace ServiceImplementation.Caching
         {
             List<Task> tasks = [];
             foreach (var table in cache)
-                tasks.Add(metadataService.SetMetadata($@"cache_control-{table.Key}", null));
+                tasks.Add(metadataService.SetMetadata(GetCacheKey(table.Key), null));
             lastModified.Clear();
             tokens.Clear();
             cache.Clear();
@@ -191,6 +191,11 @@ namespace ServiceImplementation.Caching
                     cache.AddOrUpdate(tableName, xcept, (x, y) => xcept);
                 }
             }
+        }
+
+        private string GetCacheKey(string tableName)
+        {
+            return $"cache_control-{tableName}";
         }
 
         private async Task<WrapLock> GetSemaphoreLock(string name, TimeSpan ms)

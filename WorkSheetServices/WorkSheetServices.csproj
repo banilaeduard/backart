@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EntityDto\EntityDto.csproj" />
+    <ProjectReference Include="..\ServiceImplementation\ServiceImplementation.csproj" />
   </ItemGroup>
 
 </Project>

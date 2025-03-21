@@ -10,28 +10,28 @@ namespace AzureServices
         BlobContainerClient client;
         public BlobAccessStorageService()
         {
-            client = new(Environment.GetEnvironmentVariable("storage_connection"), "importstorage");
+            client = new(Environment.GetEnvironmentVariable("storage_connection"), Environment.GetEnvironmentVariable("blob_share_name"));
         }
 
-        public bool AccessIfExists(string fName, out string contentType, out byte[] content)
+        public bool AccessIfExists(string fName, out string contentType, out Stream content)
         {
             contentType = "";
-            content = [];
+            content = Stream.Null;
 
             var blob = client.GetBlobClient(fName);
             if (!blob.Exists()) return false;
 
             var file = blob.DownloadContent();
             contentType = file.Value.Details.ContentType;
-            content = file.Value.Content.ToArray();
+            content = file.Value.Content.ToStream();
             return true;
         }
 
-        public byte[] Access(string fName, out string contentType)
+        public Stream Access(string fName, out string contentType)
         {
             var blob = client.GetBlobClient(fName).DownloadContent();
             contentType = blob.Value.Details.ContentType;
-            return blob.Value.Content.ToArray();
+            return blob.Value.Content.ToStream();
         }
 
         public async Task Delete(string fName)
@@ -39,7 +39,7 @@ namespace AzureServices
             await client.DeleteBlobIfExistsAsync(fName);
         }
 
-        public async Task WriteTo(string fName, BinaryData file, bool replace = false)
+        public async Task WriteTo(string fName, Stream file, bool replace = false)
         {
             var exists = await client.GetBlobClient(fName).ExistsAsync();
             if (!replace && exists) return;

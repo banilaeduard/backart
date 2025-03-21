@@ -33,6 +33,8 @@
       <EnvironmentVariable Name="storage_connection" Value="" />
       <EnvironmentVariable Name="external_sql_server" Value="" />
       <EnvironmentVariable Name="path_to_sql" Value="" />
+      <EnvironmentVariable Name="blob_share_name" Value="" />
+      <EnvironmentVariable Name="file_share_name" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 

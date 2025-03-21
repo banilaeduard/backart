@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using AzureServices;
 using EntityDto.CommitedOrders;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
@@ -28,7 +29,7 @@ namespace WebApi.Controllers
         private readonly ICryptoService _cryptoService;
 
         public DocumentController(ILogger<DocumentController> logger,
-         IStorageService storageService,
+         AzureFileStorage storageService,
          IMetadataService metadataService,
          IDataKeyLocationRepository keyLocationRepository,
          ReclamatiiReport reclamatiiReport,
@@ -39,7 +40,7 @@ namespace WebApi.Controllers
          IMapper mapper) : base(logger, mapper)
         {
             _storageService = storageService;
-            _metadataService = metadataService;
+            _metadataService = storageService;
             _keyLocationRepository = keyLocationRepository;
             _reclamatiiReport = reclamatiiReport;
             _structuraReport = structuraReport;
@@ -57,7 +58,7 @@ namespace WebApi.Controllers
                 var md5 = GenerateMd5ForComplaintEntries(document);
 
                 var fName = $"reclamatii-drafts/{locMap.Folder}/{document.NumarIntern}.docx";
-                var metaName = $"reclamatii-drafts_{_cryptoService.GetMd5(locMap.Folder)}_{document.NumarIntern}";
+                var metaName = fName;
                 var metaData = await _metadataService.GetMetadata(metaName);
 
                 if (metaData.ContainsKey("md5") && md5.Equals(metaData["md5"]) && _storageService.AccessIfExists(fName, out var contentType2, out var content))
@@ -65,13 +66,16 @@ namespace WebApi.Controllers
                     return File(content, wordType);
                 }
 
-                var reportBytes = await _reclamatiiReport.GenerateReport(document);
-                await _storageService.WriteTo(fName, new BinaryData(reportBytes), true);
-                metaData["json"] = JsonConvert.SerializeObject(document);
-                metaData["md5"] = md5;
-                await _metadataService.SetMetadata(metaName, null, metaData);
+                await using var reportStream = await _reclamatiiReport.GenerateReport(document);
+                {
+                    await _storageService.WriteTo(fName, reportStream.GetStream(), true);
+                    reportStream.GetStream().Position = 0;
+                    metaData["json"] = JsonConvert.SerializeObject(document);
+                    metaData["md5"] = md5;
+                    await _metadataService.SetMetadata(metaName, null, metaData);
 
-                return File(reportBytes, wordType);
+                    return File(_storageService.Access(fName, out var contentType), wordType);
+                }
             }
             catch (Exception ex)
             {
@@ -91,7 +95,7 @@ namespace WebApi.Controllers
 
                 var name = string.Join("-", commitedOrders);
                 var fName = $"pv_accesorii/{locMap.Folder}/{name}.docx";
-                var metaName = $"pv_accesorii_{_cryptoService.GetMd5(locMap.Folder)}_{name}.docx";
+                var metaName = fName;
                 var metaData = await _metadataService.GetMetadata(metaName);
 
                 if (metaData.ContainsKey("md5") && md5.Equals(metaData["md5"]) && _storageService.AccessIfExists(fName, out var contentType2, out var content))
@@ -99,14 +103,15 @@ namespace WebApi.Controllers
                     return File(content, wordType);
                 }
 
-                var reportBytes = await _structuraReport.GenerateReport(items, reportName);
-                await _storageService.WriteTo(fName, new BinaryData(reportBytes), true);
-                if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
-                    metaData["aviz"] = items[0].NumarAviz?.ToString();
-                metaData["md5"] = md5;
-                await _metadataService.SetMetadata(metaName, null, metaData);
-
-                return File(reportBytes, wordType);
+                await using var reportStream = await _structuraReport.GenerateReport(items, reportName);
+                {
+                    await _storageService.WriteTo(fName, reportStream.GetStream(), true);
+                    if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
+                        metaData["aviz"] = items[0].NumarAviz?.ToString();
+                    metaData["md5"] = md5;
+                    await _metadataService.SetMetadata(metaName, null, metaData);
+                    return File(_storageService.Access(fName, out var contentType), wordType);
+                }
             }
             catch (Exception ex)
             {
@@ -128,14 +133,23 @@ namespace WebApi.Controllers
 
             if (missing.Any()) return NotFound(string.Join(", ", missing));
 
-            var reportData = WorkbookReportsService.GenerateReport(
-                items.Cast<CommitedOrder>().ToList(),
-                t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
-                t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
-                t => t.NumeProdus);
+            Response.Headers["Content-Disposition"] = $@"attachment; filename={string.Join("_", internalNumber.Take(5))}.xlsx";
+            Response.ContentType = "application/octet-stream";
+            //Response.Headers["Transfer-Encoding"] = "chunked";
 
-            return File(reportData, excelType);
+            // Use AsStream() to get a writeable stream for the response body
+            await using var responseStream = Response.BodyWriter.AsStream();
+            {
+                await WorkbookReportsService.GenerateReport(
+                                   items.Cast<CommitedOrder>().ToList(),
+                                   t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
+                                   t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
+                                   t => t.NumeProdus, responseStream);
+                await responseStream.FlushAsync();
+            }
+            return new EmptyResult();
         }
+
 
         private async Task<LocationMapEntry> GetOrCreateLocationMapEntry(string locationCode, string locationName)
         {

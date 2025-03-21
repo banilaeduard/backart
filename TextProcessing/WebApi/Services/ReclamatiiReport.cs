@@ -2,6 +2,8 @@
 using DocumentFormat.OpenXml.Wordprocessing;
 using RepositoryContract;
 using RepositoryContract.Report;
+using ServiceImplementation;
+using ServiceInterface.Storage;
 using WebApi.Models;
 
 namespace WebApi.Services
@@ -10,55 +12,50 @@ namespace WebApi.Services
     {
         private ConnectionSettings _settings;
         private IReportEntryRepository _reportsRepository;
-        public ReclamatiiReport(ConnectionSettings settings, IReportEntryRepository reportsRepository)
+
+        public ReclamatiiReport(ConnectionSettings settings, IReportEntryRepository reportsRepository, IStorageService storageService)
         {
             _settings = settings;
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<byte[]> GenerateReport(ComplaintDocument complaintDocument)
+        public async Task<AutoDeletingTempFile> GenerateReport(ComplaintDocument complaintDocument)
         {
             var templateCustomPath = await _reportsRepository.GetReportTemplate(complaintDocument.LocationCode!, "Reclamatii");
             string templatePath = $@"{_settings.SqlQueryCache}/{templateCustomPath.TemplateName}";
-
-            //System.IO.File.Copy(templatePath, outputPath, true);
-            using (var ms = new MemoryStream())
+            
+            var fStream = TempFileHelper.CreateTempFile(templatePath);
+            // Open the document
+            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream.GetStream(), true))
             {
-                using (var fs = File.Open(templatePath, FileMode.Open, FileAccess.Read)) { fs.CopyTo(ms); }
-                ms.Position = 0;
+                // Access the main document part
+                var mainPart = wordDoc.MainDocumentPart!;
+                var body = mainPart.Document.Body!;
 
-                // Open the document
-                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(ms, true))
+                // Replace placeholders in the paragraphs
+                ReplaceContentControlText(mainPart, "date_field", complaintDocument.Date.ToString("dd.MM.yyyy"));
+                ReplaceContentControlText(mainPart, "magazin_field", complaintDocument.LocationName);
+                Table table = body.Elements<Table>().FirstOrDefault()!;
+
+                for (int i = 0; i < complaintDocument.complaintEntries.Length; i++)
                 {
-                    // Access the main document part
-                    var mainPart = wordDoc.MainDocumentPart!;
-                    var body = mainPart.Document.Body!;
+                    // Create a new row
+                    TableRow newRow = new TableRow();
+                    var complaint = complaintDocument.complaintEntries[i];
+                    // Add cells to the new row
+                    newRow.Append(CreateCell((i + 1).ToString()));
+                    newRow.Append(CreateCell(complaint.Description));
+                    newRow.Append(CreateCell(complaint.UM));
+                    newRow.Append(CreateCell(complaint.Quantity));
+                    newRow.Append(CreateCell(complaint.Observation));
 
-                    // Replace placeholders in the paragraphs
-                    ReplaceContentControlText(mainPart, "date_field", complaintDocument.Date.ToString("dd.MM.yyyy"));
-                    ReplaceContentControlText(mainPart, "magazin_field", complaintDocument.LocationName);
-                    Table table = body.Elements<Table>().FirstOrDefault()!;
-
-                    for (int i = 0; i < complaintDocument.complaintEntries.Length; i++)
-                    {
-                        // Create a new row
-                        TableRow newRow = new TableRow();
-                        var complaint = complaintDocument.complaintEntries[i];
-                        // Add cells to the new row
-                        newRow.Append(CreateCell((i + 1).ToString()));
-                        newRow.Append(CreateCell(complaint.Description));
-                        newRow.Append(CreateCell(complaint.UM));
-                        newRow.Append(CreateCell(complaint.Quantity));
-                        newRow.Append(CreateCell(complaint.Observation));
-
-                        // Insert the new row at the end of the table
-                        table.Append(newRow);
-                    }
-                    mainPart.Document.Save();
+                    // Insert the new row at the end of the table
+                    table.Append(newRow);
                 }
-                ms.Position = 0;
-                return ms.ToArray();
+                mainPart.Document.Save();
             }
+            fStream.GetStream().Position = 0;
+            return fStream;
         }
 
         static TableCell CreateCell(string text)

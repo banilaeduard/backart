@@ -1,5 +1,4 @@
-﻿using AzureServices;
-using Dapper;
+﻿using Dapper;
 using EntityDto.CommitedOrders;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -7,17 +6,16 @@ using RepositoryContract;
 using RepositoryContract.CommitedOrders;
 using ServiceInterface.Storage;
 using SqlTableRepository.Orders;
-using System.Text;
 
 namespace SqlTableRepository.CommitedOrders
 {
-    public class CommitedOrdersRepositorySql : ICommitedOrdersRepository
+    public class CommitedOrdersRepositorySql<T> : ICommitedOrdersRepository where T : IStorageService
     {
         private IStorageService storageService;
         private ILogger<OrdersRepositorySql> logger;
         private ConnectionSettings ConnectionSettings;
 
-        public CommitedOrdersRepositorySql(AzureFileStorage storageService, ILogger<OrdersRepositorySql> logger, ConnectionSettings ConnectionSettings)
+        public CommitedOrdersRepositorySql(T storageService, ILogger<OrdersRepositorySql> logger, ConnectionSettings ConnectionSettings)
         {
             this.storageService = storageService;
             this.logger = logger;
@@ -84,7 +82,10 @@ namespace SqlTableRepository.CommitedOrders
             catch (Exception ex)
             {
                 logger.LogInformation(new EventId(69), ex, @$"Accessing cloud for missing {key}");
-                return Encoding.UTF8.GetString(storageService.Access(key, out var _));
+                using (var stream = storageService.Access(key, out var _))
+                using (var reader = new StreamReader(stream))
+                    return reader.ReadToEnd();
+
             }
         }
 

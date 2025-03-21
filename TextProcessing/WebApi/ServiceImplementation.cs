@@ -69,7 +69,7 @@ namespace WebApi
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
             services.AddScoped<IWorkflowTrigger, QueueService>();
-            services.AddScoped<IImportsRepository, OrdersImportsRepository>();
+            services.AddScoped<IImportsRepository, OrdersImportsRepository<AzureFileStorage>>();
             services.AddScoped<ITicketEntryRepository, TicketEntryRepository>();
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
@@ -80,7 +80,7 @@ namespace WebApi
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
 #else
             services.AddScoped<IOrdersRepository, OrdersRepositorySql>();
-            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql>();
+            services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepositorySql<AzureFileStorage>>();
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             //NOT READY YET FOR THIS
             //services.AddScoped<IProductCodeRepository, ProductCodesRepositorySql>();

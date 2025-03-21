@@ -15,6 +15,7 @@ using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.MailSettings;
 using RepositoryContract.Tickets;
+using ServiceImplementation;
 using ServiceImplementation.Caching;
 using ServiceInterface.Storage;
 using UniqueId = MailKit.UniqueId;
@@ -200,6 +201,7 @@ namespace YahooTFeeder
                 new AlwaysGetCacheManager<TicketEntity>(metadataService),
                 new AlwaysGetCacheManager<AttachmentEntry>(metadataService)
                 );
+
             List<TableEntityPK> result = new();
             try
             {
@@ -243,10 +245,12 @@ namespace YahooTFeeder
                         var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
                         var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
                         if (!await blob.Exists(fname))
-                            using (var ms = new MemoryStream())
+                            using (var temp = TempFileHelper.CreateTempFile())
                             {
-                                msg.WriteTo(FormatOptions.Default, ms);
-                                await blob.WriteTo(fname, new BinaryData(ms.ToArray()));
+                                var fileStream = temp.GetStream();
+                                msg.WriteTo(FormatOptions.Default, fileStream);
+                                fileStream.Position = 0;
+                                await blob.WriteTo(fname, fileStream);
                             }
 
                         await ticketEntryRepository.Save(new AttachmentEntry()
@@ -260,7 +264,7 @@ namespace YahooTFeeder
                             RefKey = entry.RowKey,
                         });
                         if (!await blob.Exists(details + "body.html"))
-                            await blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody));
+                            await blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody).ToStream());
                         await ticketEntryRepository.Save(new AttachmentEntry()
                         {
                             PartitionKey = entry.Uid.ToString(),
@@ -278,19 +282,21 @@ namespace YahooTFeeder
                             var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
                             var filePath = details + idx + fileName;
                             if (!await blob.Exists(filePath))
-                                using (var stream = new MemoryStream())
+                                using (var temp = TempFileHelper.CreateTempFile())
                                 {
+                                    var fStream = temp.GetStream();
                                     if (attachment is MessagePart)
                                     {
                                         var part = (MessagePart)attachment;
-                                        await part.Message.WriteToAsync(stream);
+                                        await part.Message.WriteToAsync(fStream);
                                     }
                                     else
                                     {
                                         var part = (MimePart)attachment;
-                                        await part.Content.DecodeToAsync(stream);
+                                        await part.Content.DecodeToAsync(fStream);
                                     }
-                                    await blob.WriteTo(filePath, new BinaryData(stream.ToArray()));
+                                    fStream.Position = 0;
+                                    await blob.WriteTo(filePath, fStream);
                                 }
 
                             await ticketEntryRepository.Save(new AttachmentEntry()
@@ -408,16 +414,20 @@ namespace YahooTFeeder
                 {
                     if (await storageService.Exists(fname))
                     {
-                        body = Encoding.UTF8.GetString(storageService.Access(fname, out var contentType));
-                        body = body.Length > 512 ? body.Substring(0, 512) : body;
+                        using (var stream = storageService.Access(fname, out var contentType))
+                        using (var reader = new StreamReader(stream))
+                        {
+                            body = reader.ReadToEnd();
+                            body = body.Length > 512 ? body.Substring(0, 512) : body;
+                        }
                     }
                     else
                     {
                         if (!string.IsNullOrEmpty(message.PreviewText))
                         {
-                            using (var stream = new MemoryStream())
+                            using (var stream = File.Open(Guid.NewGuid().ToString(), FileMode.Create))
                             {
-                                await storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(message.PreviewText)));
+                                await storageService.WriteTo(fname, new BinaryData(message.PreviewText).ToStream());
                                 body = message.PreviewText;
                             }
                         }
@@ -428,7 +438,7 @@ namespace YahooTFeeder
                             bodyPart.Accept(bodyVisitor);
                             using (var stream = new MemoryStream())
                             {
-                                await storageService.WriteTo(fname, new BinaryData(Encoding.UTF8.GetBytes(bodyVisitor.HtmlBody)));
+                                await storageService.WriteTo(fname, new BinaryData(bodyVisitor.HtmlBody).ToStream());
                                 body = bodyVisitor.HtmlBody;
                             }
                             body = body.Trim().Replace("__", "") ?? "";
@@ -468,7 +478,7 @@ namespace YahooTFeeder
                 {
                     Sender = message.Envelope.Sender?.FirstOrDefault()?.ToString(),
                     From = string.Join(";", message.Envelope.From?.Select(t => t.ToString()) ?? []),
-                    Locations = string.Join(";", []),
+                    Locations = string.Join(";", [""]),
                     CreatedDate = message.Date.Date.ToUniversalTime(),
                     NrComanda = "",
                     PartitionKey = GetPartitionKey(message),

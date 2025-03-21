@@ -17,6 +17,13 @@
         <Program>MailExtrasExtractor.exe</Program>
       </ExeHost>
     </EntryPoint>
+    <EnvironmentVariables>
+      <EnvironmentVariable Name="external_sql_server" Value="" />
+      <EnvironmentVariable Name="storage_connection" Value="" />
+      <EnvironmentVariable Name="ConnectionString" Value="" />
+      <EnvironmentVariable Name="blob_share_name" Value="" />
+      <EnvironmentVariable Name="file_share_name" Value="" />
+    </EnvironmentVariables>
   </CodePackage>
 
   <!-- Config package is the contents of the Config directory under PackageRoot that contains an 

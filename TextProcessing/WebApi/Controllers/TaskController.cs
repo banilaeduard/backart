@@ -20,7 +20,7 @@ namespace WebApi.Controllers
         private IWorkflowTrigger workflowTrigger;
 
         public TaskController(
-            ILogger<ReportsController> logger,
+            ILogger<TaskController> logger,
             ITaskRepository taskRepository,
             ITicketEntryRepository ticketEntryRepository,
             IDataKeyLocationRepository keyLocationRepository,

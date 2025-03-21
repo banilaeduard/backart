@@ -6,6 +6,8 @@
     <Parameter Name="WebApi_ConnectionString" DefaultValue="" />
     <Parameter Name="WebApi_SengridKey" DefaultValue="" />
     <Parameter Name="storage_connection" DefaultValue="" />
+    <Parameter Name="blob_share_name" DefaultValue="" />
+    <Parameter Name="file_share_name" DefaultValue="" />
     <Parameter Name="external_sql_server" DefaultValue="" />
     <Parameter Name="path_to_sql" DefaultValue="" />
   </Parameters>
@@ -14,7 +16,7 @@
        ServiceManifest.xml file. -->
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="MetadataServicePkg" ServiceManifestVersion="1.0.0" />
-    <ConfigOverrides />
+    <EnvironmentOverrides CodePackageRef="code" />
   </ServiceManifestImport>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="MailReaderPkg" ServiceManifestVersion="1.0.0" />
@@ -22,6 +24,8 @@
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+      <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
+      <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>
@@ -30,11 +34,17 @@
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+      <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
+      <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="MailExtrasExtractorPkg" ServiceManifestVersion="1.0.0" />
-    <ConfigOverrides />
+    <EnvironmentOverrides CodePackageRef="code">
+      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+      <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
+      <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
+    </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="WebApiPkg" ServiceManifestVersion="1.0.0" />
@@ -47,6 +57,9 @@
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="path_to_sql" Value="[path_to_sql]" />
+      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+      <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
+      <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
 </ApplicationManifest>

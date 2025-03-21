@@ -4,6 +4,7 @@ using RepositoryContract;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Report;
+using ServiceImplementation;
 
 namespace WebApi.Services
 {
@@ -20,7 +21,7 @@ namespace WebApi.Services
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<byte[]> GenerateReport(List<CommitedOrderEntry> items, string reportName)
+        public async Task<AutoDeletingTempFile> GenerateReport(List<CommitedOrderEntry> items, string reportName)
         {
             var reportsRows = await _reportsRepository.GetReportEntry(reportName);
             var reportCodes = await _productCodeRepository.GetProductCodes(c =>
@@ -28,74 +29,69 @@ namespace WebApi.Services
 
             var docSample = items.First();
             var templateCustomPath = await _reportsRepository.GetReportTemplate(docSample.CodLocatie!, reportName);
-            string templatePath = Path.Combine(_settings.SqlQueryCache, templateCustomPath.TemplateName //"PV_RECEPTIE_ACCESORII.docx"
-                );
-            //System.IO.File.Copy(templatePath, outputPath, true);
-            using (var ms = new MemoryStream())
+            string templatePath = Path.Combine(_settings.SqlQueryCache, templateCustomPath.TemplateName);
+
+            var fStream = TempFileHelper.CreateTempFile(templatePath);
+
+            // Open the document
+            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream.GetStream(), true))
             {
-                using (var fs = File.Open(templatePath, FileMode.Open, FileAccess.Read)) { fs.CopyTo(ms); }
-                ms.Position = 0;
+                // Access the main document part
+                var mainPart = wordDoc.MainDocumentPart!;
+                var body = mainPart.Document.Body!;
+                // Replace placeholders in the paragraphs
+                ReplaceContentControlText(mainPart, "date_field", docSample.DataAviz?.ToString("dd.MM.yyyy") ?? "................");
+                ReplaceContentControlText(mainPart, "magazin_field", docSample.NumeLocatie!);
+                ReplaceContentControlText(mainPart, "aviz_field", docSample.NumarAviz?.ToString() ?? ".......");
 
-                // Open the document
-                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(ms, true))
+                Table table = body.Elements<Table>().FirstOrDefault()!;
+
+                int currIndex = 0;
+                var currGroup = reportsRows[0].Group;
+                for (int i = 0; i < reportsRows.Count; i++)
                 {
-                    // Access the main document part
-                    var mainPart = wordDoc.MainDocumentPart!;
-                    var body = mainPart.Document.Body!;
-                    // Replace placeholders in the paragraphs
-                    ReplaceContentControlText(mainPart, "date_field", docSample.DataAviz?.ToString("dd.MM.yyyy") ?? "................");
-                    ReplaceContentControlText(mainPart, "magazin_field", docSample.NumeLocatie!);
-                    ReplaceContentControlText(mainPart, "aviz_field", docSample.NumarAviz?.ToString() ?? ".......");
+                    var reportRow = reportsRows[i];
+                    var reportCodeList = reportCodes.Where(x => x.Code.ToLowerInvariant().Contains(reportRow.FindBy.ToLowerInvariant()) && x.Level == reportRow.Level);
+                    if (!reportCodeList.Any()) continue;
 
-                    Table table = body.Elements<Table>().FirstOrDefault()!;
+                    var codes = items.Where(x => reportCodeList.Any(rc => rc.RootCode == x.CodProdus)).ToList();
 
-                    int currIndex = 0;
-                    var currGroup = reportsRows[0].Group;
-                    for (int i = 0; i < reportsRows.Count; i++)
+                    if (codes.Any())
                     {
-                        var reportRow = reportsRows[i];
-                        var reportCodeList = reportCodes.Where(x => x.Code.ToLowerInvariant().Contains(reportRow.FindBy.ToLowerInvariant()) && x.Level == reportRow.Level);
-                        if (!reportCodeList.Any()) continue;
-
-                        var codes = items.Where(x => reportCodeList.Any(rc => rc.RootCode == x.CodProdus)).ToList();
-
-                        if (codes.Any())
+                        if (currGroup != reportRow.Group && currIndex > 0)
                         {
-                            if (currGroup != reportRow.Group && currIndex > 0)
-                            {
-                                TableRow emptyRow = new TableRow();
-                                emptyRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
-                                emptyRow.Append(CreateCell(""));
-                                emptyRow.Append(CreateCell(""));
-                                emptyRow.Append(CreateCell(""));
-                                emptyRow.Append(CreateCell(""));
-                                table.Append(emptyRow);
-                                currGroup = reportRow.Group;
-                            } 
-                            else if (currIndex == 0)
-                            {
-                                currGroup = reportRow.Group;
-                            }
-
-                            // Create a new row
-                            TableRow newRow = new TableRow();
-                            newRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
-                            // Add cells to the new row
-                            newRow.Append(CreateCell((++currIndex).ToString()));
-                            newRow.Append(CreateCell(reportRow.Display));
-                            newRow.Append(CreateCell(reportRow.UM));
-                            newRow.Append(CreateCell(codes.Sum(x => x.Cantitate).ToString()));
-
-                            // Insert the new row at the end of the table
-                            table.Append(newRow);
+                            TableRow emptyRow = new TableRow();
+                            emptyRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
+                            emptyRow.Append(CreateCell(""));
+                            emptyRow.Append(CreateCell(""));
+                            emptyRow.Append(CreateCell(""));
+                            emptyRow.Append(CreateCell(""));
+                            table.Append(emptyRow);
+                            currGroup = reportRow.Group;
                         }
+                        else if (currIndex == 0)
+                        {
+                            currGroup = reportRow.Group;
+                        }
+
+                        // Create a new row
+                        TableRow newRow = new TableRow();
+                        newRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
+                        // Add cells to the new row
+                        newRow.Append(CreateCell((++currIndex).ToString()));
+                        newRow.Append(CreateCell(reportRow.Display));
+                        newRow.Append(CreateCell(reportRow.UM));
+                        newRow.Append(CreateCell(codes.Sum(x => x.Cantitate).ToString()));
+
+                        // Insert the new row at the end of the table
+                        table.Append(newRow);
                     }
-                    if (currIndex == 0) return [];
-                    mainPart.Document.Save();
                 }
-                ms.Position = 0;
-                return ms.ToArray();
+                if (currIndex == 0) return AutoDeletingTempFile.Null;
+                mainPart.Document.Save();
             }
+            fStream.GetStream().Position = 0;
+            return fStream;
         }
 
         static TableCell CreateCell(string text)

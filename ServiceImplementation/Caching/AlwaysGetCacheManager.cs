@@ -17,27 +17,30 @@ namespace ServiceImplementation.Caching
         {
             this.metadataService = metadataService;
         }
-
+        private string GetCacheKey(string tableName)
+        {
+            return $"cache_control-{tableName}";
+        }
         public async Task Bust(string tableName, bool invalidate, DateTimeOffset? stamp)
         {
-            var metaData = await metadataService.GetMetadata($"cache_control-{tableName}");
+            var metaData = await metadataService.GetMetadata(GetCacheKey(tableName));
             if (invalidate)
             {
                 metaData["token"] = Guid.NewGuid().ToString();
-                await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
             }
             else if (metaData.TryGetValue("timestamp", out var dSync) && DateTimeOffset.TryParse(dSync, out var dateSync))
             {
                 if (stamp > dateSync)
                 {
                     metaData["timestamp"] = (stamp ?? dateSync).ToString();
-                    await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                    await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                 }
             }
             else if (stamp.HasValue)
             {
                 metaData["timestamp"] = stamp.Value.ToString();
-                await metadataService.SetMetadata($"cache_control-{tableName}", null, metaData);
+                await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
             }
         }
 
