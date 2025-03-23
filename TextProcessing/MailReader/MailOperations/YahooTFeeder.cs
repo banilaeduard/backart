@@ -245,9 +245,8 @@ namespace YahooTFeeder
                         var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
                         var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
                         if (!await blob.Exists(fname))
-                            using (var temp = TempFileHelper.CreateTempFile())
+                            using (var fileStream = TempFileHelper.CreateTempFile())
                             {
-                                var fileStream = temp.GetStream();
                                 msg.WriteTo(FormatOptions.Default, fileStream);
                                 fileStream.Position = 0;
                                 await blob.WriteTo(fname, fileStream);
@@ -282,9 +281,8 @@ namespace YahooTFeeder
                             var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
                             var filePath = details + idx + fileName;
                             if (!await blob.Exists(filePath))
-                                using (var temp = TempFileHelper.CreateTempFile())
+                                using (var fStream = TempFileHelper.CreateTempFile())
                                 {
-                                    var fStream = temp.GetStream();
                                     if (attachment is MessagePart)
                                     {
                                         var part = (MessagePart)attachment;

@@ -90,6 +90,7 @@ namespace AzureTableRepository.CommitedOrders
             {
                 entry.Livrata = true;
                 entry.NumarAviz = numarAviz;
+                entry.TransportStatus = "Delivered";
             }
 
             var transactions = tableStorageService.PrepareUpsert(entries);

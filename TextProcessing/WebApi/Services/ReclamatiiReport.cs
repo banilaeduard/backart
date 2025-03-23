@@ -19,14 +19,14 @@ namespace WebApi.Services
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<AutoDeletingTempFile> GenerateReport(ComplaintDocument complaintDocument)
+        public async Task<Stream> GenerateReport(ComplaintDocument complaintDocument)
         {
             var templateCustomPath = await _reportsRepository.GetReportTemplate(complaintDocument.LocationCode!, "Reclamatii");
             string templatePath = $@"{_settings.SqlQueryCache}/{templateCustomPath.TemplateName}";
             
             var fStream = TempFileHelper.CreateTempFile(templatePath);
             // Open the document
-            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream.GetStream(), true))
+            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream, true))
             {
                 // Access the main document part
                 var mainPart = wordDoc.MainDocumentPart!;
@@ -54,7 +54,7 @@ namespace WebApi.Services
                 }
                 mainPart.Document.Save();
             }
-            fStream.GetStream().Position = 0;
+            fStream.Position = 0;
             return fStream;
         }
 

@@ -11,7 +11,6 @@ namespace WebApi.Models
         public List<CommitedOrderModel> Entry { get; set; }
         public List<TicketSeriesModel> Tickets { get; set; }
         public List<TaskModel> Tasks { get; set; }
-
         public string NumarIntern { get; set; }
         public string NumeLocatie { get; set; }
         public string CodLocatie { get; set; }
@@ -24,6 +23,7 @@ namespace WebApi.Models
         public DateTime? DataAviz { get; set; }
         public string StatusName { get; set; }
         public bool HasReports { get; set; }
+        public string TransportStatus { get; set; }
 
         public static IEnumerable<CommitedOrdersResponse> From(IList<CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
             IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
@@ -72,6 +72,7 @@ namespace WebApi.Models
                     NumeLocatie = sample.NumeLocatie,
                     StatusName = sample.StatusName,
                     CodLocatie = sample.CodLocatie,
+                    TransportStatus = sample.TransportStatus
                 };
                 response.HasReports = response.Tasks.Any() || response.Tickets.Any();
                 response.Weight = response.Entry.Sum(x => x.Greutate ?? 0);

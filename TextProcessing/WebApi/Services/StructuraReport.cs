@@ -21,7 +21,7 @@ namespace WebApi.Services
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<AutoDeletingTempFile> GenerateReport(List<CommitedOrderEntry> items, string reportName)
+        public async Task<Stream> GenerateReport(List<CommitedOrderEntry> items, string reportName)
         {
             var reportsRows = await _reportsRepository.GetReportEntry(reportName);
             var reportCodes = await _productCodeRepository.GetProductCodes(c =>
@@ -34,7 +34,7 @@ namespace WebApi.Services
             var fStream = TempFileHelper.CreateTempFile(templatePath);
 
             // Open the document
-            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream.GetStream(), true))
+            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream, true))
             {
                 // Access the main document part
                 var mainPart = wordDoc.MainDocumentPart!;
@@ -87,10 +87,10 @@ namespace WebApi.Services
                         table.Append(newRow);
                     }
                 }
-                if (currIndex == 0) return AutoDeletingTempFile.Null;
+                if (currIndex == 0) return Stream.Null;
                 mainPart.Document.Save();
             }
-            fStream.GetStream().Position = 0;
+            fStream.Position = 0;
             return fStream;
         }
 

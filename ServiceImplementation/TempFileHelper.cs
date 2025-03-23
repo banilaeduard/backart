@@ -10,7 +10,7 @@
         /// </summary>
         /// <param name="content">Optional initial content (default is empty).</param>
         /// <returns>A FileStream wrapped in AutoDeletingTempFile.</returns>
-        public static AutoDeletingTempFile CreateTempFile(string fromFile = null)
+        public static Stream CreateTempFile(string fromFile = null)
         {
             string tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
             FileStream fileStream = null;
@@ -19,14 +19,13 @@
             if (!string.IsNullOrEmpty(fromFile))
             {
                 File.Copy(fromFile, tempFilePath, false);
-                fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-                return new AutoDeletingTempFile(tempFilePath, fileStream);
+                fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.Read, 4096, FileOptions.DeleteOnClose);
+                return fileStream;
             }
-
             // Create the temp file
-            fileStream = new FileStream(tempFilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+            fileStream = new FileStream(tempFilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 4096, FileOptions.DeleteOnClose);
 
-            return new AutoDeletingTempFile(tempFilePath, fileStream);
+            return fileStream;
         }
     }
 

@@ -35,6 +35,7 @@ namespace RepositoryContract.CommitedOrders
                 Livrata = entry.Livrata,
                 NumarAviz = entry.NumarAviz,
                 DataAviz = entry.DataAviz,
+                TransportStatus = entry.TransportStatus,
             };
         }
 

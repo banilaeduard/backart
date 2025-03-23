@@ -67,15 +67,14 @@ namespace WebApi.Controllers
                 }
 
                 await using var reportStream = await _reclamatiiReport.GenerateReport(document);
-                {
-                    await _storageService.WriteTo(fName, reportStream.GetStream(), true);
-                    reportStream.GetStream().Position = 0;
-                    metaData["json"] = JsonConvert.SerializeObject(document);
-                    metaData["md5"] = md5;
-                    await _metadataService.SetMetadata(metaName, null, metaData);
+                await _storageService.WriteTo(fName, reportStream, true);
+                metaData["json"] = JsonConvert.SerializeObject(document);
+                metaData["md5"] = md5;
+                await _metadataService.SetMetadata(metaName, null, metaData);
 
-                    return File(_storageService.Access(fName, out var contentType), wordType);
-                }
+                reportStream.Position = 0;
+                await reportStream.CopyToAsync(Response.BodyWriter.AsStream());
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
@@ -104,14 +103,15 @@ namespace WebApi.Controllers
                 }
 
                 await using var reportStream = await _structuraReport.GenerateReport(items, reportName);
-                {
-                    await _storageService.WriteTo(fName, reportStream.GetStream(), true);
-                    if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
-                        metaData["aviz"] = items[0].NumarAviz?.ToString();
-                    metaData["md5"] = md5;
-                    await _metadataService.SetMetadata(metaName, null, metaData);
-                    return File(_storageService.Access(fName, out var contentType), wordType);
-                }
+                await _storageService.WriteTo(fName, reportStream, true);
+                if (!string.IsNullOrWhiteSpace(items[0].NumarAviz?.ToString()))
+                    metaData["aviz"] = items[0].NumarAviz?.ToString();
+                metaData["md5"] = md5;
+                await _metadataService.SetMetadata(metaName, null, metaData);
+
+                reportStream.Position = 0;
+                await reportStream.CopyToAsync(Response.BodyWriter.AsStream());
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
@@ -139,14 +139,12 @@ namespace WebApi.Controllers
 
             // Use AsStream() to get a writeable stream for the response body
             await using var responseStream = Response.BodyWriter.AsStream();
-            {
-                await WorkbookReportsService.GenerateReport(
-                                   items.Cast<CommitedOrder>().ToList(),
-                                   t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
-                                   t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
-                                   t => t.NumeProdus, responseStream);
-                await responseStream.FlushAsync();
-            }
+            await WorkbookReportsService.GenerateReport(
+                               items.Cast<CommitedOrder>().ToList(),
+                               t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
+                               t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
+                               t => t.NumeProdus, responseStream);
+            await responseStream.FlushAsync();
             return new EmptyResult();
         }
 
