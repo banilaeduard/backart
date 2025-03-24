@@ -19,11 +19,11 @@ namespace WebApi.Services
             _reportsRepository = reportsRepository;
         }
 
-        public async Task<Stream> GenerateReport(ComplaintDocument complaintDocument)
+        public async Task<Stream> GenerateReport(ComplaintDocument complaintDocument, string driverName)
         {
             var templateCustomPath = await _reportsRepository.GetReportTemplate(complaintDocument.LocationCode!, "Reclamatii");
             string templatePath = $@"{_settings.SqlQueryCache}/{templateCustomPath.TemplateName}";
-            
+
             var fStream = TempFileHelper.CreateTempFile(templatePath);
             // Open the document
             using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream, true))
@@ -35,6 +35,7 @@ namespace WebApi.Services
                 // Replace placeholders in the paragraphs
                 ReplaceContentControlText(mainPart, "date_field", complaintDocument.Date.ToString("dd.MM.yyyy"));
                 ReplaceContentControlText(mainPart, "magazin_field", complaintDocument.LocationName);
+                ReplaceContentControlText(mainPart, "driver_name", driverName ?? "............................");
                 Table table = body.Elements<Table>().FirstOrDefault()!;
 
                 for (int i = 0; i < complaintDocument.complaintEntries.Length; i++)

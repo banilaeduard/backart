@@ -6,24 +6,13 @@ using RepositoryContract.Tickets;
 
 namespace WebApi.Models
 {
-    public class CommitedOrdersResponse
+    public class CommitedOrdersResponse : CommitedOrdersBase
     {
-        public List<CommitedOrderModel> Entry { get; set; }
         public List<TicketSeriesModel> Tickets { get; set; }
         public List<TaskModel> Tasks { get; set; }
         public string NumarIntern { get; set; }
-        public string NumeLocatie { get; set; }
-        public string CodLocatie { get; set; }
         public DateTime DataDocument { get; set; }
         public DateTime? DataDocumentBaza { get; set; }
-        public int Weight { get; set; }
-        public string DetaliiComenzi { get; set; }
-        public bool Livrata { get; set; }
-        public int? NumarAviz { get; set; }
-        public DateTime? DataAviz { get; set; }
-        public string StatusName { get; set; }
-        public bool HasReports { get; set; }
-        public string TransportStatus { get; set; }
 
         public static IEnumerable<CommitedOrdersResponse> From(IList<CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
             IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
@@ -80,5 +69,21 @@ namespace WebApi.Models
                 yield return response;
             }
         }
+    }
+
+    public class CommitedOrdersBase
+    {
+        public List<CommitedOrderModel> Entry { get; set; }
+        public string CodLocatie { get; set; }
+        public string NumeLocatie { get; set; }
+        public int? Weight { get; set; }
+        public string? DetaliiComenzi { get; set; }
+        public bool? Livrata { get; set; }
+        public int? NumarAviz { get; set; }
+        public DateTime? DataAviz { get; set; }
+        public string StatusName { get; set; }
+        public bool HasReports { get; set; }
+        public string? TransportStatus { get; set; }
+
     }
 }

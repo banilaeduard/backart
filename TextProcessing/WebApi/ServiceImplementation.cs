@@ -74,7 +74,7 @@ namespace WebApi
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
-#if (!TEST)
+#if (TEST)
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();
