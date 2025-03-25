@@ -52,7 +52,12 @@ namespace YahooTFeeder
             bool move = (op & Operation.Move) == Operation.Move;
             bool fetch = (op & Operation.Fetch) == Operation.Fetch;
 
-            var settings = (await mailSettings.GetMailSource()).First(t => t.PartitionKey == sourceName);
+            var settings = (await mailSettings.GetMailSource()).FirstOrDefault(t => t.PartitionKey == sourceName);
+            if(settings == null)
+            {
+                logger.ActorMessage(actor, "No settings for {0}. Cannot run the mail service", sourceName);
+                return;
+            }
             var mSettings = (await mailSettings.GetMailSetting(settings.PartitionKey)).ToList();
 
             if (downlaod || move)

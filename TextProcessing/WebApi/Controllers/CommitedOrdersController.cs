@@ -21,8 +21,6 @@ namespace WebApi.Controllers
     public class CommitedOrdersController : WebApiController2
     {
         private ICommitedOrdersRepository commitedOrdersRepository;
-        private ITicketEntryRepository ticketEntryRepository;
-        private IDataKeyLocationRepository keyLocationRepository;
         private IProductCodeRepository productCodeRepository;
         private ITaskRepository taskRepository;
         ICacheManager<CommitedOrderEntry> cacheManager;
@@ -31,8 +29,6 @@ namespace WebApi.Controllers
         public CommitedOrdersController(
             ILogger<CommitedOrdersController> logger,
             ICommitedOrdersRepository commitedOrdersRepository,
-            ITicketEntryRepository ticketEntryRepository,
-            IDataKeyLocationRepository keyLocationRepository,
             IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
             ICacheManager<CommitedOrderEntry> cacheManager, 
@@ -40,8 +36,6 @@ namespace WebApi.Controllers
             IMapper mapper) : base(logger, mapper)
         {
             this.commitedOrdersRepository = commitedOrdersRepository;
-            this.ticketEntryRepository = ticketEntryRepository;
-            this.keyLocationRepository = keyLocationRepository;
             this.taskRepository = taskRepository;
             this.productCodeRepository = productCodeRepository;
             this.cacheManager = cacheManager;
@@ -65,8 +59,6 @@ namespace WebApi.Controllers
 
                 productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
                 weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
-                //var tickets = await ticketEntryRepository.GetAll();
-                //var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => orders.Any(o => o.CodLocatie == t.LocationCode)).ToList();
             }
             catch (Exception ex)
             {
@@ -74,6 +66,14 @@ namespace WebApi.Controllers
             }
 
             return Ok(CommitedOrdersResponse.From(orders, tickets ?? [], synonimLocations ?? [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
+        }
+
+        [HttpPost("get")]
+        public async Task<IActionResult> GetCommitedOrdersIds(int[] ids)
+        {
+            var orders = await commitedOrdersRepository.GetCommitedOrders(ids);
+
+            return Ok(CommitedOrdersResponse.From(orders, [], [], [], [], []));
         }
 
         [HttpPost("delivered/{internalNumber}/{numarAviz}")]

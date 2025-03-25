@@ -30,7 +30,7 @@ namespace SqlTableRepository.Tasks
         internal readonly static (string sql, Func<dynamic, dynamic, ExternalReferenceEntry> mapper, string splitOn) ExternalRefs =
             ($@"SELECT er.*, erg.*, ta.[External], ta.Accepted FROM dbo.ExternalReferenceEntry er
                     JOIN dbo.TaskAction ta on ta.id = er.TaskActionId and ta.TaskId = er.TaskId
-                    JOIN dbo.ExternalReferenceGroup erg on er.GroupId = erg.G_Id",
+                    JOIN dbo.ExternalReferenceGroup erg on er.GroupId = erg.G_Id ",
             (d, eg) => new ExternalReferenceEntry()
             {
                 Created = d.Created,

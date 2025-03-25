@@ -61,7 +61,8 @@ namespace WebApi.Models
                     NumeLocatie = sample.NumeLocatie,
                     StatusName = sample.StatusName,
                     CodLocatie = sample.CodLocatie,
-                    TransportStatus = sample.TransportStatus
+                    TransportStatus = sample.TransportStatus,
+                    TransportDate = sample.TransportDate
                 };
                 response.HasReports = response.Tasks.Any() || response.Tickets.Any();
                 response.Weight = response.Entry.Sum(x => x.Greutate ?? 0);
@@ -79,6 +80,7 @@ namespace WebApi.Models
         public int? Weight { get; set; }
         public string? DetaliiComenzi { get; set; }
         public bool? Livrata { get; set; }
+        public DateTime? TransportDate { get; set; }
         public int? NumarAviz { get; set; }
         public DateTime? DataAviz { get; set; }
         public string StatusName { get; set; }

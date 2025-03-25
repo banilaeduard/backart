@@ -135,7 +135,7 @@ namespace SqlTableRepository.Tasks
                 }
             }
             _taskCache.Clear();
-            return (await GetTasksInternal(TaskInternalState.All, task.Id))[0];
+            return (await GetTasksInternal(TaskInternalState.All, [task.Id]))[0];
         }
         public async Task DeleteTaskExternalRef(int taskId, string partitionKey, string rowKey)
         {
@@ -155,9 +155,9 @@ namespace SqlTableRepository.Tasks
             _taskCache.Clear();
         }
 
-        public async Task<TaskEntry> GetTask(int taskId)
+        public async Task<IList<TaskEntry>> GetTasks(int[] taskIds)
         {
-            return (await GetTasksInternal(TaskInternalState.All, taskId))[0];
+            return await GetTasksInternal(TaskInternalState.All, taskIds);
         }
 
         public async Task AcceptExternalRef(int taskId, string partitionKey, string rowKey)
@@ -181,35 +181,38 @@ namespace SqlTableRepository.Tasks
             _taskCache.Clear();
         }
 
-        private async Task<IList<TaskEntry>> GetTasksInternal(TaskInternalState status, int? TaskId = null)
+        private async Task<IList<TaskEntry>> GetTasksInternal(TaskInternalState status, int[] TaskId = null)
         {
-            var key = $"GetActiveTasksInternal_{status}_{TaskId ?? -1}";
-            if (!_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
+            var key = TaskId == null ? $"GetActiveTasksInternal_{status}" : null;
+            if (string.IsNullOrWhiteSpace(key) || !_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
             {
                 IList<TaskEntry> tasks;
                 IList<TaskActionEntry> actions;
                 IList<ExternalReferenceEntry> externalRef;
                 using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
                 {
-                    string taskSql = $"SELECT * FROM dbo.TaskEntry WHERE {GetTaskStatus(status)} AND {(TaskId.HasValue ? "Id = @TaskId" : "@TaskId = @TaskId")}";
-                    string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE {GetTaskStatus(status)} AND {(TaskId.HasValue ? "t.Id = @TaskId" : "@TaskId = @TaskId")}";
-                    var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId = TaskId ?? -1 });
+                    var whereIn = @$"{(TaskId?.Any() == true ? "" : GetTaskStatus(status))} {(TaskId?.Any() == true ? "t.Id in @TaskId" : "")}";
+                    string taskSql = $"SELECT * FROM dbo.TaskEntry t WHERE {whereIn}";
+                    string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE {whereIn}";
+                    var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId });
 
                     tasks = [.. multi.Read<TaskEntry>()];
                     actions = [.. multi.Read<TaskActionEntry>()];
 
-                    externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE {(TaskId.HasValue ? "ta.TaskId = @TaskId" : "@TaskId = @TaskId")}",
+                    var ids = tasks.Select(t => t.Id).ToArray();
+
+                    externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE ta.TaskId in @ids ;",
                         TaskSql.ExternalRefs.mapper,
                         splitOn: TaskSql.ExternalRefs.splitOn,
-                        param: new { TaskId = TaskId ?? -1 })).ToList();
+                        param: new { ids })).ToList();
                 }
                 var taskList = tasks.Select(task => TaskEntry.From(task, actions, externalRef)).ToList();
 
-                if (taskList.Any())
+                if (taskList.Any() && !string.IsNullOrWhiteSpace(key))
                 {
                     return _taskCache.Set(key, taskList, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(30)));
                 }
-                return [];
+                return taskList;
             }
 
             return tasksCache;

@@ -1,12 +1,10 @@
 ﻿using AutoMapper;
-using EntityDto.CommitedOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using RepositoryContract.ProductCodes;
 using WebApi.Models;
-using WorkSheetServices;
 
 namespace WebApi.Controllers
 {
@@ -14,19 +12,16 @@ namespace WebApi.Controllers
     public class OrdersController : WebApiController2
     {
         private IOrdersRepository ordersRepository;
-        private IImportsRepository importsRepository;
         private IProductCodeRepository productCodeRepository;
 
         public OrdersController(
             ILogger<OrdersController> logger,
             IOrdersRepository ordersRepository,
-            IImportsRepository importsRepository,
             IProductCodeRepository productCodeRepository,
             IMapper mapper
             ) : base(logger, mapper)
         {
             this.ordersRepository = ordersRepository;
-            this.importsRepository = importsRepository;
             this.productCodeRepository = productCodeRepository;
         }
 

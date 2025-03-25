@@ -24,7 +24,7 @@ namespace DataAccess.Context
                            .Property(e.Name).HasConversion<System.Int16>();
                 }
             }
-#if DEBUG
+#if TEST
             modelBuilder.Entity<AppIdentityUser>()
                     .Property(o => o.LockoutEnd)
                     .HasConversion(

@@ -43,6 +43,16 @@ namespace WebApi.Controllers
             return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
         }
 
+        [HttpPost("get")]
+        public async Task<IActionResult> GetTasks(int[] taskIds)
+        {
+            var taskLists = await taskRepository.GetTasks(taskIds);
+
+            var tickets = await ticketEntryRepository.GetAll();
+            var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
+            return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
+        }
+
         [HttpPost]
         public async Task<IActionResult> SaveTask(TaskModel task)
         {

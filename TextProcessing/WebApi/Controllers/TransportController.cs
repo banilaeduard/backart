@@ -7,7 +7,7 @@ using WebApi.Models;
 
 namespace WebApi.Controllers
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin, basic")]
     public class TransportController : WebApiController2
     {
         private readonly ITransportRepository transportRepository;
@@ -22,14 +22,12 @@ namespace WebApi.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAll()
         {
             return Ok(await transportRepository.GetTransports());
         }
 
         [HttpGet("{transportId}")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Get(int transportId)
         {
             return Ok(await transportRepository.GetTransport(transportId));
@@ -48,6 +46,7 @@ namespace WebApi.Controllers
         }
 
         [HttpDelete("{transportId}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTransport(int transportId)
         {
             await transportRepository.DeleteTransport(transportId);

@@ -24,5 +24,6 @@
         public bool Livrata { get; set; }
         public int? NumarAviz { get; set; }
         public string TransportStatus { get; set; }
+        public DateTime? TransportDate { get; set; }
     }
 }

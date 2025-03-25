@@ -142,7 +142,7 @@ namespace WorkSheetServices
 
                 int[] colIndex2 = [1, 4];
                 int[] colRowIndex2 = [1, 1];
-                var worksheet3 = workbook.AddWorksheet("per location-2");
+                var worksheet3 = workbook.AddWorksheet("per location");
                 var colCount2 = 2;
 
                 for (int idx = 0; idx < lines.Count; idx++)
@@ -184,8 +184,6 @@ namespace WorkSheetServices
                 worksheet3.Rows().AdjustToContents();
                 worksheet3.Columns("1:" + colIndex2.Last() + colCount2 + 1).AdjustToContents();
 
-                var worksheet2 = workbook.AddWorksheet("per location");
-                worksheet2.Style.Font.FontSize = 14;
                 int[] colIndex = [1, 4];
                 int[] colRowIndex = [1, 1];
                 int colCount = 2;
@@ -199,30 +197,6 @@ namespace WorkSheetServices
                     var lastCol2 = ((char)(col + 64 + colCount - 1)).ToString();
 
                     var series = lines[idx].GroupBy(grouping1).OrderByDescending(t => t.Key).ToList();
-
-                    worksheet2.Cell(++rowIdx, col).Value = lines[idx].First().NumeLocatie;
-                    worksheet2.Cell(rowIdx++, col).Style.Fill.SetBackgroundColor(XLColor.Yellow);
-
-                    foreach (var line in series)
-                    {
-                        var grouping = line.GroupBy(x => GetSummary(x.CodProdus)).ToList();
-                        var initialRow = rowIdx;
-                        foreach (var t in grouping)
-                        {
-                            worksheet2.Cell(rowIdx, col).Value = t.Key;
-                            worksheet2.Cell(rowIdx, col + 1).Value = t.Sum(x => x.Cantitate);
-
-                            rowIdx++;
-                        }
-                        if (grouping.Count() > 1)
-                        {
-                            worksheet2.Range(@$"{firstCol}{rowIdx}:{lastCol2}{rowIdx}").Style.Border.SetTopBorder(XLBorderStyleValues.Dotted);
-                        }
-                        else
-                        {
-                            worksheet2.Range(@$"{firstCol}{rowIdx - 1}:{lastCol2}{rowIdx - 1}").Style.Fill.SetBackgroundColor(XLColor.LightCyan);
-                        }
-                    }
 
                     colRowIndex[idx % colIndex.Length] = rowIdx;
 
@@ -307,12 +281,7 @@ namespace WorkSheetServices
                     //locSheet.Columns("1:2").AdjustToContents();
                 }
 
-                worksheet2.Rows().AdjustToContents();
-                worksheet2.Columns("1:" + colIndex.Last() + colCount + 1).AdjustToContents();
-
-
                 SetupWorksheetPage(worksheet, i + 1, lastColCountIndex);
-                SetupWorksheetPage(worksheet2, colRowIndex.Max() + 1, colIndex.Last() + colCount);
                 SetupWorksheetPage(worksheet3, colRowIndex2.Max() + 1, colIndex2.Last() + colCount2);
 
                 workbook.SaveAs(stream);
@@ -365,45 +334,9 @@ namespace WorkSheetServices
                     case "MPP": return "Pat";
                     case "MPS": return "Sifonier";
                     case "MPC": return "Comoda";
+                    case "MPB": return "Bucatarie";
                     default: return s;
                 }
-            }
-
-            string GetSummary(string s)
-            {
-                if (s.Substring(4, 2) == "NK") return "NOPTIERA KARO";
-                if (s.Substring(4, 2) == "CK") return "COMODA KARO";
-
-                if (s.Substring(4, 2) == "NP" || s.Substring(4, 2) == "NA") return "NOPTIERA PL/ALL";
-                if (s.Substring(4, 2) == "CP" || s.Substring(4, 2) == "CA") return "COMODA PL/ALL";
-
-                if (s.Substring(4, 2) == "NO") return "NOPTIERA OP";
-                if (s.Substring(4, 2) == "CO") return "COMODA OP";
-
-                if (s.Substring(4, 1) == "N") return "NOPTIERA";
-                if (s.Substring(4, 1) == "C") return "COMODA";
-
-                if (s.Substring(4, 1) == "P")
-                {
-                    if (s.Substring(2, 2) == "KA")
-                        return "PAT KARO";
-                    else return "PAT ALL/PL/OP";
-                }
-                if (s.Substring(4, 1) == "S")
-                {
-                    if (s.Substring(2, 2) == "KA")
-                        return $"SIFONIER KARO {s.Substring(7, 1)} USI";
-                    if (s.Substring(2, 2) == "OP" || s.Substring(2, 2) == "MR")
-                        return "SIFONIER OPERA/MIRA";
-                    if (s.Substring(2, 2) == "VY" || s.Substring(2, 2) == "VG")
-                        return "SIFONIER VANITY/VG";
-                    if (s.Substring(2, 2) == "PL")
-                        return "SIFONIER PALLAS";
-                    if (s.Substring(2, 2) == "AL")
-                        return "SIFONIER ALLEGRO";
-                }
-
-                return s;
             }
         }
     }

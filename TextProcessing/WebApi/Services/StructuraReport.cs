@@ -42,7 +42,6 @@ namespace WebApi.Services
                 ReplaceContentControlText(mainPart, "date_field", commited.DataAviz?.ToString("dd.MM.yyyy") ?? "................");
                 ReplaceContentControlText(mainPart, "magazin_field", commited.NumeLocatie!);
                 ReplaceContentControlText(mainPart, "aviz_field", commited.NumarAviz?.ToString() ?? ".......");
-                ReplaceContentControlText(mainPart, "aviz_field", commited.NumarAviz?.ToString() ?? ".......");
                 ReplaceContentControlText(mainPart, "driver_name", driverName ?? "..........................");
                 Table table = body.Elements<Table>().FirstOrDefault()!;
 

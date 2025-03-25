@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Report;
+using RepositoryContract.Transports;
 using ServiceImplementation;
 using ServiceInterface.Storage;
 using System.Text;
@@ -26,8 +27,8 @@ namespace WebApi.Controllers
         private readonly IDataKeyLocationRepository _keyLocationRepository;
         private readonly ReclamatiiReport _reclamatiiReport;
         private readonly StructuraReport _structuraReport;
-        private readonly IReportEntryRepository _reportEntry;
         private readonly ICommitedOrdersRepository _commitedOrdersRepository;
+        private readonly ITransportRepository _transportRepository;
         private readonly ICryptoService _cryptoService;
 
         public DocumentController(ILogger<DocumentController> logger,
@@ -39,6 +40,7 @@ namespace WebApi.Controllers
          IReportEntryRepository reportEntry,
          ICommitedOrdersRepository commitedOrdersRepository,
          ICryptoService cryptoService,
+         ITransportRepository transportRepository,
          IMapper mapper) : base(logger, mapper)
         {
             _storageService = storageService;
@@ -46,15 +48,15 @@ namespace WebApi.Controllers
             _keyLocationRepository = keyLocationRepository;
             _reclamatiiReport = reclamatiiReport;
             _structuraReport = structuraReport;
-            _reportEntry = reportEntry;
             _commitedOrdersRepository = commitedOrdersRepository;
+            _transportRepository = transportRepository;
             _cryptoService = cryptoService;
         }
 
         [HttpPost("transport-papers")]
         public async Task<IActionResult> GenerateTransportPapers(TransportPapersModel transportPapers)
         {
-            Stream tempStream = TempFileHelper.CreateTempFile();
+            using Stream tempStream = TempFileHelper.CreateTempFile();
             using (var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document))
             {
                 var part = wordDoc.AddMainDocumentPart();
@@ -84,12 +86,8 @@ namespace WebApi.Controllers
 
                 part.Document.Save();
             }
-            Response.Headers["Content-Disposition"] = $@"attachment; filename=Transport-{transportPapers.TransportId}.docx";
-            Response.ContentType = "application/octet-stream";
-            var responseStream = Response.BodyWriter.AsStream();
-            tempStream.Position = 0;
-            await tempStream.CopyToAsync(responseStream);
-            tempStream.Close();
+            await WriteStreamToResponse(tempStream, @$"{transportPapers.TransportId}.docx", "application/octet-stream");
+
             return new EmptyResult();
         }
 
@@ -99,10 +97,7 @@ namespace WebApi.Controllers
             try
             {
                 using var reportStream = await _reclamatiiReport.GenerateReport(document, null);
-                Response.Headers["Content-Disposition"] = $@"attachment; filename=Reclamatie-{document.LocationName}.docx";
-                Response.ContentType = wordType;
-                await reportStream.CopyToAsync(Response.BodyWriter.AsStream());
-
+                await WriteStreamToResponse(reportStream, @$"Reclamatie-{document.LocationName}.docx", wordType);
                 return new EmptyResult();
             }
             catch (Exception ex)
@@ -117,10 +112,8 @@ namespace WebApi.Controllers
         {
             try
             {
-                await using var reportStream = await _structuraReport.GenerateReport(commitedOrder, reportName, null);
-                Response.Headers["Content-Disposition"] = $@"attachment; filename={commitedOrder.NumeLocatie}.docx";
-                Response.ContentType = wordType;
-                await reportStream.CopyToAsync(Response.BodyWriter.AsStream());
+                using var reportStream = await _structuraReport.GenerateReport(commitedOrder, reportName, null);
+                await WriteStreamToResponse(reportStream, $"Transport-PV-{commitedOrder.NumeLocatie}.docx", wordType);
 
                 return new EmptyResult();
             }
@@ -131,9 +124,53 @@ namespace WebApi.Controllers
             }
         }
 
+        [HttpPost("pv-report-multiple/{reportName}/{transportId}")]
+        public async Task<IActionResult> ExportStructuraReportMultiple(string reportName, CommitedOrdersBase[] commitedOrders, int transportId)
+        {
+            var groupedCommited = GetOrdersGrouped(commitedOrders, t => t.CodLocatie);
+            var transport = await _transportRepository.GetTransport(transportId);
+
+            if (groupedCommited.Count == 1)
+            {
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName);
+                await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().NumeLocatie}.docx", wordType);
+                return new EmptyResult();
+            }
+
+            using Stream tempStream = TempFileHelper.CreateTempFile();
+            using (var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document))
+            {
+                var part = wordDoc.AddMainDocumentPart();
+                part.Document = new Document();
+                part.Document.Append(new Body());
+                var destStylesPart = part.AddNewPart<StyleDefinitionsPart>();
+                destStylesPart.Styles = new Styles();
+                destStylesPart.Styles.Save();
+                try
+                {
+                    for (int i = 0; i < groupedCommited.Count; i++)
+                    {
+
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName);
+                        await CloneDocument(fName, part, 1, i > 0);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(new EventId(69), ex, "ExportStructuraReport");
+                    return StatusCode(500, "An error occurred while exporting the report.");
+                }
+                part.Document.Save();
+            }
+            await WriteStreamToResponse(tempStream, @$"Transport-PV-{transportId}.docx", wordType);
+
+            return new EmptyResult();
+        }
+
         [HttpPost("merge-commited-orders")]
         public async Task<IActionResult> ExportDispozitii(string[] internalNumber)
         {
+            internalNumber = [.. internalNumber.Order()];
             var items = await _commitedOrdersRepository.GetCommitedOrders(internalNumber.Select(int.Parse).ToArray());
             var synonimLocations = (await _keyLocationRepository.GetLocations())
                 .Where(t => t.MainLocation && !string.IsNullOrWhiteSpace(t.ShortName) && items.Any(o => o.CodLocatie == t.LocationCode))
@@ -146,32 +183,13 @@ namespace WebApi.Controllers
 
             Response.Headers["Content-Disposition"] = $@"attachment; filename={string.Join("_", internalNumber.Take(5))}.xlsx";
             Response.ContentType = "application/octet-stream";
-            //Response.Headers["Transfer-Encoding"] = "chunked";
 
-            // Use AsStream() to get a writeable stream for the response body
-            await using var responseStream = Response.BodyWriter.AsStream();
             await WorkbookReportsService.GenerateReport(
                                items.Cast<CommitedOrder>().ToList(),
                                t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
-                               t => string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
-                               t => t.NumeProdus, responseStream);
+                               t => t.CodProdus.StartsWith("MPB") ? t.CodProdus.Substring(0, 5) : string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
+                               t => t.NumeProdus, Response.BodyWriter.AsStream());
             return new EmptyResult();
-        }
-
-        private async Task<LocationMapEntry> GetOrCreateLocationMapEntry(string locationCode, string locationName)
-        {
-            var locMap = (await _reportEntry.GetLocationMapPathEntry("1", t => t.RowKey == locationCode)).FirstOrDefault();
-            if (locMap == null)
-            {
-                locMap = await _reportEntry.AddEntry(new LocationMapEntry()
-                {
-                    PartitionKey = "1",
-                    RowKey = locationCode,
-                    Folder = locationName,
-                    Location = locationName
-                }, $"{nameof(LocationMapEntry)}");
-            }
-            return locMap;
         }
 
         private string GenerateMd5ForComplaintEntries(ComplaintDocument document)
@@ -182,6 +200,7 @@ namespace WebApi.Controllers
                 if (!string.IsNullOrWhiteSpace(item.RefPartitionKey) && !string.IsNullOrWhiteSpace(item.RefRowKey))
                     sb.Append($"{item.RefRowKey}{item.RefPartitionKey}");
             }
+            sb.Append(document.LocationCode);
             sb.Append(document.complaintEntries.Count());
             return _cryptoService.GetMd5(sb.ToString());
         }
@@ -196,20 +215,71 @@ namespace WebApi.Controllers
             if (commited.NumarAviz.HasValue)
                 list.Add(_cryptoService.GetMd5(commited.NumarAviz.ToString()!));
 
+            list.Add(commited.CodLocatie);
             var stringToHash = string.Join("", list.Order());
             return _cryptoService.GetMd5(stringToHash);
         }
 
         private async Task CloneDocument(string fNameSource, MainDocumentPart target, int duplicates, bool skipFirstpageBreak = false)
         {
-            int dupes = duplicates;
             using var savedStream = _storageService.Access(fNameSource, out var contentType);
-            using var docToClone = WordprocessingDocument.Open(savedStream, false);
+            await CloneDocument(savedStream, target, duplicates, skipFirstpageBreak);
+        }
+
+        private async Task CloneDocument(Stream stream, MainDocumentPart target, int duplicates, bool skipFirstpageBreak = false)
+        {
+            int dupes = duplicates;
+            using var docToClone = WordprocessingDocument.Open(stream, false);
             do
             {
                 if (skipFirstpageBreak || duplicates > dupes) DocXServiceHelper.AddPageBreak(target);
                 DocXServiceHelper.CloneBody(docToClone.MainDocumentPart!, target, _cryptoService.GetMd5);
             } while (--dupes > 0);
+        }
+
+        private async Task WriteStreamToResponse(string filePath, string fName, string contentType)
+        {
+            using var savedStream = _storageService.Access(filePath, out var contentType2);
+            await WriteStreamToResponse(savedStream, fName, contentType2 ?? contentType);
+        }
+
+        private async Task WriteStreamToResponse(Stream stream, string fName, string contentType)
+        {
+            try
+            {
+                if (stream.CanSeek && stream.Position > 0)
+                    stream.Position = 0;
+                Response.Headers["Content-Disposition"] = $@"attachment; filename={fName}";
+                Response.ContentType = contentType;
+                await stream.CopyToAsync(Response.BodyWriter.AsStream());
+            }
+            finally
+            {
+                stream.Close();
+            }
+        }
+
+        private List<CommitedOrdersBase> GetOrdersGrouped(CommitedOrdersBase[] commitedOrders, Func<CommitedOrdersBase, string> groupBy)
+        {
+            var groups = commitedOrders.GroupBy(groupBy).ToList();
+            List<CommitedOrdersBase> result = new();
+
+            for (int i = 0; i < groups.Count; i++)
+            {
+                var commited = groups[i];
+                var sample = commited.First();
+                sample.Entry.AddRange(commited.Skip(1).SelectMany(t => t.Entry));
+                sample.Entry = [.. sample.Entry.GroupBy(x => x.CodProdus).Select(x => new CommitedOrderModel() {
+                                        CodProdus = x.Key,
+                                        Cantitate = x.Sum(t => t.Cantitate),
+                                        NumeProdus = x.First().NumeProdus,
+                                        NumarIntern = string.Join(";", x.Select(t => t.NumarIntern).Order()),
+                                        NumarComanda = string.Join(";", x.Select(t => t.NumarComanda).Order())
+                                    }).OrderBy(t => t.CodProdus)];
+                result.Add(sample);
+            }
+
+            return result;
         }
 
         private async Task<string> GenerateAndWriteReport<T>(T item, int transportId, string driverName)
@@ -218,40 +288,52 @@ namespace WebApi.Controllers
             string fName = string.Empty;
             string md5 = string.Empty;
             Stream reportStream = Stream.Null;
-
-            if (item is CommitedOrdersBase commited)
+            try
             {
-                md5 = GenerateMd5ForCommitedOrders(commited);
-                fName = $"transport/{transportId}/{commited.NumeLocatie}-{(commited.NumarAviz.HasValue ? commited.NumarAviz.Value.ToString() : "")}.docx";
-                metaDataKey = fName;
+                if (item is CommitedOrdersBase commited)
+                {
+                    md5 = GenerateMd5ForCommitedOrders(commited);
+                    fName = $"transport/{transportId}/{commited.NumeLocatie}.docx";
+                    metaDataKey = fName;
+                }
+                else if (item is ComplaintDocument complaint)
+                {
+                    md5 = GenerateMd5ForComplaintEntries(complaint);
+                    fName = $"transport/{transportId}/Reclamatie-{complaint.LocationName}.docx";
+                    metaDataKey = fName;
+                }
+                var metaData = await _metadataService.GetMetadata(metaDataKey);
+
+                if (!metaData.ContainsKey("md5") || metaData["md5"] != md5)
+                {
+                    // should handle more generic Reports
+                    if (item is ComplaintDocument complaint)
+                    {
+                        reportStream = await _reclamatiiReport.GenerateReport(complaint, driverName);
+                        metaData["locationCode"] = complaint.LocationCode;
+                    }
+                    else if (item is CommitedOrdersBase c)
+                    {
+                        reportStream = await _structuraReport.GenerateReport(c, "Accesorii", driverName);
+                        if (!string.IsNullOrWhiteSpace(c.NumarAviz?.ToString()))
+                        {
+                            metaData["aviz"] = c.NumarAviz.ToString()!;
+                        }
+                        metaData["locationCode"] = c.CodLocatie;
+                        metaData["numarintern"] = string.Join(";", c.Entry.Select(t => t.NumarIntern).Distinct());
+                    }
+
+                    await _storageService.WriteTo(fName, reportStream, true);
+                    metaData["transportId"] = transportId.ToString();
+                    metaData["md5"] = md5;
+
+                    await _metadataService.SetMetadata(metaDataKey, null, metaData);
+                }
             }
-            else if (item is ComplaintDocument complaint)
+            finally
             {
-                md5 = GenerateMd5ForComplaintEntries(complaint);
-                fName = $"transport/{transportId}/Reclamatie-{complaint.LocationName}.docx";
-                metaDataKey = fName;
-            }
-            var metaData = await _metadataService.GetMetadata(metaDataKey);
-
-            if (!metaData.ContainsKey("md5") || metaData["md5"] != md5)
-            {
-                // should handle more generic Reports
-                if (item is ComplaintDocument complaint)
-                {
-                    reportStream = await _reclamatiiReport.GenerateReport(complaint, driverName);
-                }
-                else if (item is CommitedOrdersBase c)
-                {
-                    reportStream = await _structuraReport.GenerateReport(c, "Accesorii", driverName);
-                }
-
-                await _storageService.WriteTo(fName, reportStream, true);
-                if (item is CommitedOrdersBase commited2 && !string.IsNullOrWhiteSpace(commited2.NumarAviz?.ToString()))
-                {
-                    metaData["aviz"] = commited2.NumarAviz.ToString()!;
-                }
-                metaData["md5"] = md5;
-                await _metadataService.SetMetadata(metaDataKey, null, metaData);
+                if (reportStream != Stream.Null)
+                    reportStream.Close();
             }
 
             return fName;
