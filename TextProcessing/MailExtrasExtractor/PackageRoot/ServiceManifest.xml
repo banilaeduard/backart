@@ -21,6 +21,7 @@
       <EnvironmentVariable Name="external_sql_server" Value="" />
       <EnvironmentVariable Name="storage_connection" Value="" />
       <EnvironmentVariable Name="ConnectionString" Value="" />
+      <EnvironmentVariable Name="ConnectionString_prod" Value="" />
       <EnvironmentVariable Name="blob_share_name" Value="" />
       <EnvironmentVariable Name="file_share_name" Value="" />
     </EnvironmentVariables>

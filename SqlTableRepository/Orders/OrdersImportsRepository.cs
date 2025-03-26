@@ -2,6 +2,7 @@
 using Dapper;
 using EntityDto.CommitedOrders;
 using Microsoft.Data.SqlClient;
+using ProjectKeys;
 using RepositoryContract.Imports;
 using ServiceInterface.Storage;
 
@@ -44,7 +45,7 @@ namespace SqlTableRepository.Orders
             using (var streamReadear = new StreamReader(stream))
                 sqlOrders = streamReadear.ReadToEnd();
 
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ExternalServer)))
             {
                 var items = await connection.QueryMultipleAsync($"{sqlCommited} ; {sqlOrders}", new { Date1 = ro, Date2 = ro2 });
                 var commited = items.Read<DispozitieLivrareEntry>();
@@ -62,7 +63,7 @@ namespace SqlTableRepository.Orders
             using (var streamReadear = new StreamReader(stream))
                 sqlCommited = streamReadear.ReadToEnd();
 
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ExternalServer)))
             {
                 var commited = await connection.QueryAsync<DispozitieLivrareEntry>($"{sqlCommited}", new { Date1 = ro });
                 return commited.Select(mapper.Map<CommitedOrder>).ToList();
@@ -78,7 +79,7 @@ namespace SqlTableRepository.Orders
             using (var streamReadear = new StreamReader(stream))
                 sqlOrders = streamReadear.ReadToEnd();
 
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ExternalServer)))
             {
                 var orders = await connection.QueryAsync<ComandaVanzareEntry>($"{sqlOrders}", new { Date2 = ro });
                 return orders.Select(mapper.Map<Order>).ToList();
@@ -92,7 +93,7 @@ namespace SqlTableRepository.Orders
             using (var streamReadear = new StreamReader(stream))
                 sqlOrders = streamReadear.ReadToEnd();
 
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("external_sql_server")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ExternalServer)))
             {
                 var items = await connection.QueryAsync(sqlOrders);
                 var last_order = (DateTime)items.First(t => t.type == "order").updated;

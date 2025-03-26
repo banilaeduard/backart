@@ -29,6 +29,7 @@
       <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value=""/>
       <EnvironmentVariable Name="Secret" Value="" />
       <EnvironmentVariable Name="ConnectionString" Value=""/>
+      <EnvironmentVariable Name="ConnectionString_prod" Value="" />
       <EnvironmentVariable Name="SendGridKey" Value=""/>
       <EnvironmentVariable Name="storage_connection" Value="" />
       <EnvironmentVariable Name="external_sql_server" Value="" />

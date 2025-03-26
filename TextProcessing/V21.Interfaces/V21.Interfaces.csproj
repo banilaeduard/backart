@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>True</SelfContained>
+    <Configurations>Debug;Release;DebugProdSRV</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

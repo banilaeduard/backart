@@ -14,6 +14,7 @@
     <ServicePackagePrefix>$(MSBuildProjectName)</ServicePackagePrefix>
     <FabActUtilWorkingDir>$(BaseIntermediateOutputPath)\FabActUtilTemp</FabActUtilWorkingDir>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile>
+    <Configurations>Debug;Release;DebugProdSRV</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

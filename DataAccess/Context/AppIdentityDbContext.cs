@@ -24,12 +24,12 @@ namespace DataAccess.Context
                            .Property(e.Name).HasConversion<System.Int16>();
                 }
             }
-#if TEST
+#if DEBUG
             modelBuilder.Entity<AppIdentityUser>()
                     .Property(o => o.LockoutEnd)
                     .HasConversion(
                         v => v.HasValue ? v.Value.UtcDateTime : (DateTime?)null,
-                        v => v.HasValue ? new DateTimeOffset(v.Value) : (DateTimeOffset?)null
+                        v => v.HasValue ? new DateTimeOffset(v.Value) : null
                     );
 #endif
 

@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
+using ProjectKeys;
 using RepositoryContract.ExternalReferenceGroup;
 
 namespace SqlTableRepository.ExternalReferenceGroup
@@ -8,7 +9,7 @@ namespace SqlTableRepository.ExternalReferenceGroup
     {
         public async Task<List<ExternalReferenceGroupEntry>> GetExternalReferences(string whereClause = null)
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 return [.. await connection.QueryAsync<ExternalReferenceGroupEntry>(@$"SELECT * FROM ExternalReferenceGroup {(string.IsNullOrWhiteSpace(whereClause) ? "" : ("WHERE " + whereClause))};")];
             }
@@ -18,7 +19,7 @@ namespace SqlTableRepository.ExternalReferenceGroup
         {
             DynamicParameters dParams = new();
             string fromName = "fParams";
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 var fromSql = externals.FromValues(dParams, fromName, t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.TableName, t => t.EntityType, t => t.Id);
                 return [.. await connection.QueryAsync<ExternalReferenceGroupEntry>(ExternalRefSql.UpsertExternalRef(fromSql, fromName), dParams)];

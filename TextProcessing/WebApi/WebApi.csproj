@@ -8,6 +8,15 @@
     <ServerGarbageCollection>True</ServerGarbageCollection>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>True</SelfContained>
+    <Configurations>Debug;Release;DebugProdSRV</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>$(DefineConstants);TEST</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugProdSRV|AnyCPU'">
+    <DefineConstants>$(DefineConstants);TEST</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,6 +47,7 @@
     <ProjectReference Include="..\..\AzureTableRepository\AzureTableRepository.csproj" />
     <ProjectReference Include="..\..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\..\EntityDto\EntityDto.csproj" />
+    <ProjectReference Include="..\..\ProjectKeys\ProjectKeys.csproj" />
     <ProjectReference Include="..\..\RepositoryContract\RepositoryContract.csproj" />
     <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
     <ProjectReference Include="..\..\Services\ServiceInterface.csproj" />

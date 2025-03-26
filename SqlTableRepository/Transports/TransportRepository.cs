@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
+using ProjectKeys;
 using RepositoryContract.Transports;
 
 namespace SqlTableRepository.Transport
@@ -122,6 +123,6 @@ namespace SqlTableRepository.Transport
             }
         }
 
-        private SqlConnection GetConnection() => new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString"));
+        private SqlConnection GetConnection() => new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString));
     }
 }

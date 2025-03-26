@@ -1,5 +1,6 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
+using ProjectKeys;
 using RepositoryContract.Tickets;
 using ServiceInterface;
 
@@ -42,7 +43,7 @@ namespace AzureTableRepository.Tickets
         public async Task<TicketEntity> GetTicket(string partitionKey, string rowKey, string tableName = null)
         {
             tableName = tableName ?? nameof(TicketEntity);
-            TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
             await tableClient.CreateIfNotExistsAsync();
             var resp = await tableClient.GetEntityIfExistsAsync<TicketEntity>(partitionKey, rowKey);
             return resp.HasValue ? resp.Value! : null;

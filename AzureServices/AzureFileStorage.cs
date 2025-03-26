@@ -2,6 +2,7 @@
 using Azure.Storage.Files.Shares;
 using Azure.Storage.Files.Shares.Models;
 using Azure.Storage.Files.Shares.Specialized;
+using ProjectKeys;
 using ServiceInterface.Storage;
 
 namespace AzureServices
@@ -12,7 +13,7 @@ namespace AzureServices
 
         public AzureFileStorage()
         {
-            share = new(Environment.GetEnvironmentVariable("storage_connection"), Environment.GetEnvironmentVariable("file_share_name"));
+            share = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), Environment.GetEnvironmentVariable(KeyCollection.FileShareName));
         }
         public Stream Access(string fName, out string contentType)
         {

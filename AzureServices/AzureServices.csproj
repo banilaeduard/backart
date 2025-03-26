@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;DebugProdSRV</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EntityDto\EntityDto.csproj" />
+    <ProjectReference Include="..\ProjectKeys\ProjectKeys.csproj" />
     <ProjectReference Include="..\Services\ServiceInterface.csproj" />
   </ItemGroup>
 

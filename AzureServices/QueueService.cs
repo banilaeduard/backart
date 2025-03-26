@@ -1,5 +1,6 @@
 ﻿using Azure.Storage.Queues;
 using Newtonsoft.Json;
+using ProjectKeys;
 using ServiceInterface.Storage;
 
 namespace AzureServices
@@ -8,7 +9,7 @@ namespace AzureServices
     {
         public static async Task<QueueClient> GetClient(string queueName)
         {
-            var client = new QueueClient(Environment.GetEnvironmentVariable("storage_connection")!, queueName);
+            var client = new QueueClient(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection)!, queueName);
             await client.CreateIfNotExistsAsync();
             return client;
         }

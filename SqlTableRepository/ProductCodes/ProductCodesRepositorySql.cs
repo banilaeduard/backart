@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using EntityDto;
 using Microsoft.Data.SqlClient;
+using ProjectKeys;
 using RepositoryContract.ProductCodes;
 
 namespace SqlTableRepository.ProductCodes
@@ -54,6 +55,6 @@ namespace SqlTableRepository.ProductCodes
             }
         }
 
-        private SqlConnection GetConnection() => new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString"));
+        private SqlConnection GetConnection() => new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString));
     }
 }

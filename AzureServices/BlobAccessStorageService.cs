@@ -1,6 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using ProjectKeys;
 using ServiceInterface.Storage;
 
 namespace AzureServices
@@ -10,7 +11,7 @@ namespace AzureServices
         BlobContainerClient client;
         public BlobAccessStorageService()
         {
-            client = new(Environment.GetEnvironmentVariable("storage_connection"), Environment.GetEnvironmentVariable("blob_share_name"));
+            client = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), Environment.GetEnvironmentVariable(KeyCollection.BlobShareName));
         }
 
         public bool AccessIfExists(string fName, out string contentType, out Stream content)

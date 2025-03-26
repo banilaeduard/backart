@@ -35,6 +35,7 @@ using RepositoryContract.ExternalReferenceGroup;
 using SqlTableRepository.ExternalReferenceGroup;
 using EntityDto.ExternalReferenceGroup;
 using EntityDto.Tasks;
+using ProjectKeys;
 
 namespace WebApi
 {
@@ -42,12 +43,12 @@ namespace WebApi
     {
         internal static void ConfigureServices(IServiceCollection services, StatelessServiceContext serviceContext)
         {
-            services.configureDataAccess(Environment.GetEnvironmentVariable("ConnectionString"));
+            services.configureDataAccess(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString));
             services.AddSingleton(new ConnectionSettings()
             {
-                ConnectionString = Environment.GetEnvironmentVariable("ConnectionString")!,
-                ExternalConnectionString = Environment.GetEnvironmentVariable("external_sql_server")!,
-                SqlQueryCache = Environment.GetEnvironmentVariable("path_to_sql")!,
+                ConnectionString = Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)!,
+                ExternalConnectionString = Environment.GetEnvironmentVariable(KeyCollection.ExternalServer)!,
+                SqlQueryCache = Environment.GetEnvironmentVariable(KeyCollection.PathToSql)!,
             });
 
             SqlMapper.AddTypeHandler(new DateTimeHandler());
@@ -80,7 +81,7 @@ namespace WebApi
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
             services.AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>();
-#if TEST
+#if !TEST
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
             services.AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>();

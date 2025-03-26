@@ -4,6 +4,7 @@
     <Parameter Name="WebApi_ASPNETCORE_ENVIRONMENT" DefaultValue="" />
     <Parameter Name="WebApi_Secret" DefaultValue="" />
     <Parameter Name="WebApi_ConnectionString" DefaultValue="" />
+    <Parameter Name="WebApi_ConnectionString_prod" DefaultValue="" />
     <Parameter Name="WebApi_SengridKey" DefaultValue="" />
     <Parameter Name="storage_connection" DefaultValue="" />
     <Parameter Name="blob_share_name" DefaultValue="" />
@@ -23,6 +24,7 @@
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
+      <EnvironmentVariable Name="ConnectionString_prod" Value="[WebApi_ConnectionString_prod]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
       <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
@@ -33,6 +35,7 @@
     <EnvironmentOverrides CodePackageRef="code">
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
+      <EnvironmentVariable Name="ConnectionString_prod" Value="[WebApi_ConnectionString_prod]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
       <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
@@ -53,11 +56,11 @@
       <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value="[WebApi_ASPNETCORE_ENVIRONMENT]" />
       <EnvironmentVariable Name="Secret" Value="[WebApi_Secret]" />
       <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
+      <EnvironmentVariable Name="ConnectionString_prod" Value="[WebApi_ConnectionString_prod]" />
       <EnvironmentVariable Name="SendGridKey" Value="[WebApi_SengridKey]" />
       <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="path_to_sql" Value="[path_to_sql]" />
-      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
       <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
     </EnvironmentOverrides>

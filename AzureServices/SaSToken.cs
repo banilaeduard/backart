@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using EntityDto.Reports;
+using ProjectKeys;
 using System.Text;
 
 namespace AzureServices
@@ -11,7 +12,7 @@ namespace AzureServices
         BlobContainerClient client;
         public SaSToken()
         {
-            client = new(Environment.GetEnvironmentVariable("storage_connection"), "importstorage");
+            client = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), Environment.GetEnvironmentVariable(KeyCollection.BlobShareName));
         }
 
         public List<(string key, string connection)> GenerateSaSTokens()
@@ -24,7 +25,7 @@ namespace AzureServices
 
         private string getTableSaS(string tableName, int hours)
         {
-            return (new TableClient(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions())
+            return (new TableClient(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions())
                 .GenerateSasUri(Azure.Data.Tables.Sas.TableSasPermissions.Read, DateTimeOffset.UtcNow.AddHours(hours)).AbsoluteUri);
         }
 

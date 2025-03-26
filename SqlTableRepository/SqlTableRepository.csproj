@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;DebugProdSRV</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +18,7 @@
     <ProjectReference Include="..\AzureServices\AzureServices.csproj" />
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\EntityDto\EntityDto.csproj" />
+    <ProjectReference Include="..\ProjectKeys\ProjectKeys.csproj" />
     <ProjectReference Include="..\RepositoryContract\RepositoryContract.csproj" />
   </ItemGroup>
 

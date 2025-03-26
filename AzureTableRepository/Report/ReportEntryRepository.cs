@@ -1,5 +1,6 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
+using ProjectKeys;
 
 namespace RepositoryContract.Report
 {
@@ -31,7 +32,7 @@ namespace RepositoryContract.Report
         public async Task<ReportTemplateEntry> GetReportTemplate(string codLocatie, string reportName)
         {
             var tableName = typeof(ReportTemplateEntry).Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable("storage_connection"), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
             tableClient.CreateIfNotExists();
             var resp = tableClient.GetEntityIfExists<ReportTemplateEntry>(codLocatie, reportName);
             return resp.HasValue ? resp.Value! : null;

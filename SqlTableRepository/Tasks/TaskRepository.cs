@@ -2,6 +2,7 @@
 using EntityDto.Tasks;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
+using ProjectKeys;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using System.Globalization;
@@ -14,7 +15,7 @@ namespace SqlTableRepository.Tasks
 
         public async Task MarkAsClosed(int[] taskIds)
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 string markAsClosed = $"UPDATE dbo.TaskEntry SET IsClosed = 1 where Id in @taskIds";
                 await connection.ExecuteAsync($"{markAsClosed};", new { taskIds });
@@ -24,7 +25,7 @@ namespace SqlTableRepository.Tasks
 
         public async Task DeleteTask(int Id)
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 string taskSql = $"DELETE FROM dbo.TaskEntry WHERE Id = {Id}";
                 string taskAction = $"DELETE FROM dbo.TaskAction WHERE TaskId = {Id}";
@@ -47,7 +48,7 @@ namespace SqlTableRepository.Tasks
             TaskActionEntry taskAction;
             List<ExternalReferenceEntry>? externalRef = null;
 
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 var result = await connection.QueryMultipleAsync(TaskSql.InsertTask
                                       , param: new
@@ -86,7 +87,7 @@ namespace SqlTableRepository.Tasks
             TaskActionEntry taskAction = new();
             List<ExternalReferenceEntry>? externalRef = null;
 
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 string updateTask = $@"UPDATE dbo.TaskEntry SET Name = @Name, Details = @Details, IsClosed = @IsClosed, TaskDate = @TaskDate
                     OUTPUT INSERTED.*, DELETED.Details as old_details, DELETED.Name as old_name, DELETED.IsClosed as old_isclosed, DELETED.TaskDate as old_taskdate
@@ -133,7 +134,7 @@ namespace SqlTableRepository.Tasks
 
         public async Task DeleteTaskExternalRef(int taskId, string partitionKey, string rowKey)
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 await connection.ExecuteAsync($@"
                     UPDATE dbo.ExternalReferenceEntry SET IsRemoved = 1
@@ -156,7 +157,7 @@ namespace SqlTableRepository.Tasks
 
         public async Task AcceptExternalRef(int taskId, string partitionKey, string rowKey)
         {
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
                 await connection.ExecuteAsync($@"update dbo.TaskAction
                                                 Set Accepted = 1
@@ -183,7 +184,7 @@ namespace SqlTableRepository.Tasks
                 IList<TaskEntry> tasks;
                 IList<TaskActionEntry> actions;
                 IList<ExternalReferenceEntry> externalRef;
-                using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+                using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
                 {
                     var whereIn = @$"{(TaskId?.Any() == true ? "" : GetTaskStatus(status))} {(TaskId?.Any() == true ? "t.Id in @TaskId" : "")}";
                     string taskSql = $"SELECT * FROM dbo.TaskEntry t WHERE {whereIn}";

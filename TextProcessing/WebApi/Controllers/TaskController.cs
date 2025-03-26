@@ -82,7 +82,7 @@ namespace WebApi.Controllers
                 DestinationFolder = "_PENDING_",
                 Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
             });
-            return Ok(TaskModel.From(tasks, await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
+            return Ok(TaskModel.From(tasks, await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]));
         }
 
         [HttpDelete("{taskId}")]

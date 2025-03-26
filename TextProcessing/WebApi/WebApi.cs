@@ -1,7 +1,3 @@
-#if !DEBUG
-    #define TEST
-#endif
-
 using System.Fabric;
 using System.Net;
 using Microsoft.ServiceFabric.Services.Communication.AspNetCore;
