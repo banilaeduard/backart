@@ -38,7 +38,7 @@ namespace WebApi.Services
                 ReplaceContentControlText(mainPart, "driver_name", driverName ?? "............................");
                 Table table = body.Elements<Table>().FirstOrDefault()!;
 
-                for (int i = 0; i < complaintDocument.complaintEntries.Length; i++)
+                for (int i = 0; i < complaintDocument.complaintEntries.Count; i++)
                 {
                     // Create a new row
                     TableRow newRow = new TableRow();

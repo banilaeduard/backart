@@ -5,7 +5,20 @@
         public DateTime Date { get; set; }
         public string LocationName { get; set; }
         public string LocationCode { get; set; }
-        public ComplaintEntry[] complaintEntries { get; set; }
+        public List<ComplaintEntry> complaintEntries { get; set; }
+
+        public string GetMd5(Func<string, string> getMd5)
+        {
+            List<string> list = new List<string>();
+            foreach (var item in complaintEntries)
+            {
+                list.Add($"{item.Description}{item.UM}{item.Quantity}");
+            }
+            list.Add(LocationCode);
+            list.Add(complaintEntries.Count().ToString());
+            var stringToHash = string.Join("", list.Order());
+            return getMd5(stringToHash.ToString());
+        }
     }
 
     public class ComplaintEntry

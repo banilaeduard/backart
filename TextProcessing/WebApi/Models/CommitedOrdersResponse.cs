@@ -1,4 +1,5 @@
-﻿using RepositoryContract.CommitedOrders;
+﻿using EntityDto.Tasks;
+using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
@@ -17,7 +18,7 @@ namespace WebApi.Models
         public static IEnumerable<CommitedOrdersResponse> From(IList<CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
             IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
         {
-            var externalRefs = tasks.SelectMany(t => t.ExternalReferenceEntries).DistinctBy(t => new { t.PartitionKey, t.RowKey }).ToList();
+            var externalRefs = tasks.SelectMany(t => t.ExternalReferenceEntries).DistinctBy(t => new { t.PartitionKey, t.RowKey }).Cast<ExternalReference>().ToList();
 
             foreach (var ticket in tickets)
             {
@@ -62,6 +63,7 @@ namespace WebApi.Models
                     StatusName = sample.StatusName,
                     CodLocatie = sample.CodLocatie,
                     TransportStatus = sample.TransportStatus,
+                    TransportId = sample.TransportId,
                     TransportDate = sample.TransportDate
                 };
                 response.HasReports = response.Tasks.Any() || response.Tickets.Any();
@@ -86,6 +88,21 @@ namespace WebApi.Models
         public string StatusName { get; set; }
         public bool HasReports { get; set; }
         public string? TransportStatus { get; set; }
+        public int? TransportId { get; set; }
 
+        public string GetMd5(Func<string, string> getMd5)
+        {
+            List<string> list = new List<string>();
+            foreach (var item in Entry)
+            {
+                list.Add(getMd5($"{item.CodProdus}{item.NumarComanda}{item.Cantitate}"));
+            }
+            if (NumarAviz.HasValue)
+                list.Add(getMd5(NumarAviz.ToString()!));
+
+            list.Add(CodLocatie);
+            var stringToHash = string.Join("", list.Order());
+            return getMd5(stringToHash);
+        }
     }
 }

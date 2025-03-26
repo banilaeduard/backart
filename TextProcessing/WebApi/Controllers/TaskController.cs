@@ -71,6 +71,20 @@ namespace WebApi.Controllers
             return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
         }
 
+        [HttpPost("mark-as-closed")]
+        public async Task<IActionResult> MarkAsClosed(int[] taskIds)
+        {
+            await taskRepository.MarkAsClosed(taskIds);
+            var tasks = await taskRepository.GetTasks(taskIds);
+
+            await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+            {
+                DestinationFolder = "_PENDING_",
+                Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+            });
+            return Ok(TaskModel.From(tasks, await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
+        }
+
         [HttpDelete("{taskId}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTasks(int taskId)

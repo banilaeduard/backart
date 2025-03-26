@@ -17,14 +17,17 @@ namespace WebApi.Controllers
     using Microsoft.ServiceFabric.Actors.Client;
     using Microsoft.ServiceFabric.Actors;
     using ServiceInterface.Storage;
+    using RepositoryContract.ExternalReferenceGroup;
+    using EntityDto.Tasks;
 
     [Authorize(Roles = "admin, basic")]
     public class TicketController : WebApiController2
     {
-        private ITicketEntryRepository ticketEntryRepository;
-        private IDataKeyLocationRepository dataKeyLocationRepository;
-        private IStorageService storageService;
-        private ITaskRepository taskRepository;
+        private readonly ITicketEntryRepository ticketEntryRepository;
+        private readonly IDataKeyLocationRepository dataKeyLocationRepository;
+        private readonly IStorageService storageService;
+        private readonly ITaskRepository taskRepository;
+        private readonly IExternalReferenceGroupRepository externalReferenceGroupRepository;
 
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
@@ -32,12 +35,14 @@ namespace WebApi.Controllers
             IStorageService storageService,
             ITaskRepository taskRepository,
             IMapper mapper,
+            IExternalReferenceGroupRepository externalReferenceGroupRepository,
             ILogger<TicketController> logger) : base(logger, mapper)
         {
             this.ticketEntryRepository = ticketEntryRepository;
             this.storageService = storageService;
             this.dataKeyLocationRepository = dataKeyLocationRepository;
             this.taskRepository = taskRepository;
+            this.externalReferenceGroupRepository = externalReferenceGroupRepository;
         }
 
         [HttpGet]
@@ -48,9 +53,9 @@ namespace WebApi.Controllers
 
             var result = complaints.GroupBy(T => T.ThreadId);
 
-            var externalRefs = await taskRepository.GetExternalReferences();
+            var externalRefs = await externalReferenceGroupRepository.GetExternalReferences();
 
-            var paged = result.Select(t => TicketSeriesModel.from([.. t], externalRefs))
+            var paged = result.Select(t => TicketSeriesModel.from([.. t], [.. externalRefs.Select(mapper.Map<ExternalReference>)]))
                               .ToList();
 
             return Ok(new

@@ -12,6 +12,16 @@ namespace SqlTableRepository.Tasks
     {
         private static MemoryCache _taskCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromMinutes(2) });
 
+        public async Task MarkAsClosed(int[] taskIds)
+        {
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
+            {
+                string markAsClosed = $"UPDATE dbo.TaskEntry SET IsClosed = 1 where Id in @taskIds";
+                await connection.ExecuteAsync($"{markAsClosed};", new { taskIds });
+            }
+            _taskCache.Clear();
+        }
+
         public async Task DeleteTask(int Id)
         {
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
@@ -27,23 +37,6 @@ namespace SqlTableRepository.Tasks
         public async Task<IList<TaskEntry>> GetTasks(TaskInternalState status)
         {
             return await GetTasksInternal(status);
-        }
-
-        public async Task<IList<ExternalReferenceEntry>> GetExternalReferences()
-        {
-            var key = $"GetExternalReferences";
-            if (!_taskCache.TryGetValue(key, out IList<ExternalReferenceEntry>? tasksExternalCache) || tasksExternalCache == null)
-            {
-                string taskExternalReferenceEntry = $@"SELECT G_Id as Id, * FROM dbo.ExternalReferenceGroup WHERE Ref_count > 0";
-                using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))
-                {
-                    var list = (await connection.QueryAsync<ExternalReferenceEntry>(taskExternalReferenceEntry)).ToList();
-                    if (list.Any())
-                        return _taskCache.Set(key, list, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(30)));
-                    return [];
-                }
-            }
-            return tasksExternalCache;
         }
 
         public async Task<TaskEntry> SaveTask(TaskEntry task)
@@ -137,6 +130,7 @@ namespace SqlTableRepository.Tasks
             _taskCache.Clear();
             return (await GetTasksInternal(TaskInternalState.All, [task.Id]))[0];
         }
+
         public async Task DeleteTaskExternalRef(int taskId, string partitionKey, string rowKey)
         {
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable("ConnectionString")))

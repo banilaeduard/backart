@@ -1,7 +1,6 @@
 ﻿namespace WebApi.Models
 {
     using EntityDto.Tasks;
-    using RepositoryContract.Tasks;
     using RepositoryContract.Tickets;
     using System;
     public class TicketModel
@@ -23,7 +22,7 @@
         public bool? IsAccepted { get; set; }
         public bool HasAttachments { get; set; }
 
-        public static TicketModel FromEntry(TicketEntity t, ExternalReferenceEntry? eRef)
+        public static TicketModel FromEntry(TicketEntity t, ExternalReference? eRef)
         {
             return new TicketModel()
             {

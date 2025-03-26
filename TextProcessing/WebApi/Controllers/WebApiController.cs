@@ -13,6 +13,9 @@
     [Route("[controller]")]
     public class WebApiController2 : ControllerBase
     {
+        protected const string wordType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        protected const string octetStream = "application/octet-stream";
+
         protected ILogger logger;
         protected IMapper mapper;
 
@@ -57,5 +60,22 @@
             };
             Response.Cookies.Append("refreshToken", token, cookieOptions);
         }
+
+        protected async Task WriteStreamToResponse(Stream stream, string fName, string contentType)
+        {
+            try
+            {
+                if (stream.CanSeek && stream.Position > 0)
+                    stream.Position = 0;
+                Response.Headers["Content-Disposition"] = $@"attachment; filename={fName}";
+                Response.ContentType = contentType;
+                await stream.CopyToAsync(Response.BodyWriter.AsStream());
+            }
+            finally
+            {
+                stream.Close();
+            }
+        }
+
     }
 }

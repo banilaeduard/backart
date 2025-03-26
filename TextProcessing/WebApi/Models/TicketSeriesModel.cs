@@ -6,6 +6,7 @@
     using RepositoryContract.Tickets;
     using RepositoryContract.Tasks;
     using RepositoryContract;
+    using EntityDto.Tasks;
 
     public class TicketSeriesModel : TableEntityPK
     {
@@ -25,7 +26,7 @@
 
         [JsonConstructor]
         private TicketSeriesModel() { }
-        private TicketSeriesModel(TicketEntity[] complaints, IList<ExternalReferenceEntry>? externalRefs)
+        private TicketSeriesModel(TicketEntity[] complaints, IList<ExternalReference>? externalRefs)
         {
             var map = (TicketEntity e) =>
             {
@@ -45,7 +46,7 @@
             LocationRowKey = complaint.LocationRowKey;
         }
 
-        public static TicketSeriesModel from(TicketEntity[] dbModel, IList<ExternalReferenceEntry>? externalRefs)
+        public static TicketSeriesModel from(TicketEntity[] dbModel, IList<ExternalReference>? externalRefs)
         {
             return new TicketSeriesModel(dbModel, externalRefs);
         }

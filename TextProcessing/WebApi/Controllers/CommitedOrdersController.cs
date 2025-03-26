@@ -14,15 +14,21 @@ using System.Globalization;
 using ServiceInterface.Storage;
 using ServiceInterface;
 using PollerRecurringJob.Interfaces;
+using WebApi.Services;
+using EntityDto.CommitedOrders;
+using WorkSheetServices;
 
 namespace WebApi.Controllers
 {
     [Authorize(Roles = "admin, basic")]
     public class CommitedOrdersController : WebApiController2
     {
-        private ICommitedOrdersRepository commitedOrdersRepository;
-        private IProductCodeRepository productCodeRepository;
-        private ITaskRepository taskRepository;
+        private readonly ICommitedOrdersRepository commitedOrdersRepository;
+        private readonly IProductCodeRepository productCodeRepository;
+        private readonly ITaskRepository taskRepository;
+        private readonly ReclamatiiReport reclamatiiReport;
+        private readonly StructuraReport structuraReport;
+        private readonly IDataKeyLocationRepository keyLocationRepository;
         ICacheManager<CommitedOrderEntry> cacheManager;
         IMetadataService metadataService;
 
@@ -31,8 +37,11 @@ namespace WebApi.Controllers
             ICommitedOrdersRepository commitedOrdersRepository,
             IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
-            ICacheManager<CommitedOrderEntry> cacheManager, 
+            ReclamatiiReport reclamatiiReport,
+            StructuraReport structuraReport,
+            ICacheManager<CommitedOrderEntry> cacheManager,
             IMetadataService metadataService,
+            IDataKeyLocationRepository keyLocationRepository,
             IMapper mapper) : base(logger, mapper)
         {
             this.commitedOrdersRepository = commitedOrdersRepository;
@@ -40,6 +49,9 @@ namespace WebApi.Controllers
             this.productCodeRepository = productCodeRepository;
             this.cacheManager = cacheManager;
             this.metadataService = metadataService;
+            this.reclamatiiReport = reclamatiiReport;
+            this.structuraReport = structuraReport;
+            this.keyLocationRepository = keyLocationRepository;
         }
 
         [HttpGet("{date}")]
@@ -74,6 +86,64 @@ namespace WebApi.Controllers
             var orders = await commitedOrdersRepository.GetCommitedOrders(ids);
 
             return Ok(CommitedOrdersResponse.From(orders, [], [], [], [], []));
+        }
+
+        [HttpPost("reclamatii")]
+        public async Task<IActionResult> ExportReclamatii(ComplaintDocument document)
+        {
+            try
+            {
+                using var reportStream = await reclamatiiReport.GenerateReport(document, null);
+                await WriteStreamToResponse(reportStream, @$"Reclamatie-{document.LocationName}.docx", wordType);
+                return new EmptyResult();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(new EventId(69), ex, "ExportReclamatii");
+                return StatusCode(500, "An error occurred while exporting the report.");
+            }
+        }
+
+        [HttpPost("pv-report/{reportName}")]
+        public async Task<IActionResult> ExportStructuraReport(string reportName, CommitedOrdersBase commitedOrder)
+        {
+            try
+            {
+                using var reportStream = await structuraReport.GenerateReport(commitedOrder, reportName, null);
+                await WriteStreamToResponse(reportStream, $"Transport-{reportName}-{commitedOrder.NumeLocatie}.docx", wordType);
+
+                return new EmptyResult();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(new EventId(69), ex, "ExportStructuraReport");
+                return StatusCode(500, "An error occurred while exporting the report.");
+            }
+        }
+
+        [HttpPost("merge-commited-orders")]
+        public async Task<IActionResult> ExportDispozitii(string[] internalNumber)
+        {
+            internalNumber = [.. internalNumber.Order()];
+            var items = await commitedOrdersRepository.GetCommitedOrders(internalNumber.Select(int.Parse).ToArray());
+            var synonimLocations = (await keyLocationRepository.GetLocations())
+                .Where(t => t.MainLocation && !string.IsNullOrWhiteSpace(t.ShortName) && items.Any(o => o.CodLocatie == t.LocationCode))
+                .DistinctBy(t => t.LocationCode)
+                .ToDictionary(x => x.LocationCode, x => x.ShortName);
+
+            var missing = internalNumber.Except(items.DistinctBy(t => t.NumarIntern).Select(t => t.NumarIntern));
+
+            if (missing.Any()) return NotFound(string.Join(", ", missing));
+
+            Response.Headers["Content-Disposition"] = $@"attachment; filename={string.Join("_", internalNumber.Take(5))}.xlsx";
+            Response.ContentType = "application/octet-stream";
+
+            await WorkbookReportsService.GenerateReport(
+                               items.Cast<CommitedOrder>().ToList(),
+                               t => synonimLocations.ContainsKey(t.CodLocatie) ? synonimLocations[t.CodLocatie] : t.CodLocatie.ToUpperInvariant(),
+                               t => t.CodProdus.StartsWith("MPB") ? t.CodProdus.Substring(0, 5) : string.Concat(t.CodProdus.AsSpan(0, 2), t.CodProdus.AsSpan(4, 1)),
+                               t => t.NumeProdus, Response.BodyWriter.AsStream());
+            return new EmptyResult();
         }
 
         [HttpPost("delivered/{internalNumber}/{numarAviz}")]

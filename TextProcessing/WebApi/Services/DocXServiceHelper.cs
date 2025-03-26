@@ -5,6 +5,18 @@ namespace WebApi.Services
 {
     public static class DocXServiceHelper
     {
+        public static async Task CloneDocument(Stream stream, MainDocumentPart target, int duplicates, Func<string, string> GetMd5, bool skipFirstpageBreak = false)
+        {
+            int dupes = duplicates;
+            using var docToClone = WordprocessingDocument.Open(stream, false);
+            while (dupes > 0)
+            {
+                if (skipFirstpageBreak || duplicates > dupes) DocXServiceHelper.AddPageBreak(target);
+                DocXServiceHelper.CloneBody(docToClone.MainDocumentPart!, target, GetMd5);
+                dupes--;
+            }
+        }
+
         public static void CloneBody(MainDocumentPart src, MainDocumentPart target, Func<string,string> GetMd5)
         {
             Dictionary<string, string> relMapping = new();

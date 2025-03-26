@@ -31,6 +31,10 @@ using RepositoryContract;
 using AzureTableRepository.ProductCodes;
 using AzureTableRepository.Orders;
 using AzureTableRepository.CommitedOrders;
+using RepositoryContract.ExternalReferenceGroup;
+using SqlTableRepository.ExternalReferenceGroup;
+using EntityDto.ExternalReferenceGroup;
+using EntityDto.Tasks;
 
 namespace WebApi
 {
@@ -66,6 +70,7 @@ namespace WebApi
             services.AddScoped<StructuraReport, StructuraReport>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
+            services.AddScoped<BlobAccessStorageService, BlobAccessStorageService>();
             services.AddScoped<EmailSender, EmailSender>();
             services.AddScoped<IStorageService, BlobAccessStorageService>();
             services.AddScoped<IWorkflowTrigger, QueueService>();
@@ -74,6 +79,7 @@ namespace WebApi
             services.AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>();
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
+            services.AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>();
 #if TEST
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
@@ -109,6 +115,9 @@ namespace WebApi
 
                 cfg.CreateMap<TransportItemEntry, TransportItemModel>();
                 cfg.CreateMap<TransportItemModel, TransportItemEntry>();
+
+                cfg.CreateMap<ExternalReferenceGroup, ExternalReference>()
+                    .ForMember(x => x.Id, opt => opt.MapFrom(t => t.G_Id));
             });
 
             IMapper mapper = config.CreateMapper();

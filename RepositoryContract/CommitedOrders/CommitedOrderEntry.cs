@@ -37,6 +37,7 @@ namespace RepositoryContract.CommitedOrders
                 DataAviz = entry.DataAviz,
                 TransportStatus = entry.TransportStatus,
                 TransportDate = entry.TransportDate,
+                TransportId = entry.TransportId
             };
         }
 
