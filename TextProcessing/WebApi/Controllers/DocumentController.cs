@@ -189,13 +189,13 @@ namespace WebApi.Controllers
                 if (item is CommitedOrdersBase commited)
                 {
                     md5 = commited.GetMd5(_cryptoService.GetMd5);
-                    fName = $"transport/{transportId}/{commited.NumeLocatie}.docx";
+                    fName = SanitizeFileName($"transport/{transportId}/{commited.NumeLocatie}.docx");
                     metaDataKey = fName;
                 }
                 else if (item is ComplaintDocument complaint)
                 {
                     md5 = complaint.GetMd5(_cryptoService.GetMd5);
-                    fName = $"transport/{transportId}/Reclamatie-{complaint.LocationName}.docx";
+                    fName = SanitizeFileName($"transport/{transportId}/Reclamatie-{complaint.LocationName}.docx");
                     metaDataKey = fName;
                 }
 

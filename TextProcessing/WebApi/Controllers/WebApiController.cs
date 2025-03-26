@@ -7,6 +7,7 @@
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.Extensions.Logging;
     using AutoMapper;
+    using System.Text.RegularExpressions;
 
     [Authorize]
     [ApiController]
@@ -75,6 +76,13 @@
             {
                 stream.Close();
             }
+        }
+
+        protected string SanitizeFileName(string name)
+        {
+            string invalidChars = new string(Path.GetInvalidFileNameChars());
+            string pattern = $"[{Regex.Escape(invalidChars)}]";
+            return Regex.Replace(name, pattern, "");
         }
 
     }

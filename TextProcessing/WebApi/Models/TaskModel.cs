@@ -74,6 +74,7 @@ namespace WebApi.Models
                         LocationCode = task.LocationCode,
                         LocationName = mainLocation?.LocationName,
                         PartitionKey = mainLocation?.PartitionKey,
+                        MainLocation = mainLocation?.MainLocation == true,
                         RowKey = mainLocation?.RowKey,
                     },
                     IsClosed = task.IsClosed,
