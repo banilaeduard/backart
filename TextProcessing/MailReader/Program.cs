@@ -2,9 +2,18 @@ using System;
 using System.Diagnostics;
 using System.Fabric;
 using System.Globalization;
-using System.Threading;
+using AzureFabricServices;
+using AzureServices;
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors.Runtime;
+using ServiceImplementation.Caching;
+using ServiceInterface.Storage;
+using ServiceInterface;
+using RepositoryContract.MailSettings;
+using AzureTableRepository.MailSettings;
+using RepositoryContract.Tickets;
+using AzureTableRepository.Tickets;
 
 namespace MailReader
 {
@@ -25,10 +34,10 @@ namespace MailReader
                 using (var diagnosticsPipeline = ServiceFabricDiagnosticPipelineFactory.CreatePipeline("MyCompany-TextProcessing-MailReader"))
                 {
 #endif
-                    ActorRuntime.RegisterActorAsync<MailReader>((context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
-                    CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-                    CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-                    Thread.Sleep(Timeout.Infinite);
+                ActorRuntime.RegisterActorAsync<MailReader>((context, actorType) => new ActorService(context, actorType, (svc, actorId) => new MailReader(svc, actorId, BuildServiceProvider()))).GetAwaiter().GetResult();
+                CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+                CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+                Thread.Sleep(Timeout.Infinite);
 #if RELEASE
                 }
 #endif
@@ -38,6 +47,20 @@ namespace MailReader
                 ActorEventSource.Current.ActorHostInitializationFailed(e.ToString());
                 throw;
             }
+        }
+
+        private static ServiceProvider BuildServiceProvider()
+        {
+            return new ServiceCollection()
+                    .AddScoped<IMetadataService, FabricMetadataService>()
+                    .AddScoped<ICacheManager<TicketEntity>, AlwaysGetCacheManager<TicketEntity>>()
+                    .AddScoped<ICacheManager<AttachmentEntry>, AlwaysGetCacheManager<AttachmentEntry>>()
+                    .AddScoped<IMailSettingsRepository, MailSettingsRepository>()
+                    .AddScoped<ITicketEntryRepository, TicketEntryRepository>()
+                    .AddScoped<IWorkflowTrigger, QueueService>()
+                    .AddScoped<TableStorageService, TableStorageService>()
+                    .AddScoped<IStorageService, BlobAccessStorageService>()
+                    .BuildServiceProvider();
         }
     }
 }

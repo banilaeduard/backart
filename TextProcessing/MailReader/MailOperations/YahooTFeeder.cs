@@ -2,13 +2,12 @@ using System.Text;
 using AzureFabricServices;
 using AzureServices;
 using AzureTableRepository.DataKeyLocation;
-using AzureTableRepository.MailSettings;
 using AzureTableRepository.Tickets;
 using EntityDto;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
-using MailReader;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using MimeKit;
 using RepositoryContract;
@@ -20,7 +19,7 @@ using ServiceImplementation.Caching;
 using ServiceInterface.Storage;
 using UniqueId = MailKit.UniqueId;
 
-namespace YahooTFeeder
+namespace MailReader.MailOperations
 {
     internal enum Operation
     {
@@ -35,15 +34,15 @@ namespace YahooTFeeder
         internal static ActorEventSource logger;
         internal static Actor actor;
 
-        internal static async Task Batch(string sourceName, Operation op,
+        internal static async Task Batch(
+            MailReader jobContext, string sourceName, Operation op,
             TableEntityPK[] download_uids, MoveToMessage<TableEntityPK>[] messages,
             CancellationToken cancellationToken)
         {
-            var mailSettings = new MailSettingsRepository();
-            IMetadataService metadataService = new FabricMetadataService();
-            var ticketEntryRepository = new TicketEntryRepository(
-                new AlwaysGetCacheManager<TicketEntity>(metadataService), 
-                new AlwaysGetCacheManager<AttachmentEntry>(metadataService));
+            IMailSettingsRepository mailSettings = jobContext.provider.GetService<IMailSettingsRepository>()!;
+            IMetadataService metadataService = jobContext.provider.GetService<IMetadataService>()!;
+            ITicketEntryRepository ticketEntryRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
+
             IList<TicketEntity> tickets = null;
             IList<AttachmentEntry> attachments = null;
             Dictionary<string, List<string>> folderRecipients = null;
@@ -53,7 +52,7 @@ namespace YahooTFeeder
             bool fetch = (op & Operation.Fetch) == Operation.Fetch;
 
             var settings = (await mailSettings.GetMailSource()).FirstOrDefault(t => t.PartitionKey == sourceName);
-            if(settings == null)
+            if (settings == null)
             {
                 logger.ActorMessage(actor, "No settings for {0}. Cannot run the mail service", sourceName);
                 return;
@@ -85,7 +84,7 @@ namespace YahooTFeeder
             {
                 if (downlaod)
                 {
-                    await DownloadAll(client, mSettings, tickets!, attachments!, download_uids);
+                    await DownloadAll(jobContext, client, mSettings, tickets!, attachments!, download_uids);
                 }
                 if (move)
                 {
@@ -93,17 +92,19 @@ namespace YahooTFeeder
                 }
                 if (fetch)
                 {
-                    await ReadMails(client, folderRecipients!, settings.DaysBefore, cancellationToken);
+                    await ReadMails(jobContext, client, folderRecipients!, settings.DaysBefore, cancellationToken);
                 }
             }
         }
 
-        internal static async Task ReadMails(ImapClient client, Dictionary<string, List<string>> folderRecipients, int daysBefore, CancellationToken cancellationToken)
+        internal static async Task ReadMails(
+            MailReader jobContext, ImapClient client,
+            Dictionary<string, List<string>> folderRecipients, int daysBefore,
+            CancellationToken cancellationToken)
         {
-            var tableStorageService = new TableStorageService();
-            IMetadataService metadataService = new FabricMetadataService();
-            var ticketEntryRepository = new TicketEntryRepository(new AlwaysGetCacheManager<TicketEntity>(metadataService),
-                new AlwaysGetCacheManager<AttachmentEntry>(metadataService));
+            TableStorageService tableStorageService = jobContext.provider.GetService<TableStorageService>()!;
+            IMetadataService metadataService = jobContext.provider.GetService<IMetadataService>()!;
+            ITicketEntryRepository ticketEntryRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
 
             foreach (var (folderName, recipientsList) in folderRecipients)
             {
@@ -157,7 +158,7 @@ namespace YahooTFeeder
                             }
                         if (toProcess.Count > 0)
                         {
-                            await AddComplaint(toProcess, ticketEntryRepository, folder);
+                            await AddComplaint(jobContext, toProcess, ticketEntryRepository, folder);
                         }
 
                         var batchRun = lastRun.Where(x => batchRecipients.Contains(x.From)).ToList();
@@ -194,18 +195,13 @@ namespace YahooTFeeder
             }
         }
 
-        internal static async Task DownloadAll(ImapClient client,
-            List<MailSettingEntry> mailSettingEntries,
-            IList<TicketEntity> tickets,
-            IList<AttachmentEntry> attachmentEntries,
-            TableEntityPK[] uids)
+        internal static async Task DownloadAll(
+            MailReader jobContext, ImapClient client,
+            List<MailSettingEntry> mailSettingEntries, IList<TicketEntity> tickets,
+            IList<AttachmentEntry> attachmentEntries, TableEntityPK[] uids)
         {
-            var blob = new BlobAccessStorageService();
-            IMetadataService metadataService = new FabricMetadataService();
-            var ticketEntryRepository = new TicketEntryRepository(
-                new AlwaysGetCacheManager<TicketEntity>(metadataService),
-                new AlwaysGetCacheManager<AttachmentEntry>(metadataService)
-                );
+            IStorageService blob = jobContext.provider.GetService<IStorageService>()!;
+            ITicketEntryRepository ticketEntryRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
 
             List<TableEntityPK> result = new();
             try
@@ -389,7 +385,7 @@ namespace YahooTFeeder
             }
         }
 
-        private static async Task AddComplaint(IList<IMessageSummary> messages, ITicketEntryRepository ticketEntryRepository, IMailFolder folder)
+        private static async Task AddComplaint(MailReader jobContext, IList<IMessageSummary> messages, ITicketEntryRepository ticketEntryRepository, IMailFolder folder)
         {
             BlobAccessStorageService storageService = new();
             IMetadataService metadataService = new FabricMetadataService();
@@ -506,7 +502,7 @@ namespace YahooTFeeder
             }
             await ticketEntryRepository.Save([.. toSave]);
 
-            IWorkflowTrigger processQueue = new QueueService();
+            IWorkflowTrigger processQueue = jobContext.provider.GetService<IWorkflowTrigger>()!;
             await processQueue.Trigger("addmailtotask", toSave.Select(t => new AddMailToTask()
             {
                 PartitionKey = t.PartitionKey,

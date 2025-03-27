@@ -1,10 +1,10 @@
-﻿using AzureServices;
-using EntityDto;
+﻿using EntityDto;
 using MailReader.Interfaces;
 using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Actors;
 using RepositoryContract;
 using ServiceInterface.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -12,7 +12,7 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            IWorkflowTrigger client = new QueueService();
+            IWorkflowTrigger client = jobContext.provider.GetService<IWorkflowTrigger>()!;
             var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
 
             var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());
@@ -26,6 +26,7 @@ namespace PollerRecurringJob.JobHandlers
             if (finalList.Any())
             {
                 var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+
                 var request = finalList.GroupBy(l => l.Value).Select(x =>
                     new MoveToMessage<TableEntityPK>()
                     {

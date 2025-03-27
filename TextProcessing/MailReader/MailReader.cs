@@ -1,8 +1,10 @@
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using MailReader.Interfaces;
+using MailReader.MailOperations;
 using EntityDto;
 using RepositoryContract;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MailReader
 {
@@ -18,22 +20,24 @@ namespace MailReader
     internal class MailReader : Actor, IMailReader
     {
         internal static string Source;
+        internal readonly ServiceProvider provider;
         /// <summary>
         /// Initializes a new instance of MailReader
         /// </summary>
         /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
         /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        public MailReader(ActorService actorService, ActorId actorId)
+        public MailReader(ActorService actorService, ActorId actorId, ServiceProvider provider)
             : base(actorService, actorId)
         {
+            this.provider = provider;
         }
 
         public async Task BatchAsync(List<MoveToMessage<TableEntityPK>> move)
         {
             var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
-            await YahooTFeeder.YahooTFeeder.Batch(
+            await YahooTFeeder.Batch(this,
                 Source,
-                YahooTFeeder.Operation.Download | YahooTFeeder.Operation.Move | YahooTFeeder.Operation.Fetch,
+                Operation.Download | Operation.Move | Operation.Fetch,
                 [.. downloadLazy],
                 [.. move],
                 CancellationToken.None);
@@ -41,16 +45,16 @@ namespace MailReader
 
         public async Task DownloadAll(List<TableEntityPK> entityPKs)
         {
-            await YahooTFeeder.YahooTFeeder.Batch(
+            await YahooTFeeder.Batch(this,
                 Source,
-                YahooTFeeder.Operation.Download, [.. entityPKs], null, CancellationToken.None);
+                Operation.Download, [.. entityPKs], null, CancellationToken.None);
         }
 
         public async Task FetchMails()
         {
-            await YahooTFeeder.YahooTFeeder.Batch(
+            await YahooTFeeder.Batch(this,
                 Source,
-                YahooTFeeder.Operation.Fetch, null, null, CancellationToken.None);
+                Operation.Fetch, null, null, CancellationToken.None);
         }
 
         /// <summary>
@@ -59,8 +63,8 @@ namespace MailReader
         /// </summary>
         protected async override Task OnActivateAsync()
         {
-            YahooTFeeder.YahooTFeeder.logger = ActorEventSource.Current;
-            YahooTFeeder.YahooTFeeder.actor = this;
+            YahooTFeeder.logger = ActorEventSource.Current;
+            YahooTFeeder.actor = this;
 #if DEBUG
             return;
 #else

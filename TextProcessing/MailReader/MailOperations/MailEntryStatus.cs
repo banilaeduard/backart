@@ -1,7 +1,7 @@
 ﻿using Azure;
 using Azure.Data.Tables;
 
-namespace YahooTFeeder
+namespace MailReader.MailOperations
 {
     internal class MailEntryStatus : ITableEntity
     {

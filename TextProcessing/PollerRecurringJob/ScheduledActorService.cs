@@ -8,7 +8,7 @@ namespace PollerRecurringJob
 {
     internal class ScheduledActorService<T> : ActorService where T : IActor
     {
-        public ScheduledActorService(StatefulServiceContext context, ActorTypeInformation actorType) : base(context, actorType)
+        public ScheduledActorService(StatefulServiceContext context, ActorTypeInformation actorType, Func<ActorService, ActorId, ActorBase> factory) : base(context, actorType, factory)
         {
         }
 

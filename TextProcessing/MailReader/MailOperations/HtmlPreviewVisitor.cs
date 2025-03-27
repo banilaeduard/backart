@@ -2,7 +2,7 @@
 using MimeKit.Tnef;
 using MimeKit;
 
-namespace YahooTFeeder
+namespace MailReader.MailOperations
 {
     class HtmlPreviewVisitor : MimeVisitor
     {

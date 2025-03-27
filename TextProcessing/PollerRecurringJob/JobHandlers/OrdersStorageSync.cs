@@ -1,11 +1,7 @@
-﻿using AzureFabricServices;
-using AzureServices;
-using AzureTableRepository.CommitedOrders;
-using AzureTableRepository.Orders;
+﻿using Microsoft.Extensions.DependencyInjection;
 using RepositoryContract.CommitedOrders;
+using RepositoryContract.Imports;
 using RepositoryContract.Orders;
-using ServiceImplementation.Caching;
-using SqlTableRepository.Orders;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -13,12 +9,10 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var storage = new AzureFileStorage();
-            var ordersImportsRepository = new OrdersImportsRepository<AzureFileStorage>(storage);
+            var ordersImportsRepository = jobContext.provider.GetService<IImportsRepository>()!;
 
-            var metadataService = new FabricMetadataService();
-            var commitedOrdersRepository = new CommitedOrdersRepository(new AlwaysGetCacheManager<CommitedOrderEntry>(metadataService), metadataService);
-            var ordersRepository = new OrdersRepository(new AlwaysGetCacheManager<OrderEntry>(metadataService), metadataService);
+            var commitedOrdersRepository = jobContext.provider.GetService<ICommitedOrdersRepository>()!;
+            var ordersRepository = jobContext.provider.GetService<IOrdersRepository>()!;
 
             var lastCommited = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var lastOrder = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);

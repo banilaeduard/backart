@@ -1,7 +1,6 @@
 ﻿using Dapper;
 using EntityDto.Tasks;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Caching.Memory;
 using ProjectKeys;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;

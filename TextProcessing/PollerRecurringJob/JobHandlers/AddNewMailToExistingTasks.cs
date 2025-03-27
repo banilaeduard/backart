@@ -1,10 +1,9 @@
-﻿using AzureServices;
-using EntityDto;
+﻿using EntityDto;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
-using SqlTableRepository.Tasks;
 using ServiceInterface.Storage;
 using EntityDto.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -12,12 +11,12 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            IWorkflowTrigger service = new QueueService();
+            IWorkflowTrigger service = jobContext.provider.GetService<IWorkflowTrigger>()!;
             var items = await service.GetWork<List<AddMailToTask>>("addmailtotask");
 
             if (!items.Any()) return;
 
-            TaskRepository repo = new TaskRepository();
+            ITaskRepository repo = jobContext.provider.GetService<ITaskRepository>()!;
             var tasks = await repo.GetTasks(TaskInternalState.Open);
             var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 

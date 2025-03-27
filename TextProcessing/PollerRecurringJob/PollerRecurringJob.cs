@@ -1,6 +1,4 @@
-using AzureFabricServices;
-using AzureTableRepository.CommitedOrders;
-using AzureTableRepository.Orders;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
@@ -9,8 +7,6 @@ using PollerRecurringJob.Interfaces;
 using PollerRecurringJob.JobHandlers;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
-using ServiceImplementation.Caching;
-using ServiceInterface.Storage;
 
 namespace PollerRecurringJob
 {
@@ -38,15 +34,17 @@ namespace PollerRecurringJob
         internal static readonly TimeSpan AddNewMailDue = TimeSpan.FromMinutes(2);
         internal static readonly string SyncMails = "SyncNewMails";
         internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(15);
+        internal readonly ServiceProvider provider;
 
         /// <summary>
         /// Initializes a new instance of PollerRecurringJob
         /// </summary>
         /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
         /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        public PollerRecurringJob(ActorService actorService, ActorId actorId)
+        public PollerRecurringJob(ActorService actorService, ActorId actorId, ServiceProvider provider)
             : base(actorService, actorId)
         {
+            this.provider = provider;
         }
 
         public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
@@ -72,7 +70,7 @@ namespace PollerRecurringJob
             }
             catch (Exception ex)
             {
-                ActorEventSource.Current.ActorMessage(this, "EXCEPTION POLLER." + ex.StackTrace ?? ex.Message);
+                ActorEventSource.Current.ActorMessage(this, @$"EXCEPTION POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
             }
         }
 
@@ -126,10 +124,8 @@ namespace PollerRecurringJob
         /// </summary>
         protected override async Task OnActivateAsync()
         {
-            IMetadataService metadataService = new FabricMetadataService();
-
-            var commitedOrdersRepository = new CommitedOrdersRepository(new AlwaysGetCacheManager<CommitedOrderEntry>(metadataService), metadataService);
-            var ordersRepository = new OrdersRepository(new AlwaysGetCacheManager<OrderEntry>(metadataService), metadataService);
+            var commitedOrdersRepository = provider.GetService<ICommitedOrdersRepository>();
+            var ordersRepository = provider.GetService<IOrdersRepository>();
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
         }
