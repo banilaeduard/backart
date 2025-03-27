@@ -6,6 +6,6 @@
         public Task<TransportEntry> SaveTransport(TransportEntry transportEntry);
         public Task<TransportEntry> GetTransport(int transportId);
         public Task DeleteTransport(int transportId);
-        public Task<List<TransportEntry>> GetTransports();
+        public Task<List<TransportEntry>> GetTransports(DateTime? since = null, int? pageSize = null);
     }
 }

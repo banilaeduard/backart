@@ -13,7 +13,7 @@
                         WHERE Id = {transportId};
                         ";
 
-        internal static string GetTransports => $@"SELECT [Id] ,
+        internal static string GetTransports(int? topN = null) => $@"SELECT {(topN.HasValue ? $@"TOP {topN.Value}" : "")} [Id] ,
                                                            [Description] ,
                                                            [DriverName] ,
                                                            [CarPlateNumber] ,

@@ -20,7 +20,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                var multi = await connection.QueryMultipleAsync($@"{TransportSql.GetTransports} WHERE ID = {transportId}; {TransportSql.GetTransportItems(transportId)}");
+                var multi = await connection.QueryMultipleAsync($@"{TransportSql.GetTransports()} WHERE ID = {transportId}; {TransportSql.GetTransportItems(transportId)}");
 
                 var transport = multi.Read<TransportEntry>().First();
                 transport.TransportItems = multi.Read<TransportItemEntry>().ToList();
@@ -29,11 +29,24 @@ namespace SqlTableRepository.Transport
             }
         }
 
-        public async Task<List<TransportEntry>> GetTransports()
+        public async Task<List<TransportEntry>> GetTransports(DateTime? since = null, int? pageSize = null)
         {
             using (var connection = GetConnection())
             {
-                return [.. await connection.QueryAsync<TransportEntry>($@"{TransportSql.GetTransports} ORDER BY Id DESC")];
+                var sql = string.Empty;
+                if (!pageSize.HasValue && !since.HasValue)
+                {
+                    sql = $@"{TransportSql.GetTransports()} WHERE [CurrentStatus] <> 'Delivered' ORDER BY Delivered DESC;
+
+                            {TransportSql.GetTransports(20)} WHERE [CurrentStatus] = 'Delivered' ORDER BY Delivered DESC;";
+                    var multi = await connection.QueryMultipleAsync(sql);
+                    return [.. multi.Read<TransportEntry>(), .. multi.Read<TransportEntry>()];
+                }
+                else
+                {
+                    sql = $@"{TransportSql.GetTransports(pageSize!.Value)} WHERE [CurrentStatus] = 'Delivered' AND Delivered < @since ORDER BY Delivered DESC";
+                    return [.. await connection.QueryAsync<TransportEntry>(sql)];
+                }
             }
         }
 

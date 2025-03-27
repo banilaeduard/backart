@@ -11,8 +11,6 @@ namespace SqlTableRepository.Tasks
 {
     public class TaskRepository : ITaskRepository
     {
-        private static MemoryCache _taskCache = new(new MemoryCacheOptions() { ExpirationScanFrequency = TimeSpan.FromMinutes(2) });
-
         public async Task MarkAsClosed(int[] taskIds)
         {
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
@@ -20,7 +18,6 @@ namespace SqlTableRepository.Tasks
                 string markAsClosed = $"UPDATE dbo.TaskEntry SET IsClosed = 1 where Id in @taskIds";
                 await connection.ExecuteAsync($"{markAsClosed};", new { taskIds });
             }
-            _taskCache.Clear();
         }
 
         public async Task DeleteTask(int Id)
@@ -32,7 +29,6 @@ namespace SqlTableRepository.Tasks
                 string taskExternalReferenceEntry = $"DELETE FROM dbo.ExternalReferenceEntry WHERE TaskId = {Id}";
                 await connection.ExecuteAsync($"{taskExternalReferenceEntry}; {taskAction}; {taskSql}");
             }
-            _taskCache.Clear();
         }
 
         public async Task<IList<TaskEntry>> GetTasks(TaskInternalState status)
@@ -77,7 +73,6 @@ namespace SqlTableRepository.Tasks
                         ).ToList();
                 }
             }
-            _taskCache.Clear();
             return TaskEntry.From(taskEntry, [taskAction], externalRef);
         }
 
@@ -128,7 +123,6 @@ namespace SqlTableRepository.Tasks
                     }
                 }
             }
-            _taskCache.Clear();
             return (await GetTasksInternal(TaskInternalState.All, [task.Id]))[0];
         }
 
@@ -147,7 +141,6 @@ namespace SqlTableRepository.Tasks
                     TaskId = taskId
                 });
             }
-            _taskCache.Clear();
         }
 
         public async Task<IList<TaskEntry>> GetTasks(int[] taskIds)
@@ -173,44 +166,33 @@ namespace SqlTableRepository.Tasks
                                                     TableName = nameof(TicketEntity)
                                                 });
             }
-            _taskCache.Clear();
         }
 
         private async Task<IList<TaskEntry>> GetTasksInternal(TaskInternalState status, int[] TaskId = null)
         {
-            var key = TaskId == null ? $"GetActiveTasksInternal_{status}" : null;
-            if (string.IsNullOrWhiteSpace(key) || !_taskCache.TryGetValue(key, out IList<TaskEntry>? tasksCache) || tasksCache == null)
+            IList<TaskEntry> tasks;
+            IList<TaskActionEntry> actions;
+            IList<ExternalReferenceEntry> externalRef;
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
-                IList<TaskEntry> tasks;
-                IList<TaskActionEntry> actions;
-                IList<ExternalReferenceEntry> externalRef;
-                using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
-                {
-                    var whereIn = @$"{(TaskId?.Any() == true ? "" : GetTaskStatus(status))} {(TaskId?.Any() == true ? "t.Id in @TaskId" : "")}";
-                    string taskSql = $"SELECT * FROM dbo.TaskEntry t WHERE {whereIn}";
-                    string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE {whereIn}";
-                    var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId });
+                var whereIn = @$"{(TaskId?.Any() == true ? "" : GetTaskStatus(status))} {(TaskId?.Any() == true ? "t.Id in @TaskId" : "")}";
+                string taskSql = $"SELECT * FROM dbo.TaskEntry t WHERE {whereIn}";
+                string taskAction = $"SELECT ta.* FROM dbo.TaskAction ta JOIN dbo.TaskEntry t on ta.TaskId = t.Id WHERE {whereIn}";
+                var multi = await connection.QueryMultipleAsync($"{taskSql};{taskAction};", new { TaskId });
 
-                    tasks = [.. multi.Read<TaskEntry>()];
-                    actions = [.. multi.Read<TaskActionEntry>()];
+                tasks = [.. multi.Read<TaskEntry>()];
+                actions = [.. multi.Read<TaskActionEntry>()];
 
-                    var ids = tasks.Select(t => t.Id).ToArray();
+                var ids = tasks.Select(t => t.Id).ToArray();
 
-                    externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE ta.TaskId in @ids ;",
-                        TaskSql.ExternalRefs.mapper,
-                        splitOn: TaskSql.ExternalRefs.splitOn,
-                        param: new { ids })).ToList();
-                }
-                var taskList = tasks.Select(task => TaskEntry.From(task, actions, externalRef)).ToList();
-
-                if (taskList.Any() && !string.IsNullOrWhiteSpace(key))
-                {
-                    return _taskCache.Set(key, taskList, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(30)));
-                }
-                return taskList;
+                externalRef = (await connection.QueryAsync($"{TaskSql.ExternalRefs.sql} WHERE ta.TaskId in @ids ;",
+                    TaskSql.ExternalRefs.mapper,
+                    splitOn: TaskSql.ExternalRefs.splitOn,
+                    param: new { ids })).ToList();
             }
+            var taskList = tasks.Select(task => TaskEntry.From(task, actions, externalRef)).ToList();
 
-            return tasksCache;
+            return taskList;
         }
 
         private string GetTaskStatus(TaskInternalState status)
@@ -219,7 +201,7 @@ namespace SqlTableRepository.Tasks
             {
                 case TaskInternalState.All: return "1 = 1";
                 case TaskInternalState.Closed: return "IsClosed = 1";
-                case TaskInternalState.Open: return "IsClosed = 0";
+                case TaskInternalState.Open: return "IsClosed = 0 ORDER BY Created DESC";
             }
             return "";
         }

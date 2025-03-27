@@ -43,7 +43,7 @@ namespace WebApi.Controllers
         [HttpGet("transport-papers/{transportId}")]
         public async Task<IActionResult> GenerateTransportPapers(int transportId)
         {
-            var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND EntityType = 'Transport'");
+            var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport'");
             Stream tempStream = TempFileHelper.CreateTempFile();
 
             var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document);
@@ -72,7 +72,7 @@ namespace WebApi.Controllers
 
             if (groupedCommited.Count == 1)
             {
-                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName);
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName, t => t.LocationCode);
                 await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().LocationName}.docx", wordType);
                 return new EmptyResult();
             }
@@ -90,7 +90,7 @@ namespace WebApi.Controllers
                 {
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
-                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName);
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName, t => t.LocationCode);
                         await CloneDocument(fName, part, 1, i > 0);
                     }
                 }
@@ -114,7 +114,7 @@ namespace WebApi.Controllers
 
             if (groupedCommited.Count == 1)
             {
-                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName);
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName, t => t.CodLocatie);
                 await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().NumeLocatie}.docx", wordType);
                 return new EmptyResult();
             }
@@ -133,7 +133,7 @@ namespace WebApi.Controllers
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
 
-                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName);
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName, t => t.CodLocatie);
                         await CloneDocument(fName, part, 1, i > 0);
                     }
                 }
@@ -178,24 +178,25 @@ namespace WebApi.Controllers
             return result;
         }
 
-        private async Task<string> GenerateAndWriteReport<T>(T item, int transportId, string driverName)
+        private async Task<string> GenerateAndWriteReport<T>(T item, int transportId, string driverName, Func<T, string> groupBy)
         {
             string metaDataKey = string.Empty;
             string fName = string.Empty;
             string md5 = string.Empty;
             Stream reportStream = Stream.Null;
+
             try
             {
                 if (item is CommitedOrdersBase commited)
                 {
                     md5 = commited.GetMd5(_cryptoService.GetMd5);
-                    fName = SanitizeFileName($"transport/{transportId}/{commited.NumeLocatie}.docx");
+                    fName = $"transport/{transportId}/{SanitizeFileName(commited.NumeLocatie)}.docx";
                     metaDataKey = fName;
                 }
                 else if (item is ComplaintDocument complaint)
                 {
                     md5 = complaint.GetMd5(_cryptoService.GetMd5);
-                    fName = SanitizeFileName($"transport/{transportId}/Reclamatie-{complaint.LocationName}.docx");
+                    fName = $"transport/{transportId}/Reclamatie-{SanitizeFileName(complaint.LocationName)}.docx";
                     metaDataKey = fName;
                 }
 
@@ -205,7 +206,7 @@ namespace WebApi.Controllers
                     TableName = nameof(Transport),
                     EntityType = nameof(Transport),
                     ExternalGroupId = fName,
-                    PartitionKey = _storageService.GetType().Name,
+                    PartitionKey = groupBy(item),
                     RowKey = md5
                 };
 
