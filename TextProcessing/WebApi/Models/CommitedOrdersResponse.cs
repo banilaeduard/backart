@@ -79,6 +79,7 @@ namespace WebApi.Models
         public List<CommitedOrderModel> Entry { get; set; }
         public string CodLocatie { get; set; }
         public string NumeLocatie { get; set; }
+        public string[]? InternalNumbers { get; set; }
         public int? Weight { get; set; }
         public string? DetaliiComenzi { get; set; }
         public bool? Livrata { get; set; }

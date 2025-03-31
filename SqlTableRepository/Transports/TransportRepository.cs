@@ -115,6 +115,7 @@ namespace SqlTableRepository.Transport
                         t => t.ItemId,
                         t => t.ItemName,
                         t => t.TransportId,
+                        t => t.ExternalReferenceId,
                         t => t.DocumentType);
                     var sql = $@"{TransportSql.DeleteTransportItems(transport.Id, hasRemove)}
                                 {TransportSql.UpdateTransportItems(fromSql, "transportItemValues", hasItems)}

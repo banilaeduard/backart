@@ -121,6 +121,11 @@ namespace AzureServices
             directoryPath.CreateIfNotExists();
             fileName = Path.GetFileName(fName);
         }
+
+        public Task DeleteMetadata(string fName, params string[] args)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     class FileShareClientInternal : ILeaseClient, IDisposable, IAsyncDisposable

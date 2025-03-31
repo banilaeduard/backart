@@ -27,13 +27,15 @@ namespace PollerRecurringJob
             });
 
         internal static readonly string SyncOrders = "SyncOrders";
-        internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(7);
+        internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(5);
         internal static readonly string MoveTo = "MoveToFolder";
-        internal static readonly TimeSpan MoveToDue = TimeSpan.FromMinutes(3);
+        internal static readonly TimeSpan MoveToDue = TimeSpan.FromMinutes(7);
         internal static readonly string AddNewMail = "AddNewMailToExistingTasks";
-        internal static readonly TimeSpan AddNewMailDue = TimeSpan.FromMinutes(2);
+        internal static readonly TimeSpan AddNewMailDue = TimeSpan.FromMinutes(13);
         internal static readonly string SyncMails = "SyncNewMails";
-        internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(15);
+        internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(17);
+        internal static readonly string Remove0ExternalRefs = "Remove0ExternalRefs";
+        internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromMinutes(2);
         internal readonly ServiceProvider provider;
 
         /// <summary>
@@ -66,6 +68,10 @@ namespace PollerRecurringJob
                 else if (reminderName == SyncMails)
                 {
                     await SyncMailsExec.Execute(this);
+                }
+                else if (reminderName == Remove0ExternalRefs)
+                {
+                    await Remove0ExternalRefsSync.Execute(this);
                 }
             }
             catch (Exception ex)
@@ -100,12 +106,19 @@ namespace PollerRecurringJob
                 await UnregisterReminderAsync(previousRegistration);
             }
             catch (ReminderNotFoundException) { }
+            try
+            {
+                var previousRegistration = GetReminder(Remove0ExternalRefs);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
 
 
-            await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(0), SyncOrdersDue);
-            await RegisterReminderAsync(MoveTo, null, TimeSpan.FromMinutes(0), MoveToDue);
-            await RegisterReminderAsync(AddNewMail, null, TimeSpan.FromMinutes(0), AddNewMailDue);
+            await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(3), SyncOrdersDue);
+            await RegisterReminderAsync(MoveTo, null, TimeSpan.FromMinutes(15), MoveToDue);
+            await RegisterReminderAsync(AddNewMail, null, TimeSpan.FromMinutes(15), AddNewMailDue);
             await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(30), SyncMailsDue);
+            await RegisterReminderAsync(Remove0ExternalRefs, null, TimeSpan.FromMinutes(0), Remove0ExternalRefsDue);
         }
 
         public async Task SyncOrdersAndCommited()
@@ -124,8 +137,8 @@ namespace PollerRecurringJob
         /// </summary>
         protected override async Task OnActivateAsync()
         {
-            var commitedOrdersRepository = provider.GetService<ICommitedOrdersRepository>();
-            var ordersRepository = provider.GetService<IOrdersRepository>();
+            var commitedOrdersRepository = provider.GetService<ICommitedOrdersRepository>()!;
+            var ordersRepository = provider.GetService<IOrdersRepository>()!;
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
         }

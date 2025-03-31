@@ -43,7 +43,7 @@ namespace WebApi.Controllers
         [HttpGet("transport-papers/{transportId}")]
         public async Task<IActionResult> GenerateTransportPapers(int transportId)
         {
-            var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport'");
+            var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport' AND Ref_count > 0");
             Stream tempStream = TempFileHelper.CreateTempFile();
 
             var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document);
@@ -72,7 +72,8 @@ namespace WebApi.Controllers
 
             if (groupedCommited.Count == 1)
             {
-                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName, t => t.LocationCode);
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transport, transport.DriverName, t => t.LocationCode);
+                await _transportRepository.UpdateTransport(transport, []);
                 await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().LocationName}.docx", wordType);
                 return new EmptyResult();
             }
@@ -90,7 +91,7 @@ namespace WebApi.Controllers
                 {
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
-                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName, t => t.LocationCode);
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.LocationCode);
                         await CloneDocument(fName, part, 1, i > 0);
                     }
                 }
@@ -101,6 +102,7 @@ namespace WebApi.Controllers
                 }
                 part.Document.Save();
             }
+            await _transportRepository.UpdateTransport(transport, []);
             await WriteStreamToResponse(tempStream, @$"Transport-REC_PV-{transportId}.docx", wordType);
 
             return new EmptyResult();
@@ -114,7 +116,8 @@ namespace WebApi.Controllers
 
             if (groupedCommited.Count == 1)
             {
-                var fName = await GenerateAndWriteReport(groupedCommited.First(), transportId, transport.DriverName, t => t.CodLocatie);
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transport, transport.DriverName, t => t.CodLocatie);
+                await _transportRepository.UpdateTransport(transport, []);
                 await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().NumeLocatie}.docx", wordType);
                 return new EmptyResult();
             }
@@ -133,7 +136,7 @@ namespace WebApi.Controllers
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
 
-                        var fName = await GenerateAndWriteReport(groupedCommited[i], transportId, transport.DriverName, t => t.CodLocatie);
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.CodLocatie);
                         await CloneDocument(fName, part, 1, i > 0);
                     }
                 }
@@ -144,6 +147,7 @@ namespace WebApi.Controllers
                 }
                 part.Document.Save();
             }
+            await _transportRepository.UpdateTransport(transport, []);
             await WriteStreamToResponse(tempStream, @$"Transport-PV-{transportId}.docx", wordType);
 
             return new EmptyResult();
@@ -160,7 +164,9 @@ namespace WebApi.Controllers
                 result.Add(commited.First());
                 if (commited.First() is CommitedOrdersBase sample)
                 {
-                    sample.Entry.AddRange(commited.Skip(1).Cast<CommitedOrdersBase>().SelectMany(t => t.Entry));
+                    var cOreders = commited.Cast<CommitedOrdersBase>().ToList();
+                    sample.InternalNumbers = [.. cOreders.SelectMany(x => x.Entry.Select(y => y.NumarIntern)).Distinct()!];
+                    sample.Entry.AddRange(cOreders.Skip(1).SelectMany(t => t.Entry));
                     sample.Entry = [.. sample.Entry.GroupBy(x => x.CodProdus).Select(x => new CommitedOrderModel() {
                                         CodProdus = x.Key,
                                         Cantitate = x.Sum(t => t.Cantitate),
@@ -178,7 +184,7 @@ namespace WebApi.Controllers
             return result;
         }
 
-        private async Task<string> GenerateAndWriteReport<T>(T item, int transportId, string driverName, Func<T, string> groupBy)
+        private async Task<string> GenerateAndWriteReport<T>(T item, TransportEntry transport, string driverName, Func<T, string> groupBy)
         {
             string metaDataKey = string.Empty;
             string fName = string.Empty;
@@ -190,19 +196,19 @@ namespace WebApi.Controllers
                 if (item is CommitedOrdersBase commited)
                 {
                     md5 = commited.GetMd5(_cryptoService.GetMd5);
-                    fName = $"transport/{transportId}/{SanitizeFileName(commited.NumeLocatie)}.docx";
+                    fName = $"transport/{transport.Id}/{SanitizeFileName(commited.NumeLocatie)}.docx";
                     metaDataKey = fName;
                 }
                 else if (item is ComplaintDocument complaint)
                 {
                     md5 = complaint.GetMd5(_cryptoService.GetMd5);
-                    fName = $"transport/{transportId}/Reclamatie-{SanitizeFileName(complaint.LocationName)}.docx";
+                    fName = $"transport/{transport.Id}/Reclamatie-{SanitizeFileName(complaint.LocationName)}.docx";
                     metaDataKey = fName;
                 }
 
                 var externalItemMeta = new ExternalReferenceGroupEntry()
                 {
-                    Id = transportId,
+                    Id = transport.Id,
                     TableName = nameof(Transport),
                     EntityType = nameof(Transport),
                     ExternalGroupId = fName,
@@ -210,9 +216,35 @@ namespace WebApi.Controllers
                     RowKey = md5
                 };
 
-                var oldEntyry = await _externalReferenceGroupRepository.UpsertExternalReferences([externalItemMeta]);
+                var oldEntity = (await _externalReferenceGroupRepository.UpsertExternalReferences([externalItemMeta])).FirstOrDefault();
 
-                if (oldEntyry.Count == 0 || oldEntyry[0].RowKey != md5 || !await _storageService.Exists(fName))
+                if (oldEntity == null)
+                {
+                    externalItemMeta = (await _externalReferenceGroupRepository.GetExternalReferences(
+                        @$"TableName = '{nameof(Transport)}' AND PartitionKey = '{externalItemMeta.PartitionKey}' AND RowKey = '{externalItemMeta.RowKey}' AND Id = {transport.Id}"
+                        )).First();
+                }
+                else
+                {
+                    externalItemMeta.G_Id = oldEntity.G_Id;
+                }
+
+                if (item is CommitedOrdersBase commited2)
+                {
+                    foreach (var transportItem in transport.TransportItems?.Where(x => x.DocumentType == 1 && commited2.InternalNumbers!.Contains(x.ExternalItemId)) ?? [])
+                    {
+                        transportItem.ExternalReferenceId = externalItemMeta.G_Id;
+                    }
+                }
+                else if (item is ComplaintDocument complaint2)
+                {
+                    foreach (var transportItem in transport.TransportItems?.Where(x => x.DocumentType == 2 && complaint2.LocationCode == x.ExternalItemId2) ?? [])
+                    {
+                        transportItem.ExternalReferenceId = externalItemMeta.G_Id;
+                    }
+                }
+
+                if (oldEntity == null || oldEntity.RowKey != md5 || !await _storageService.Exists(fName))
                 {
                     // should handle more generic Reports
                     if (item is ComplaintDocument complaint)

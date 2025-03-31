@@ -52,7 +52,8 @@
                     ti.ItemName = a.ItemName,
                     ti.TransportId = a.TransportId,
                     ti.ExternalItemId = a.ExternalItemId,
-                    ti.ExternalItemId2 = a.ExternalItemId2
+                    ti.ExternalItemId2 = a.ExternalItemId2,
+                    ti.ExternalReferenceId = case when a.ExternalReferenceId > 0 then a.ExternalReferenceId else ti.ExternalReferenceId end
                 FROM TransportItems ti
                 INNER JOIN dif a ON ti.ItemId = a.ItemId;" : "";
     }

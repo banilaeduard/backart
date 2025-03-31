@@ -7,6 +7,14 @@ namespace SqlTableRepository.ExternalReferenceGroup
 {
     public class ExternalReferenceGroupSql : IExternalReferenceGroupRepository
     {
+        public async Task DeleteExternalRefs(int[] externalRefs)
+        {
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
+            {
+                await connection.ExecuteAsync(ExternalRefSql.DeleteExternalRef, new { externalRefs });
+            }
+        }
+
         public async Task<List<ExternalReferenceGroupEntry>> GetExternalReferences(string whereClause = null)
         {
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))

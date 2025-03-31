@@ -98,6 +98,11 @@ namespace AzureServices
                 return new BlobLeaseClientInternal(client.GetBlobClient(args != null ? string.Format(fName, args) : fName).GetBlobLeaseClient());
             }
         }
+
+        public Task DeleteMetadata(string fName, params string[] args)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     class BlobLeaseClientInternal : ILeaseClient, IDisposable

@@ -39,13 +39,8 @@ namespace MetadataService
         // **DELETE**
         public async Task DeleteDataAsync(string collectionKey = "items")
         {
-            var myDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, string>>(collectionKey);
-
-            using (var tx = StateManager.CreateTransaction())
-            {
-                await myDictionary.ClearAsync();
-                await tx.CommitAsync();
-            }
+            if ((await StateManager.TryGetAsync<IReliableDictionary<string, string>>(collectionKey)).HasValue)
+                await StateManager.RemoveAsync(collectionKey);
         }
 
         public async Task<List<string>> GetAllCollectionKeys()

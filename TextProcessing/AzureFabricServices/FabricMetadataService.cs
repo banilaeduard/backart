@@ -26,6 +26,10 @@ namespace AzureFabricServices
 
             return new Dictionary<string, string>((await GetService().GetAllDataAsync(fName)).Items);
         }
+        public async Task DeleteMetadata(string fName, params string[] args)
+        {
+            await GetService().DeleteDataAsync(args != null ? string.Format(fName, args) : fName);
+        }
 
         public async Task SetMetadata(string fName, string? leaseId, IDictionary<string, string> metadata = null, params string[] args)
         {

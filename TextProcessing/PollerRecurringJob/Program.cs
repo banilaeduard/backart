@@ -2,17 +2,21 @@ using AzureFabricServices;
 using AzureServices;
 using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.Orders;
+using AzureTableRepository.Tickets;
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using RepositoryContract.CommitedOrders;
+using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using RepositoryContract.Tasks;
+using RepositoryContract.Tickets;
 using ServiceImplementation.Caching;
 using ServiceInterface;
 using ServiceInterface.Storage;
+using SqlTableRepository.ExternalReferenceGroup;
 using SqlTableRepository.Orders;
 using SqlTableRepository.Tasks;
 using System.Globalization;
@@ -66,6 +70,11 @@ namespace PollerRecurringJob
                     .AddScoped<ITaskRepository, TaskRepository>()
                     .AddScoped<AzureFileStorage, AzureFileStorage>()
                     .AddScoped<IImportsRepository, OrdersImportsRepository<AzureFileStorage>>()
+                    .AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>()
+                    .AddScoped<IStorageService, BlobAccessStorageService>()
+                    .AddScoped<ICacheManager<TicketEntity>, AlwaysGetCacheManager<TicketEntity>>()
+                    .AddScoped<ICacheManager<AttachmentEntry>, AlwaysGetCacheManager<AttachmentEntry>>()
+                    .AddScoped<ITicketEntryRepository, TicketEntryRepository>()
                     .BuildServiceProvider();
         }
     }

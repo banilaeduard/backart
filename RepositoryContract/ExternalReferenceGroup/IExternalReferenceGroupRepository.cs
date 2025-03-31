@@ -10,5 +10,6 @@
         /// <param name="externals"></param>
         /// <returns></returns>
         Task<List<ExternalReferenceGroupEntry>> UpsertExternalReferences(List<ExternalReferenceGroupEntry> externals);
+        Task DeleteExternalRefs(int[] externalRefs);
     }
 }

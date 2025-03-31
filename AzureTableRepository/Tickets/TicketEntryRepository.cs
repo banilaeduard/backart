@@ -28,16 +28,16 @@ namespace AzureTableRepository.Tickets
         {
             var from = DateTimeOffset.Now;
             await tableStorageService.Upsert(entry);
-            await CacheManagerAttachment.Bust(typeof(AttachmentEntry).Name, false, from);
-            await CacheManagerAttachment.UpsertCache(typeof(AttachmentEntry).Name, [entry]);
+            await CacheManagerAttachment.Bust(nameof(AttachmentEntry), false, from);
+            await CacheManagerAttachment.UpsertCache(nameof(AttachmentEntry), [entry]);
         }
 
         public async Task Save(TicketEntity[] entries)
         {
             var from = DateTimeOffset.Now;
             await tableStorageService.PrepareUpsert(entries).ExecuteBatch();
-            await CacheManagerTicket.Bust(typeof(TicketEntity).Name, false, from);
-            await CacheManagerTicket.UpsertCache(typeof(TicketEntity).Name, entries);
+            await CacheManagerTicket.Bust(nameof(TicketEntity), false, from);
+            await CacheManagerTicket.UpsertCache(nameof(TicketEntity), entries);
         }
 
         public async Task<TicketEntity> GetTicket(string partitionKey, string rowKey, string tableName = null)
@@ -60,6 +60,21 @@ namespace AzureTableRepository.Tickets
             {
                 return (await CacheManagerAttachment.GetAll((from) => tableStorageService.Query<AttachmentEntry>(t => t.PartitionKey == partitionKey).ToList(), nameof(AttachmentEntry) + $"_{partitionKey}"))
                     .Select(x => x.Shallowcopy<AttachmentEntry>()).ToList();
+            }
+        }
+
+        public async Task DeleteEntity<T>(T[] entities, string partitionKey = null, string tableName = null) where T : class, ITableEntity
+        {
+            tableName = tableName ?? typeof(T).Name;
+            await tableStorageService.PrepareDelete(entities).ExecuteBatch(tableName);
+
+            if (typeof(T).Name == nameof(TicketEntity))
+            {
+                await CacheManagerTicket.Bust(tableName, true, null);
+            }
+            else if (typeof(T).Name == nameof(AttachmentEntry))
+            {
+                await CacheManagerAttachment.Bust(tableName, true, null);
             }
         }
     }

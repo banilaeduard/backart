@@ -27,8 +27,10 @@
 	                                                on ti.Id = {fromAlias}.Id and ti.PartitionKey = {fromAlias}.PartitionKey and ti.TableName = {fromAlias}.TableName and ti.ExternalGroupId = {fromAlias}.ExternalGroupId
                                                     WHERE ti.G_Id IS NULL
                                                 )
-                                                INSERT INTO [dbo].[ExternalReferenceGroup]([TableName],[PartitionKey],[RowKey],[ExternalGroupId],[EntityType],[Id])
-                                                    SELECT TableName, PartitionKey, RowKey, ExternalGroupId,EntityType, Id
+                                                INSERT INTO [dbo].[ExternalReferenceGroup]([TableName],[PartitionKey],[RowKey],[ExternalGroupId],[EntityType],[Id], Ref_count)
+                                                    SELECT TableName, PartitionKey, RowKey, ExternalGroupId, EntityType, Id, 0
                                                     FROM NEWENTRIES;";
+
+        internal static string DeleteExternalRef => "DELETE FROM [dbo].[ExternalReferenceGroup] WHERE G_Id IN @externalRefs;";
     }
 }

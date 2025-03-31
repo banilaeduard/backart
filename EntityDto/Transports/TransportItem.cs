@@ -10,6 +10,7 @@
         public string ExternalItemId { get; set; }
         public string ExternalItemId2 { get; set; }
         public int Id { get { return ItemId; } set { ItemId = value; } }
+        public int ExternalReferenceId { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
