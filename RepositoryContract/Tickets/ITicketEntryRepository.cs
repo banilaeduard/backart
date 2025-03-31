@@ -1,14 +1,15 @@
 ﻿using Azure.Data.Tables;
+using EntityDto;
 
 namespace RepositoryContract.Tickets
 {
     public interface ITicketEntryRepository
     {
-        Task<IList<TicketEntity>> GetAll();
-        Task<IList<AttachmentEntry>> GetAllAttachments(string? partitionKey = null);
-        Task Save(AttachmentEntry entry);
-        Task Save(TicketEntity[] entry);
+        Task<IList<TicketEntity>> GetAll(string tableName = null);
+        Task<IList<AttachmentEntry>> GetAllAttachments(string? partitionKey = null, string tableName = null);
+        Task Save(AttachmentEntry[] entry, string tableName = null);
+        Task Save(TicketEntity[] entry, string tableName = null);
         Task<TicketEntity> GetTicket(string partitionKey, string rowKey, string tableName = null);
-        Task DeleteEntity<T>(T[] entities, string partitionKey = null, string tableName = null) where T: class, ITableEntity;
+        Task DeleteEntity<T>(T[] entities, string partitionKey = null, string tableName = null) where T: class, ITableEntryDto, ITableEntity;
     }
 }

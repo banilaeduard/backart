@@ -12,5 +12,6 @@
         public string ContentId { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public int Id { get; set; }
+        public bool? IsDeleted { get; set; }
     }
 }

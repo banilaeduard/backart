@@ -11,6 +11,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Diagnostics;
+using ProjectKeys;
 
 namespace WebApi
 {
@@ -94,7 +95,13 @@ namespace WebApi
             services.AddLogging(logging =>
             {
                 logging.ClearProviders(); // Remove default providers
-                logging.AddApplicationInsights(); // Log to Application Insights
+                logging.AddApplicationInsights(telemetryConfiguration => {
+                    telemetryConfiguration.ConnectionString = Environment.GetEnvironmentVariable(KeyCollection.InstrumentationConnectionString)!;
+                }, loggerOptions =>
+                {
+                    loggerOptions.TrackExceptionsAsExceptionTelemetry = true;
+                    loggerOptions.FlushOnDispose = true;
+                }); // Log to Application Insights
             });
 
             services.Configure<CookiePolicyOptions>(options =>

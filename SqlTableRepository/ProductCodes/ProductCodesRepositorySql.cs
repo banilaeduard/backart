@@ -55,6 +55,11 @@ namespace SqlTableRepository.ProductCodes
             }
         }
 
+        public Task UpsertCodes(ProductCodeEntry[] productCodes)
+        {
+            throw new NotImplementedException();
+        }
+
         private SqlConnection GetConnection() => new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString));
     }
 }

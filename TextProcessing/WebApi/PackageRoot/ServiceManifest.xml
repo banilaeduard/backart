@@ -36,6 +36,7 @@
       <EnvironmentVariable Name="path_to_sql" Value="" />
       <EnvironmentVariable Name="blob_share_name" Value="" />
       <EnvironmentVariable Name="file_share_name" Value="" />
+      <EnvironmentVariable Name="insight_connection_string" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 

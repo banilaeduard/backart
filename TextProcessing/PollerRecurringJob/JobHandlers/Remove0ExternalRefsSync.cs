@@ -23,11 +23,11 @@ namespace PollerRecurringJob.JobHandlers
                 try
                 {
                     await storageService.Delete(externalRef.ExternalGroupId);
-                    ActorEventSource.Current.ActorMessage(jobContext, @$"Deleted: {externalRef.ExternalGroupId}");
+                    ActorEventSource.Current.ActorMessage(jobContext, @$"Deleted Remove0ExternalRefsSync: {externalRef.ExternalGroupId}");
                 }
                 catch (Exception ex)
                 {
-                    ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
+                    ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER: Remove0ExternalRefsSync {ex.Message}. {ex.StackTrace ?? ""}");
                 }
             }
             await externalRefRepository.DeleteExternalRefs([.. externalRefs.Select(x => x.G_Id)]);
@@ -51,11 +51,11 @@ namespace PollerRecurringJob.JobHandlers
                             try
                             {
                                 await storageService.Delete(item.Data);
-                                ActorEventSource.Current.ActorMessage(jobContext, @$"Deleted: {externalRef.ExternalGroupId}");
+                                ActorEventSource.Current.ActorMessage(jobContext, @$"Deleted Remove0ExternalRefsSync: {externalRef.ExternalGroupId}");
                             }
                             catch (Exception ex)
                             {
-                                ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
+                                ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER Remove0ExternalRefsSync: {ex.Message}. {ex.StackTrace ?? ""}");
                             }
                         }
                         await ticketRepository.DeleteEntity([.. attachments]);
@@ -65,7 +65,7 @@ namespace PollerRecurringJob.JobHandlers
                 }
                 catch (Exception ex)
                 {
-                    ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
+                    ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER Remove0ExternalRefsSync: {ex.Message}. {ex.StackTrace ?? ""}");
                 }
             }
             await externalRefRepository.DeleteExternalRefs([.. externalRefs.Select(x => x.G_Id)]);

@@ -20,7 +20,6 @@
         public string? Subject { get; set; }
         public string EmailId { get; set; }
         public string ThreadId { get; set; }
-        public bool IsDeleted { get; set; }
         public string LocationCode { get; set; }
         public string LocationPartitionKey { get; set; }
         public string LocationRowKey { get; set; }

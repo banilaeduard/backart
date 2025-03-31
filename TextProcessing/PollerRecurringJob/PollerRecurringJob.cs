@@ -36,6 +36,8 @@ namespace PollerRecurringJob
         internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(17);
         internal static readonly string Remove0ExternalRefs = "Remove0ExternalRefs";
         internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromMinutes(2);
+        internal static readonly string RemoveLostAttachmentsRefs = "RemoveLostAttachments";
+        internal static readonly TimeSpan RemoveLostAttachmentsRefsDue = TimeSpan.FromMinutes(3);
         internal readonly ServiceProvider provider;
 
         /// <summary>
@@ -72,6 +74,10 @@ namespace PollerRecurringJob
                 else if (reminderName == Remove0ExternalRefs)
                 {
                     await Remove0ExternalRefsSync.Execute(this);
+                }
+                else if (reminderName == RemoveLostAttachmentsRefs)
+                {
+                    await RemoveLostAttachments.Execute(this);
                 }
             }
             catch (Exception ex)
@@ -112,6 +118,12 @@ namespace PollerRecurringJob
                 await UnregisterReminderAsync(previousRegistration);
             }
             catch (ReminderNotFoundException) { }
+            try
+            {
+                var previousRegistration = GetReminder(RemoveLostAttachmentsRefs);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
 
 
             await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(3), SyncOrdersDue);
@@ -119,6 +131,7 @@ namespace PollerRecurringJob
             await RegisterReminderAsync(AddNewMail, null, TimeSpan.FromMinutes(15), AddNewMailDue);
             await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(30), SyncMailsDue);
             await RegisterReminderAsync(Remove0ExternalRefs, null, TimeSpan.FromMinutes(0), Remove0ExternalRefsDue);
+            await RegisterReminderAsync(RemoveLostAttachmentsRefs, null, TimeSpan.FromMinutes(0), RemoveLostAttachmentsRefsDue);
         }
 
         public async Task SyncOrdersAndCommited()

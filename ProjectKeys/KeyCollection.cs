@@ -8,6 +8,7 @@
         public static readonly string StorageConnection;
         public static readonly string FileShareName;
         public static readonly string BlobShareName;
+        public static readonly string InstrumentationConnectionString;
         static KeyCollection()
         {
 #if DEBUG
@@ -20,6 +21,7 @@
             StorageConnection = "storage_connection";
             FileShareName = "file_share_name";
             BlobShareName = "blob_share_name";
+            InstrumentationConnectionString = "insight_connection_string";
         }
     }
 }

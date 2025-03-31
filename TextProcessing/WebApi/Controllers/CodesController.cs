@@ -38,6 +38,15 @@ namespace WebApi.Controllers
             return Ok(result.Select(Map([])));
         }
 
+        [HttpPatch]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UpsertCodes(CodeLinkModel[] codes)
+        {
+            var result = codes.Select(MapReverse()).ToArray();
+            await productCodeRepository.UpsertCodes(result);
+            return Ok();
+        }
+
         [HttpPost("productstats")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateProductStats(ProductStatsModel[] productStatsModels)
@@ -79,5 +88,20 @@ namespace WebApi.Controllers
                     //barcode = BarCodeGenerator.GenerateDataUrlBarCode(t.CodeValue)
                 };
             };
+
+        Func<CodeLinkModel, ProductCodeEntry> MapReverse() => (CodeLinkModel t) =>
+        {
+            return new ProductCodeEntry()
+            {
+                Name = t.CodeDisplay,
+                Code = t.CodeValue,
+                Level = t.Level,
+                Bar = t.CodeBar,
+                ParentCode = t.ParentCode,
+                RootCode = t.RootCode,
+                PartitionKey = t.PartitionKey,
+                RowKey = t.RowKey,
+            };
+        };
     }
 }

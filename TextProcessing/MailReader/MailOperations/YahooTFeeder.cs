@@ -134,7 +134,7 @@ namespace MailReader.MailOperations
                                 .Or(SearchQuery.ToContains(item.Value[i])));
                             }
 
-                            query = query != null ? query.Or(SearchQuery.DeliveredAfter(item.Key.AddDays(-1)).And(qRecipients)) : SearchQuery.DeliveredAfter(item.Key.AddDays(-1)).And(qRecipients);
+                            query = query != null ? query.Or(SearchQuery.DeliveredAfter(item.Key).And(qRecipients)) : SearchQuery.DeliveredAfter(item.Key).And(qRecipients);
                         }
 
                         List<UniqueId> uids;
@@ -151,7 +151,8 @@ namespace MailReader.MailOperations
                                 | MessageSummaryItems.EmailId
                                 | MessageSummaryItems.UniqueId))
                             {
-                                if (await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null)
+                                if (await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null
+                                    || await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null)
                                     continue;
 
                                 toProcess.Add(messageSummary);
@@ -253,69 +254,79 @@ namespace MailReader.MailOperations
                                 await blob.WriteTo(fname, fileStream);
                             }
 
-                        await ticketEntryRepository.Save(new AttachmentEntry()
-                        {
-                            PartitionKey = entry.Uid.ToString(),
-                            RowKey = entry.Validity + "eml",
-                            Data = fname,
-                            ContentType = "eml",
-                            Title = "body.eml",
-                            RefPartition = entry.PartitionKey,
-                            RefKey = entry.RowKey,
-                        });
+                        await ticketEntryRepository.Save([new AttachmentEntry()
+                                {
+                                    PartitionKey = entry.Uid.ToString(),
+                                    RowKey = entry.Validity + "eml",
+                                    Data = fname,
+                                    ContentType = "eml",
+                                    Title = "body.eml",
+                                    RefPartition = entry.PartitionKey,
+                                    RefKey = entry.RowKey,
+                                }, new AttachmentEntry()
+                                {
+                                    PartitionKey = entry.Uid.ToString(),
+                                    RowKey = entry.Validity + "body",
+                                    Data = details + "body.html",
+                                    Title = "body.html",
+                                    ContentType = "html",
+                                    RefPartition = entry.PartitionKey,
+                                    RefKey = entry.RowKey,
+                                }]);
+
                         if (!await blob.Exists(details + "body.html"))
                             await blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody).ToStream());
-                        await ticketEntryRepository.Save(new AttachmentEntry()
-                        {
-                            PartitionKey = entry.Uid.ToString(),
-                            RowKey = entry.Validity + "body",
-                            Data = details + "body.html",
-                            Title = "body.html",
-                            ContentType = "html",
-                            RefPartition = entry.PartitionKey,
-                            RefKey = entry.RowKey,
-                        });
 
                         int idx = 0;
+                        attachmentEntries = new List<AttachmentEntry>();
                         foreach (var attachment in visitor.Attachments)
                         {
-                            var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
-                            var filePath = details + idx + fileName;
-                            if (!await blob.Exists(filePath))
-                                using (var fStream = TempFileHelper.CreateTempFile())
-                                {
-                                    if (attachment is MessagePart)
-                                    {
-                                        var part = (MessagePart)attachment;
-                                        await part.Message.WriteToAsync(fStream);
-                                    }
-                                    else
-                                    {
-                                        var part = (MimePart)attachment;
-                                        await part.Content.DecodeToAsync(fStream);
-                                    }
-                                    fStream.Position = 0;
-                                    await blob.WriteTo(filePath, fStream);
-                                }
-
-                            await ticketEntryRepository.Save(new AttachmentEntry()
+                            try
                             {
-                                PartitionKey = entry.Uid.ToString(),
-                                RowKey = Guid.NewGuid().ToString(),
-                                Data = filePath,
-                                Title = fileName,
-                                ContentType = attachment.ContentType?.MimeType,
-                                RefPartition = entry.PartitionKey,
-                                RefKey = entry.RowKey,
-                                ContentId = attachment.ContentId
-                            });
+                                var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
+                                var filePath = details + idx + fileName;
+                                if (!await blob.Exists(filePath))
+                                    using (var fStream = TempFileHelper.CreateTempFile())
+                                    {
+                                        if (attachment is MessagePart)
+                                        {
+                                            var part = (MessagePart)attachment;
+                                            await part.Message.WriteToAsync(fStream);
+                                        }
+                                        else
+                                        {
+                                            var part = (MimePart)attachment;
+                                            await part.Content.DecodeToAsync(fStream);
+                                        }
+                                        fStream.Position = 0;
+                                        await blob.WriteTo(filePath, fStream);
+                                    }
+                                attachmentEntries.Add(new AttachmentEntry()
+                                {
+                                    PartitionKey = entry.Uid.ToString(),
+                                    RowKey = Guid.NewGuid().ToString(),
+                                    Data = filePath,
+                                    Title = fileName,
+                                    ContentType = attachment.ContentType?.MimeType,
+                                    RefPartition = entry.PartitionKey,
+                                    RefKey = entry.RowKey,
+                                    ContentId = attachment.ContentId
+                                });
 
-                            idx++;
+                                idx++;
+                            }
+                            catch (Exception ex)
+                            {
+                                LogError(ex);
+                            }
                         }
+                        if (attachmentEntries.Any())
+                            await ticketEntryRepository.Save([.. attachmentEntries]);
                         var uu = missingUids.First(t => t.PartitionKey == entry.PartitionKey && t.RowKey == entry.RowKey);
                         result.Add(uu);
                     }
                     tickets = [.. tickets.ExceptBy(found, t => new UniqueId((uint)t.Validity, (uint)t.Uid))];
+
                 }
             }
             catch (Exception ex)

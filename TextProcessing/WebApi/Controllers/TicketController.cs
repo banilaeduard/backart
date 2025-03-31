@@ -70,11 +70,14 @@ namespace WebApi.Controllers
         public async Task<IActionResult> Delete(TicketModel[] tickets)
         {
             var items = (await ticketEntryRepository.GetAll()).Where(t => tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
-            foreach (var item in items)
+            await ticketEntryRepository.DeleteEntity([.. items]);
+            foreach (var ticket in items)
             {
-                item.IsDeleted = true;
+                var attachments = await ticketEntryRepository.GetAllAttachments(ticket.RowKey);
+                await ticketEntryRepository.DeleteEntity([.. attachments]);
+                await ticketEntryRepository.Save([.. attachments], $@"{nameof(AttachmentEntry)}ARCHIVE");
             }
-            await ticketEntryRepository.Save([.. items]);
+            await ticketEntryRepository.Save([.. items], $@"{nameof(TicketEntity)}ARCHIVE");
             return Ok();
         }
 
