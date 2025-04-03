@@ -1,11 +1,28 @@
-﻿namespace WebApi.Models
+﻿ using WordDocumentServices;
+
+namespace WebApi.Models
 {
-    public class ComplaintDocument
+    public class ComplaintDocument : IVisitable<int>
     {
         public DateTime Date { get; set; }
         public string LocationName { get; set; }
         public string LocationCode { get; set; }
         public List<ComplaintEntry> complaintEntries { get; set; }
+
+        public void Accept(ITemplateDocumentWriter visitor, List<int> contextItems, ContextMap context)
+        {
+            visitor.WriteToMainDoc(new Dictionary<string, string>()
+            {
+                { "date_field", context.GetOrDefault("date_field", Date.ToString("dd/MMM/yy")) },
+                { "magazin_field", context.GetOrDefault("magazin_field", LocationName) },
+                { "driver_name", context.GetOrDefault("driver_name", context.GetDots())  }
+            });
+
+            foreach (var complaint in complaintEntries)
+            {
+                complaint.Accept(visitor, contextItems, context);
+            }
+        }
 
         public string GetMd5(Func<string, string> getMd5)
         {
@@ -21,7 +38,7 @@
         }
     }
 
-    public class ComplaintEntry
+    public class ComplaintEntry : IVisitable<int>
     {
         public string Description { get; set; }
         public string UM { get; set; }
@@ -30,5 +47,10 @@
         public string? RefPartitionKey { get; set; }
         public string? RefRowKey { get; set; }
         public bool? CloseTask { get; set; }
+
+        public void Accept(ITemplateDocumentWriter visitor, List<int> contextItems, ContextMap context)
+        {
+            visitor.WriteToTable("reclamatii", [[context.IncrementIndex().ToString(), Description, UM, Quantity, Observation]]);
+        }
     }
 }

@@ -42,9 +42,10 @@ namespace WebApi
                                                         {
                                                             opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
                                                             opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-                                                            opt.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString;
+                                                            opt.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
                                                             opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                                                             opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                                                            opt.JsonSerializerOptions.AllowTrailingCommas = true;
                                                         });
                         ConfigureServices(builder.Services, serviceContext);
 
@@ -60,13 +61,16 @@ namespace WebApi
                                     .UseContentRoot(Directory.GetCurrentDirectory())
                                     .UseServiceFabricIntegration(listener, ServiceFabricIntegrationOptions.None)
                                     .UseUrls(url);
-                        builder.Services.AddEndpointsApiExplorer();
+
                         var app = builder.Build();
 
                          app.UseCors(x => x
-                            .SetIsOriginAllowed(origin => true)
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
+                            .SetIsOriginAllowed(origin => {
+                                ServiceEventSource.Current.ServiceMessage(serviceContext, @$"Origin allowed: {origin}");
+                                return true;
+                            })
+                         .AllowAnyMethod()
+                         .AllowAnyHeader()
                             .AllowCredentials());
 
                         app.UseRouting();

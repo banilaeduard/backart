@@ -26,9 +26,9 @@ namespace WebApi.Controllers
         private readonly ICommitedOrdersRepository commitedOrdersRepository;
         private readonly IProductCodeRepository productCodeRepository;
         private readonly ITaskRepository taskRepository;
-        private readonly ReclamatiiReport reclamatiiReport;
-        private readonly StructuraReport structuraReport;
         private readonly IDataKeyLocationRepository keyLocationRepository;
+        private readonly StructuraReport _structuraReport;
+        private readonly SimpleReport _simpleReport;
         ICacheManager<CommitedOrderEntry> cacheManager;
         IMetadataService metadataService;
 
@@ -37,10 +37,10 @@ namespace WebApi.Controllers
             ICommitedOrdersRepository commitedOrdersRepository,
             IProductCodeRepository productCodeRepository,
             ITaskRepository taskRepository,
-            ReclamatiiReport reclamatiiReport,
-            StructuraReport structuraReport,
             ICacheManager<CommitedOrderEntry> cacheManager,
             IMetadataService metadataService,
+            StructuraReport structuraReport,
+            SimpleReport simpleReport,
             IDataKeyLocationRepository keyLocationRepository,
             IMapper mapper) : base(logger, mapper)
         {
@@ -49,9 +49,9 @@ namespace WebApi.Controllers
             this.productCodeRepository = productCodeRepository;
             this.cacheManager = cacheManager;
             this.metadataService = metadataService;
-            this.reclamatiiReport = reclamatiiReport;
-            this.structuraReport = structuraReport;
             this.keyLocationRepository = keyLocationRepository;
+            _structuraReport = structuraReport;
+            _simpleReport = simpleReport;
         }
 
         [HttpGet("{date}")]
@@ -93,7 +93,7 @@ namespace WebApi.Controllers
         {
             try
             {
-                using var reportStream = await reclamatiiReport.GenerateReport(document, null);
+                using var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", document.LocationCode, document, null);
                 await WriteStreamToResponse(reportStream, @$"Reclamatie-{document.LocationName}.docx", wordType);
                 return new EmptyResult();
             }
@@ -109,7 +109,7 @@ namespace WebApi.Controllers
         {
             try
             {
-                using var reportStream = await structuraReport.GenerateReport(commitedOrder, reportName, null);
+                using var reportStream = await _structuraReport.GenerateReport(reportName, commitedOrder.CodLocatie, commitedOrder, null);
                 await WriteStreamToResponse(reportStream, $"Transport-{reportName}-{commitedOrder.NumeLocatie}.docx", wordType);
 
                 return new EmptyResult();

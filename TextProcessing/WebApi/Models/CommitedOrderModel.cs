@@ -1,8 +1,10 @@
 ﻿using EntityDto.CommitedOrders;
+using EntityDto.Reports;
+using WordDocumentServices;
 
 namespace WebApi.Models
 {
-    public class CommitedOrderModel
+    public class CommitedOrderModel : IVisitable<KeyValuePair<string, int>>
     {
         public string CodProdus { get; set; }
         public string NumeProdus { get; set; }
@@ -30,6 +32,13 @@ namespace WebApi.Models
                 DetaliiLinie = $@"{entry.DetaliiLinie}{(string.IsNullOrWhiteSpace(entry.DetaliiLinie) ? "" : " - ")}{entry.DetaliiDoc}",
                 DataDocumentBaza = entry.DataDocumentBaza?.ToUniversalTime(),
             };
+        }
+
+        public void Accept(ITemplateDocumentWriter visitor, List<KeyValuePair<string, int>> contextItems, ContextMap context)
+        {
+            var found = contextItems.FindIndex(x => x.Key == CodProdus);
+            if (found == -1) contextItems.Add(KeyValuePair.Create(CodProdus, Cantitate));
+            else contextItems[found] = KeyValuePair.Create(CodProdus, contextItems[found].Value + Cantitate);
         }
     }
 }

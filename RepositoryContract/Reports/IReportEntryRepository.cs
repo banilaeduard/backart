@@ -1,6 +1,4 @@
-﻿using Azure.Data.Tables;
-
-namespace RepositoryContract.Report
+﻿namespace RepositoryContract.Report
 {
     public interface IReportEntryRepository
     {

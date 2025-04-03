@@ -1,8 +1,9 @@
 ﻿using Azure.Data.Tables;
 using AzureServices;
 using ProjectKeys;
+using RepositoryContract.Report;
 
-namespace RepositoryContract.Report
+namespace AzureTableRepository.Report
 {
     public class ReportEntryRepository : IReportEntryRepository
     {

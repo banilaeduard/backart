@@ -1,43 +1,46 @@
 ﻿using AutoMapper;
 using AzureServices;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
 using EntityDto.Transports;
 using Microsoft.AspNetCore.Mvc;
+using RepositoryContract;
 using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Transports;
 using ServiceImplementation;
 using ServiceInterface.Storage;
 using WebApi.Models;
 using WebApi.Services;
+using WordDocument.Services;
+using WordDocumentServices;
 
 namespace WebApi.Controllers
 {
     public class DocumentController : WebApiController2
     {
         private readonly IStorageService _storageService;
-        private readonly ReclamatiiReport _reclamatiiReport;
-        private readonly StructuraReport _structuraReport;
         private readonly ITransportRepository _transportRepository;
         private readonly ICryptoService _cryptoService;
         private readonly IExternalReferenceGroupRepository _externalReferenceGroupRepository;
+        private readonly StructuraReport _structuraReport;
+        private readonly SimpleReport _simpleReport;
 
         public DocumentController(ILogger<DocumentController> logger,
          BlobAccessStorageService storageService,
-         ReclamatiiReport reclamatiiReport,
-         StructuraReport structuraReport,
          ICryptoService cryptoService,
          IExternalReferenceGroupRepository externalReferenceGroupRepository,
+         ITemplateDocumentWriter templateDocumentWriter,
          ITransportRepository transportRepository,
+         StructuraReport structuraReport,
+         SimpleReport simpleReport,
+         ConnectionSettings connectionSettings,
          IMapper mapper) : base(logger, mapper)
         {
             _storageService = storageService;
-            _reclamatiiReport = reclamatiiReport;
-            _structuraReport = structuraReport;
             _transportRepository = transportRepository;
             _cryptoService = cryptoService;
             _externalReferenceGroupRepository = externalReferenceGroupRepository;
+            _structuraReport = structuraReport;
+            _simpleReport = simpleReport;
         }
 
         [HttpGet("transport-papers/{transportId}")]
@@ -46,21 +49,15 @@ namespace WebApi.Controllers
             var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport' AND Ref_count > 0");
             Stream tempStream = TempFileHelper.CreateTempFile();
 
-            var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document);
-            var part = wordDoc.AddMainDocumentPart();
-            part.Document = new Document();
-            part.Document.Append(new Body());
-            var destStylesPart = part.AddNewPart<StyleDefinitionsPart>();
-            destStylesPart.Styles = new Styles();
-            destStylesPart.Styles.Save();
+            var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream);
 
             for (int i = 0; i < externalRefs.Count; i++)
             {
-                await CloneDocument(externalRefs[i].ExternalGroupId, part, 1, i > 0);
+                await CloneDocument(externalRefs[i].ExternalGroupId, wordDoc.MainDocumentPart!, 1, i > 0);
             }
-            wordDoc.Close();
+            wordDoc.MainDocumentPart!.Document.Save();
             await WriteStreamToResponse(tempStream, @$"{transportId}.docx", octetStream);
-
+            wordDoc.Dispose();
             return new EmptyResult();
         }
 
@@ -79,20 +76,14 @@ namespace WebApi.Controllers
             }
 
             using Stream tempStream = TempFileHelper.CreateTempFile();
-            using (var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document))
+            using (var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream))
             {
-                var part = wordDoc.AddMainDocumentPart();
-                part.Document = new Document();
-                part.Document.Append(new Body());
-                var destStylesPart = part.AddNewPart<StyleDefinitionsPart>();
-                destStylesPart.Styles = new Styles();
-                destStylesPart.Styles.Save();
                 try
                 {
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
                         var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.LocationCode);
-                        await CloneDocument(fName, part, 1, i > 0);
+                        await CloneDocument(fName, wordDoc.MainDocumentPart!, 1, i > 0);
                     }
                 }
                 catch (Exception ex)
@@ -100,7 +91,7 @@ namespace WebApi.Controllers
                     logger.LogError(new EventId(69), ex, "ExportStructuraReport");
                     return StatusCode(500, "An error occurred while exporting the report.");
                 }
-                part.Document.Save();
+                wordDoc.MainDocumentPart!.Document.Save();
             }
             await _transportRepository.UpdateTransport(transport, []);
             await WriteStreamToResponse(tempStream, @$"Transport-REC_PV-{transportId}.docx", wordType);
@@ -123,21 +114,14 @@ namespace WebApi.Controllers
             }
 
             using Stream tempStream = TempFileHelper.CreateTempFile();
-            using (var wordDoc = WordprocessingDocument.Create(tempStream, WordprocessingDocumentType.Document))
+            using (var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream))
             {
-                var part = wordDoc.AddMainDocumentPart();
-                part.Document = new Document();
-                part.Document.Append(new Body());
-                var destStylesPart = part.AddNewPart<StyleDefinitionsPart>();
-                destStylesPart.Styles = new Styles();
-                destStylesPart.Styles.Save();
                 try
                 {
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
-
                         var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.CodLocatie);
-                        await CloneDocument(fName, part, 1, i > 0);
+                        await CloneDocument(fName, wordDoc.MainDocumentPart!, 1, i > 0);
                     }
                 }
                 catch (Exception ex)
@@ -145,7 +129,7 @@ namespace WebApi.Controllers
                     logger.LogError(new EventId(69), ex, "ExportStructuraReport");
                     return StatusCode(500, "An error occurred while exporting the report.");
                 }
-                part.Document.Save();
+                wordDoc.MainDocumentPart!.Document.Save();
             }
             await _transportRepository.UpdateTransport(transport, []);
             await WriteStreamToResponse(tempStream, @$"Transport-PV-{transportId}.docx", wordType);
@@ -243,17 +227,19 @@ namespace WebApi.Controllers
                         transportItem.ExternalReferenceId = externalItemMeta.G_Id;
                     }
                 }
-
                 if (oldEntity == null || oldEntity.RowKey != md5 || !await _storageService.Exists(fName))
                 {
+                    var ctx = new Dictionary<string, object>() { { "driver_name", transport.DriverName } };
                     // should handle more generic Reports
                     if (item is ComplaintDocument complaint)
                     {
-                        reportStream = await _reclamatiiReport.GenerateReport(complaint, driverName);
+                        reportStream = await _simpleReport.GetSimpleReport("Reclamatii", complaint.LocationCode, complaint, ctx);
                     }
                     else if (item is CommitedOrdersBase c)
                     {
-                        reportStream = await _structuraReport.GenerateReport(c, "Accesorii", driverName);
+                        if (c.NumarAviz.HasValue)
+                            ctx.Add("aviz_field", c.NumarAviz.Value);
+                        reportStream = await _structuraReport.GenerateReport("Accesorii", c.CodLocatie, c, ctx);
                     }
 
                     await _storageService.WriteTo(fName, reportStream, true);

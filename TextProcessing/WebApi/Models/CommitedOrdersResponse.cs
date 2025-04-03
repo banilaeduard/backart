@@ -4,6 +4,7 @@ using RepositoryContract.DataKeyLocation;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
+using WordDocumentServices;
 
 namespace WebApi.Models
 {
@@ -74,7 +75,7 @@ namespace WebApi.Models
         }
     }
 
-    public class CommitedOrdersBase
+    public class CommitedOrdersBase : IVisitable<KeyValuePair<string, int>>
     {
         public List<CommitedOrderModel> Entry { get; set; }
         public string CodLocatie { get; set; }
@@ -90,6 +91,22 @@ namespace WebApi.Models
         public bool HasReports { get; set; }
         public string? TransportStatus { get; set; }
         public int? TransportId { get; set; }
+
+        public void Accept(ITemplateDocumentWriter visitor, List<KeyValuePair<string, int>> contextItems, ContextMap context)
+        {
+            visitor.WriteToMainDoc(new Dictionary<string, string>()
+            {
+                { "date_field", context.GetOrDefault("date_field", DateTime.Now.ToString("dd/MMM/yy")) },
+                { "magazin_field", context.GetOrDefault("magazin_field", NumeLocatie) },
+                { "driver_name", context.GetOrDefault("driver_name", context.GetDots()) },
+                { "numar_aviz", context.GetOrDefault("numar_aviz", NumarAviz.HasValue ? NumarAviz.Value.ToString() : context.GetDots()) }
+            });
+
+            foreach (var entry in Entry)
+            {
+                entry.Accept(visitor, contextItems, context);
+            }
+        }
 
         public string GetMd5(Func<string, string> getMd5)
         {

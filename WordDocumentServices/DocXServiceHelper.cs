@@ -1,23 +1,36 @@
-﻿using DocumentFormat.OpenXml.Packaging;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
-namespace WebApi.Services
+namespace WordDocument.Services
 {
     public static class DocXServiceHelper
     {
+        public static async Task<WordprocessingDocument> CreateEmptyDoc(Stream stream)
+        {
+            var wordDoc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document);
+            var part = wordDoc.AddMainDocumentPart();
+            part.Document = new Document();
+            part.Document.Append(new Body());
+            var destStylesPart = part.AddNewPart<StyleDefinitionsPart>();
+            destStylesPart.Styles = new Styles();
+            destStylesPart.Styles.Save();
+            return wordDoc!;
+        }
+
         public static async Task CloneDocument(Stream stream, MainDocumentPart target, int duplicates, Func<string, string> GetMd5, bool skipFirstpageBreak = false)
         {
             int dupes = duplicates;
             using var docToClone = WordprocessingDocument.Open(stream, false);
             while (dupes > 0)
             {
-                if (skipFirstpageBreak || duplicates > dupes) DocXServiceHelper.AddPageBreak(target);
-                DocXServiceHelper.CloneBody(docToClone.MainDocumentPart!, target, GetMd5);
+                if (skipFirstpageBreak || duplicates > dupes) AddPageBreak(target);
+                CloneBody(docToClone.MainDocumentPart!, target, GetMd5);
                 dupes--;
             }
         }
 
-        public static void CloneBody(MainDocumentPart src, MainDocumentPart target, Func<string,string> GetMd5)
+        public static void CloneBody(MainDocumentPart src, MainDocumentPart target, Func<string, string> GetMd5)
         {
             Dictionary<string, string> relMapping = new();
             var itemsToClone = src.Document.Body!.ChildElements.Select(d => d.CloneNode(true)).ToList();
@@ -113,6 +126,61 @@ namespace WebApi.Services
 
             // Append to the document body
             body.Append(paragraph);
+        }
+
+        public static void ReplaceContentControlText(MainDocumentPart mainPart, Dictionary<string, string> kvp)
+        {
+            foreach (var sdt in mainPart.Document.Descendants<SdtElement>())
+            {
+                //SdtProperties props = sdt.Elements<SdtProperties>().FirstOrDefault();
+                //if (props != null)
+                //{
+                //    Tag tag = props.Elements<Tag>().FirstOrDefault();
+                //    if (tag != null && tag.Val == title)
+                //    {
+                //        var drawing = sdt.Descendants<Drawing>().FirstOrDefault();
+                //        if (drawing != null)
+                //        {
+                //            var blip = drawing.Descendants<DocumentFormat.OpenXml.Drawing.Blip>().FirstOrDefault();
+                //            return blip?.Embed;
+                //        }
+                //    }
+                //}
+                if (kvp.ContainsKey(sdt.InnerText.Trim().ToLower()))
+                {
+                    var textElement = sdt.Descendants<Text>().FirstOrDefault();
+                    if (textElement != null)
+                    {
+                        textElement.Text = kvp[sdt.InnerText.Trim().ToLower()];
+                    }
+                }
+            }
+        }
+
+        public static Table FindTableByTagOrDefault(MainDocumentPart documentPart, string tag)
+        {
+            var tables = documentPart.Document.Body.Elements<Table>();
+
+            foreach (var table in tables)
+            {
+                var tableProperties = table.Elements<TableProperties>().FirstOrDefault();
+                var description = tableProperties?.Elements<TableDescription>().FirstOrDefault();
+
+                if (description != null && description.Val == tag)
+                {
+                    return table; // Found the table with the matching tag
+                }
+            }
+            return tables.FirstOrDefault(); // No matching table found
+        }
+
+        public static TableCell CreateCell(string text)
+        {
+            TableCell cell = new TableCell();
+            cell.Append(new TableCellProperties(
+                new TableCellWidth { Type = TableWidthUnitValues.Auto }));
+            cell.Append(new Paragraph(new Run(new Text(text))));
+            return cell;
         }
     }
 }

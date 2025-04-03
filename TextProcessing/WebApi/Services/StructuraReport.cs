@@ -1,134 +1,100 @@
-﻿using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
+﻿using EntityDto.Reports;
 using RepositoryContract;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Report;
-using ServiceImplementation;
-using WebApi.Models;
+using WebApi.Controllers;
+using WordDocumentServices;
 
 namespace WebApi.Services
 {
     public class StructuraReport
     {
-        private ConnectionSettings _settings;
-        private IProductCodeRepository _productCodeRepository;
-        private IReportEntryRepository _reportsRepository;
+        ILogger _logger;
+        ITemplateDocumentWriter _templateDocumentWriter;
+        ConnectionSettings _connectionSettings;
+        IReportEntryRepository _reportEntryRepository;
+        IProductCodeRepository _productCodesRepository;
 
-        public StructuraReport(ConnectionSettings settings, IProductCodeRepository productCodeRepository, IReportEntryRepository reportsRepository)
+        private string _reportName;
+        private List<Report> reportEntries;
+        private Dictionary<string, Report[]> rootProductMapping = new();
+
+        public StructuraReport(
+            ITemplateDocumentWriter templateDocumentWriter,
+            ConnectionSettings connectionSettings,
+            IReportEntryRepository reportEntryRepository,
+            IProductCodeRepository productCodesRepository,
+            ILogger<StructuraReport> logger
+            )
         {
-            _settings = settings;
-            _productCodeRepository = productCodeRepository;
-            _reportsRepository = reportsRepository;
+            _templateDocumentWriter = templateDocumentWriter;
+            _connectionSettings = connectionSettings;
+            _reportEntryRepository = reportEntryRepository;
+            _productCodesRepository = productCodesRepository;
+            _logger = logger;
         }
 
-        public async Task<Stream> GenerateReport(CommitedOrdersBase commited, string reportName, string driverName)
+        private async Task PrepareReportName(string reportName)
         {
-            var reportsRows = await _reportsRepository.GetReportEntry(reportName);
-            var reportCodes = await _productCodeRepository.GetProductCodes(c =>
-                                            reportsRows.Any(r => c.Code.ToLowerInvariant().Contains(r.FindBy.ToLowerInvariant()) && c.Level == r.Level));
-
-            var templateCustomPath = await _reportsRepository.GetReportTemplate(commited.CodLocatie!, reportName);
-            string templatePath = Path.Combine(_settings.SqlQueryCache, templateCustomPath.TemplateName);
-
-            var fStream = TempFileHelper.CreateTempFile(templatePath);
-
-            // Open the document
-            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(fStream, true))
+            if (_reportName == reportName) return;
+            _reportName = reportName;
+            reportEntries = (await _reportEntryRepository.GetReportEntry(reportName)).Cast<Report>().ToList();
+            var productHierarchy = (await _productCodesRepository.GetProductCodes(c =>
+                                                                        reportEntries.Any(re => c.Code.Contains(re.FindBy) && c.Level == re.Level))
+                                                                 ).GroupBy(x => x.RootCode).ToList();
+            foreach (var prods in productHierarchy)
             {
-                // Access the main document part
-                var mainPart = wordDoc.MainDocumentPart!;
-                var body = mainPart.Document.Body!;
-                // Replace placeholders in the paragraphs
-                ReplaceContentControlText(mainPart, "date_field", commited.DataAviz?.ToString("dd.MM.yyyy") ?? "................");
-                ReplaceContentControlText(mainPart, "magazin_field", commited.NumeLocatie!);
-                ReplaceContentControlText(mainPart, "aviz_field", commited.NumarAviz?.ToString() ?? ".......");
-                ReplaceContentControlText(mainPart, "driver_name", driverName ?? "..........................");
-                Table table = body.Elements<Table>().FirstOrDefault()!;
-
-                int currIndex = 0;
-                var currGroup = reportsRows[0].Group;
-                for (int i = 0; i < reportsRows.Count; i++)
-                {
-                    var reportRow = reportsRows[i];
-                    var reportCodeList = reportCodes.Where(x => x.Code.ToLowerInvariant().Contains(reportRow.FindBy.ToLowerInvariant()) && x.Level == reportRow.Level);
-                    if (!reportCodeList.Any()) continue;
-
-                    var codes = commited.Entry.Where(x => reportCodeList.Any(rc => rc.RootCode == x.CodProdus)).ToList();
-
-                    if (codes.Any())
-                    {
-                        if (currGroup != reportRow.Group && currIndex > 0)
-                        {
-                            TableRow emptyRow = new TableRow();
-                            emptyRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
-                            emptyRow.Append(CreateCell(""));
-                            emptyRow.Append(CreateCell(""));
-                            emptyRow.Append(CreateCell(""));
-                            emptyRow.Append(CreateCell(""));
-                            table.Append(emptyRow);
-                            currGroup = reportRow.Group;
-                        }
-                        else if (currIndex == 0)
-                        {
-                            currGroup = reportRow.Group;
-                        }
-
-                        // Create a new row
-                        TableRow newRow = new TableRow();
-                        newRow.Append(new TableRowProperties(new TableRowHeight { HeightType = HeightRuleValues.Exact, Val = 300 }));
-                        // Add cells to the new row
-                        newRow.Append(CreateCell((++currIndex).ToString()));
-                        newRow.Append(CreateCell(reportRow.Display));
-                        newRow.Append(CreateCell(reportRow.UM));
-                        newRow.Append(CreateCell(codes.Sum(x => x.Cantitate).ToString()));
-
-                        // Insert the new row at the end of the table
-                        table.Append(newRow);
-                    }
-                }
-                if (currIndex == 0) return Stream.Null;
-                mainPart.Document.Save();
+                var product = prods.First();
+                rootProductMapping[product.RootCode] = reportEntries
+                    .Where(re => prods.Any(p => p.Code.Contains(re.FindBy) && p.Level == re.Level))
+                    .ToArray();
             }
-            fStream.Position = 0;
-            return fStream;
         }
 
-        static TableCell CreateCell(string text)
+        public async Task<Stream> GenerateReport(string reportName, string locationCode, IVisitable<KeyValuePair<string, int>> data, Dictionary<string, object> ctx)
         {
-            TableCell cell = new TableCell();
-            cell.Append(new TableCellProperties(
-                new TableCellWidth { Type = TableWidthUnitValues.Auto }));
-            cell.Append(new Paragraph(new Run(new Text(text))));
-            return cell;
-        }
+            await PrepareReportName(reportName);
+            var template = await _reportEntryRepository.GetReportTemplate(locationCode, reportName);
 
-        static void ReplaceContentControlText(MainDocumentPart mainPart, string title, string newText)
-        {
-            foreach (var sdt in mainPart.Document.Descendants<SdtElement>())
+            var templatePath = Path.Combine(_connectionSettings.SqlQueryCache, template.TemplateName);
+            var currentTemplateWriter = _templateDocumentWriter.SetTemplate(templatePath);
+
+            var kvps = new List<KeyValuePair<string, int>>();
+            ContextMap contextMap = new(ctx);
+            data.Accept(currentTemplateWriter, kvps, contextMap);
+
+            var countMap = new Dictionary<string, (int count, Report report)>();
+            foreach (var kvp in kvps)
             {
-                //SdtProperties props = sdt.Elements<SdtProperties>().FirstOrDefault();
-                //if (props != null)
-                //{
-                //    Tag tag = props.Elements<Tag>().FirstOrDefault();
-                //    if (tag != null && tag.Val == title)
-                //    {
-                //        var drawing = sdt.Descendants<Drawing>().FirstOrDefault();
-                //        if (drawing != null)
-                //        {
-                //            var blip = drawing.Descendants<DocumentFormat.OpenXml.Drawing.Blip>().FirstOrDefault();
-                //            return blip?.Embed;
-                //        }
-                //    }
-                //}
-                if (sdt.InnerText.Trim().ToLower() == title)
+                var reports = rootProductMapping[kvp.Key];
+                foreach (var report in reports)
                 {
-                    var textElement = sdt.Descendants<Text>().FirstOrDefault();
-                    if (textElement != null)
+                    if (!countMap.ContainsKey(report.Display))
                     {
-                        textElement.Text = newText;
+                        countMap[report.Display] = (0, report);
                     }
+                    countMap[report.Display] = (countMap[report.Display].count + kvp.Value, countMap[report.Display].report);
                 }
             }
+            var items = countMap.Select(t => t.Value).OrderBy(t => t.report.Order).ToList();
+            string currentGroup = items.First().report.Group;
+
+            List<string[]> values = [];
+
+            contextMap.ResetIndex();
+            foreach (var item in items)
+            {
+                if (item.report.Group != currentGroup)
+                {
+                    values.Add(["", "", "", ""]);
+                    currentGroup = item.report.Group;
+                }
+
+                values.Add([contextMap.IncrementIndex().ToString(), item.report.Display, item.report.UM, item.count.ToString()]);
+            }
+
+            currentTemplateWriter.WriteToTable(reportName, [..values]);
+            return currentTemplateWriter.GetStream();
         }
     }
 }

@@ -36,6 +36,9 @@ using SqlTableRepository.ExternalReferenceGroup;
 using EntityDto.ExternalReferenceGroup;
 using EntityDto.Tasks;
 using ProjectKeys;
+using AzureTableRepository.Report;
+using WordDocumentServices;
+using WordDocumentServices.Services;
 
 namespace WebApi
 {
@@ -67,8 +70,6 @@ namespace WebApi
             services.AddSingleton<ICacheManager<AttachmentEntry>, LocalCacheManager<AttachmentEntry>>();
 
             services.AddScoped<SaSToken, SaSToken>();
-            services.AddScoped<ReclamatiiReport, ReclamatiiReport>();
-            services.AddScoped<StructuraReport, StructuraReport>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<AzureFileStorage, AzureFileStorage>();
             services.AddScoped<BlobAccessStorageService, BlobAccessStorageService>();
@@ -81,6 +82,9 @@ namespace WebApi
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
             services.AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>();
+            services.AddScoped<ITemplateDocumentWriter, TemplateDocWriter>((provider) => new TemplateDocWriter(Stream.Null));
+            services.AddScoped<StructuraReport, StructuraReport>();
+            services.AddScoped<SimpleReport, SimpleReport>();   
 #if !TEST
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();

@@ -133,7 +133,7 @@ namespace WorkSheetServices
                 {
                     worksheet.Range(@$"A{i}:{lastCol}{i}").Merge();
                     worksheet.Range(@$"A{i + 1}:{lastCol}{i + 1}").Merge();
-                    worksheet.Cell(i, 1).Value = val.First().NumeLocatie + ": " + string.Join("; ", val.DistinctBy(t => t.DataDocument).Select(x => x.DataDocument.ToString("dd/MM/yyyy")));
+                    worksheet.Cell(i, 1).Value = val.First().NumeLocatie + ": " + string.Join("; ", val.DistinctBy(t => t.DataDocument).Select(x => x.DataDocument.ToString("dd/MMM/yyyy")));
                     worksheet.Cell(i++, 1).Style.Font.SetFontColor(XLColor.RedMunsell);
 
                     worksheet.Cell(i, 1).Value = string.Join(";", val.DistinctBy(t => t.NumarComanda).Select(x => x.NumarComanda));
