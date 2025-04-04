@@ -11,6 +11,7 @@
         public string CurrentStatus { get; set; }
         public string ExternalItemId { get; set; }
         public DateTime Created { get; set; }
+        public bool HasAttachments { get; set; }
         public DateTime? Delivered { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }

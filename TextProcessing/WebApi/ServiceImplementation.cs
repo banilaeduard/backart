@@ -39,6 +39,7 @@ using ProjectKeys;
 using AzureTableRepository.Report;
 using WordDocumentServices;
 using WordDocumentServices.Services;
+using Microsoft.Extensions.Options;
 
 namespace WebApi
 {
@@ -84,7 +85,7 @@ namespace WebApi
             services.AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>();
             services.AddScoped<ITemplateDocumentWriter, TemplateDocWriter>((provider) => new TemplateDocWriter(Stream.Null));
             services.AddScoped<StructuraReport, StructuraReport>();
-            services.AddScoped<SimpleReport, SimpleReport>();   
+            services.AddScoped<SimpleReport, SimpleReport>();
 #if !TEST
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();
             services.AddScoped<IOrdersRepository, OrdersRepository>();
@@ -115,14 +116,25 @@ namespace WebApi
                 cfg.CreateMap<OrderModel, OrderEntry>();
                 cfg.CreateMap<OrderEntry, OrderModel>();
 
-                cfg.CreateMap<TransportEntry, TransportModel>();
-                cfg.CreateMap<TransportModel, TransportEntry>();
+                cfg.CreateMap<TransportEntry, TransportModel>()
+                    .ForMember(x => x.UserUploads, opt => opt.MapFrom(t => t.ExternalReferenceEntries));
+                cfg.CreateMap<TransportModel, TransportEntry>()
+                    .ForMember(x => x.ExternalReferenceEntries, opt => opt.MapFrom(t => t.UserUploads));
 
                 cfg.CreateMap<TransportItemEntry, TransportItemModel>();
                 cfg.CreateMap<TransportItemModel, TransportItemEntry>();
 
                 cfg.CreateMap<ExternalReferenceGroup, ExternalReference>()
                     .ForMember(x => x.Id, opt => opt.MapFrom(t => t.G_Id));
+
+                cfg.CreateMap<UserUpload, ExternalReferenceGroupEntry>()
+                    .ForMember(x => x.ExternalGroupId, opt => opt.MapFrom(t => t.Path))
+                    .ForMember(x => x.G_Id, opt => opt.MapFrom(t => t.Id))
+                    .ForMember(x => x.Date, opt => opt.MapFrom(t => t.Created));
+                cfg.CreateMap<ExternalReferenceGroupEntry, UserUpload>()
+                    .ForMember(x => x.Path, opt => opt.MapFrom(t => t.ExternalGroupId))
+                    .ForMember(x => x.Id, opt => opt.MapFrom(t => t.G_Id))
+                    .ForMember(x => x.Created, opt => opt.MapFrom(t => t.Date));
             });
 
             IMapper mapper = config.CreateMapper();

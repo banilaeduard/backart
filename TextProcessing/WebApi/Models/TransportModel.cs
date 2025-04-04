@@ -13,5 +13,6 @@
         public DateTime? Created { get; set; }
         public DateTime? Delivered { get; set; }
         public List<TransportItemModel> TransportItems { get; set; }
+        public List<UserUpload>? UserUploads { get; set; }
     }
 }

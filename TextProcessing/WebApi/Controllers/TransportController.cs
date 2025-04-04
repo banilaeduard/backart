@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Transports;
 using WebApi.Models;
 
@@ -14,7 +15,8 @@ namespace WebApi.Controllers
         public TransportController(
            ILogger<UsersController> logger,
            IMapper mapper,
-           ITransportRepository transportRepository
+           ITransportRepository transportRepository,
+           IExternalReferenceGroupRepository externalReferenceGroupRepository
            ) : base(logger, mapper)
         {
             _transportRepository = transportRepository;
@@ -29,19 +31,26 @@ namespace WebApi.Controllers
         [HttpGet("{transportId}")]
         public async Task<IActionResult> Get(int transportId)
         {
-            return Ok(await _transportRepository.GetTransport(transportId));
+            return Ok(mapper.Map<TransportModel>(await _transportRepository.GetTransport(transportId)));
         }
 
         [HttpPost]
         public async Task<IActionResult> SaveTransport(TransportModel transport)
         {
-            return Ok(await _transportRepository.SaveTransport(mapper.Map<TransportEntry>(transport)));
+            return Ok(mapper.Map<TransportModel>(await _transportRepository.SaveTransport(mapper.Map<TransportEntry>(transport))));
         }
 
         [HttpPatch]
         public async Task<IActionResult> UpdateTransport(TransportModel transport, [FromQuery] int[] transportItemsToRemove)
         {
-            return Ok(await _transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport), transportItemsToRemove ?? []));
+            return Ok(mapper.Map<TransportModel>(await _transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport), transportItemsToRemove ?? [])));
+        }
+
+        [HttpPost("attachments/{transportId}")]
+        public async Task<IActionResult> SaveTransportAttachments(List<UserUpload> userUploads, int transportId, [FromQuery] int[] transportAttachmentsToRemove)
+        {
+            var externalReferenceGroupEntries = await _transportRepository.HandleExternalAttachmentRefs([.. userUploads.Select(mapper.Map<ExternalReferenceGroupEntry>)], transportId, transportAttachmentsToRemove);
+            return Ok(externalReferenceGroupEntries.Select(mapper.Map<UserUpload>));
         }
 
         [HttpDelete("{transportId}")]

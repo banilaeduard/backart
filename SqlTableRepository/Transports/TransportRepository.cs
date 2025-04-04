@@ -1,6 +1,8 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
 using ProjectKeys;
+using RepositoryContract.ExternalReferenceGroup;
+using RepositoryContract.Tickets;
 using RepositoryContract.Transports;
 
 namespace SqlTableRepository.Transport
@@ -20,10 +22,14 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                var multi = await connection.QueryMultipleAsync($@"{TransportSql.GetTransports()} WHERE ID = {transportId}; {TransportSql.GetTransportItems(transportId)}");
+                var multi = await connection.QueryMultipleAsync($@"
+                                    {TransportSql.GetTransports()} WHERE ID = {transportId};
+                                    {TransportSql.GetTransportItems(transportId)};
+                                    {TransportSql.GetAttachmetns(transportId)};");
 
                 var transport = multi.Read<TransportEntry>().First();
                 transport.TransportItems = multi.Read<TransportItemEntry>().ToList();
+                transport.ExternalReferenceEntries = multi.Read<ExternalReferenceGroupEntry>().ToList();
 
                 return transport;
             }
@@ -66,9 +72,9 @@ namespace SqlTableRepository.Transport
                     transportEntry.Delivered,
                 });
 
+                populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);
                 if (transportEntry.TransportItems?.Count > 0)
                 {
-                    populateTransportItemsWithParentId(transportEntry.TransportItems, transport.Id);
                     var dParams = new DynamicParameters();
                     var fromSql = transportEntry.TransportItems.FromValues(dParams, "transportItemValues",
                         t => t.ExternalItemId2,
@@ -104,9 +110,10 @@ namespace SqlTableRepository.Transport
 
                 bool hasItems = transportEntry.TransportItems?.Count > 0;
                 bool hasRemove = detetedTransportItems.Count() > 0;
+                populateTransportItemsWithParentId(transportEntry.TransportItems ?? [], transport.Id);
+
                 if (hasItems || hasRemove)
                 {
-                    populateTransportItemsWithParentId(transportEntry.TransportItems ?? [], transport.Id);
                     var dParams = new DynamicParameters();
                     dParams.Add("detetedTransportItems", detetedTransportItems ?? []);
                     var fromSql = transportEntry.TransportItems!.FromValues(dParams, "transportItemValues",
@@ -134,6 +141,38 @@ namespace SqlTableRepository.Transport
             for (int i = 0; i < tItems.Count; i++)
             {
                 tItems[i].TransportId = transportId;
+            }
+        }
+
+        public async Task<List<ExternalReferenceGroupEntry>> HandleExternalAttachmentRefs(List<ExternalReferenceGroupEntry>? externalReferenceGroupEntries, int transportId, int[] deteledAttachments)
+        {
+            using (var connection = GetConnection())
+            {
+                if (externalReferenceGroupEntries?.Count > 0)
+                {
+                    for (int i = 0; i < externalReferenceGroupEntries.Count; i++)
+                    {
+                        externalReferenceGroupEntries[i].Id = transportId;
+                        externalReferenceGroupEntries[i].TableName = "Transport";
+                        externalReferenceGroupEntries[i].EntityType = nameof(AttachmentEntry);
+                    }
+                    var dParams = new DynamicParameters();
+                    var fromSql = externalReferenceGroupEntries!.FromValues(dParams, "externalAttachments",
+                        t => t.PartitionKey,
+                        t => t.ExternalGroupId,
+                        t => t.EntityType,
+                        t => t.Id,
+                        t => t.RowKey,
+                        t => t.TableName);
+                    return [..await connection.QueryAsync<ExternalReferenceGroupEntry>(
+                    $@"{TransportSql.InsertExternalAttachments(fromSql, "externalAttachments", transportId)};
+                       {TransportSql.GetAttachmetns(transportId)}", dParams)];
+                }
+                else if (deteledAttachments?.Count() > 0)
+                {
+                    await connection.ExecuteAsync(TransportSql.EnsureAttachmentDeleted(transportId), new { deteledAttachments });
+                }
+                return [];
             }
         }
 

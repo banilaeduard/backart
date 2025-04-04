@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
@@ -132,20 +133,6 @@ namespace WordDocument.Services
         {
             foreach (var sdt in mainPart.Document.Descendants<SdtElement>())
             {
-                //SdtProperties props = sdt.Elements<SdtProperties>().FirstOrDefault();
-                //if (props != null)
-                //{
-                //    Tag tag = props.Elements<Tag>().FirstOrDefault();
-                //    if (tag != null && tag.Val == title)
-                //    {
-                //        var drawing = sdt.Descendants<Drawing>().FirstOrDefault();
-                //        if (drawing != null)
-                //        {
-                //            var blip = drawing.Descendants<DocumentFormat.OpenXml.Drawing.Blip>().FirstOrDefault();
-                //            return blip?.Embed;
-                //        }
-                //    }
-                //}
                 if (kvp.ContainsKey(sdt.InnerText.Trim().ToLower()))
                 {
                     var textElement = sdt.Descendants<Text>().FirstOrDefault();
@@ -155,6 +142,22 @@ namespace WordDocument.Services
                     }
                 }
             }
+        }
+
+        public static void AddImagePart(MainDocumentPart mainPart, Stream imageStream, string placeholderTag)
+        {
+            var sdt = mainPart.Document.Body.Descendants<SdtElement>()
+                .FirstOrDefault(s => s.SdtProperties.GetFirstChild<Tag>()?.Val == placeholderTag);
+            if (sdt == null)
+                return;
+
+            var imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+            imagePart.FeedData(imageStream);
+
+            var element = DocXDrawingService.CreateFloatingImage(mainPart.GetIdOfPart(imagePart), Guid.NewGuid().ToString(), 100, 100);
+
+            sdt.RemoveAllChildren();
+            sdt.AppendChild(new Inline(new Run(element)));
         }
 
         public static Table FindTableByTagOrDefault(MainDocumentPart documentPart, string tag)
