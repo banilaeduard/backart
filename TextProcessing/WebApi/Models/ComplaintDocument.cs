@@ -1,4 +1,4 @@
-﻿ using WordDocumentServices;
+﻿using WordDocumentServices;
 
 namespace WebApi.Models
 {
@@ -24,8 +24,8 @@ namespace WebApi.Models
             }
             if (context.ContainsKey("identity"))
             {
-                using (var img = context.GenerateQrCode(context["identity"] as string, 150))
-                    visitor.WriteImage(img, "identity", 150, 150);
+                using (var img = context.GenerateQrCode(context["identity"] as string, context["identityD"] as string, context.QRSIZE))
+                    visitor.WriteImage(img, "identity", context.QRSIZE, context.QRSIZE);
             }
         }
 

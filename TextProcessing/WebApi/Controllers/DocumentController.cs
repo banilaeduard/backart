@@ -47,7 +47,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GenerateTransportPapers(int transportId)
         {
             var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport' AND Ref_count > 0");
-            Stream tempStream = TempFileHelper.CreateTempFile();
+            var tempStream = TempFileHelper.CreateTempFile();
 
             var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream);
 
@@ -55,9 +55,8 @@ namespace WebApi.Controllers
             {
                 await CloneDocument(externalRefs[i].ExternalGroupId, wordDoc.MainDocumentPart!, 1, i > 0);
             }
-            wordDoc.MainDocumentPart!.Document.Save();
-            await WriteStreamToResponse(tempStream, @$"{transportId}.docx", octetStream);
             wordDoc.Dispose();
+            await WriteStreamToResponse(tempStream, @$"{transportId}.docx", octetStream);
             return new EmptyResult();
         }
 
@@ -229,7 +228,11 @@ namespace WebApi.Controllers
                 }
                 if (oldEntity == null || oldEntity.RowKey != md5 || !await _storageService.Exists(fName))
                 {
-                    var ctx = new Dictionary<string, object>() { { "driver_name", transport.DriverName }, { "identity", $@"TransportEntry/{transport.Id}/{DateTime.Now.ToString("dd-MMM-yyyy")}" } };
+                    var ctx = new Dictionary<string, object>() { 
+                        { "driver_name", transport.DriverName }, 
+                        { "identityD", $@"{transport.Id}" },
+                        { "identity", $@"{nameof(TransportEntry)}" }
+                    };
                     // should handle more generic Reports
                     if (item is ComplaintDocument complaint)
                     {
@@ -262,8 +265,15 @@ namespace WebApi.Controllers
 
         private async Task CloneDocument(string fNameSource, MainDocumentPart target, int duplicates, bool skipFirstpageBreak = false)
         {
-            using var savedStream = _storageService.Access(fNameSource, out var contentType);
-            await DocXServiceHelper.CloneDocument(savedStream, target, duplicates, _cryptoService.GetMd5, skipFirstpageBreak);
+            try
+            {
+                using var savedStream = _storageService.Access(fNameSource, out var contentType);
+                await DocXServiceHelper.CloneDocument(savedStream, target, duplicates, _cryptoService.GetMd5, skipFirstpageBreak);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, ex.Message);
+            }
         }
     }
 }

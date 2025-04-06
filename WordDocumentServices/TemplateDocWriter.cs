@@ -1,6 +1,7 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ServiceImplementation;
+using ServiceInterface.Storage;
 using WordDocument.Services;
 
 namespace WordDocumentServices.Services
@@ -10,10 +11,11 @@ namespace WordDocumentServices.Services
         private bool closeStream = false;
 
         private Stream stream;
+        private ICryptoService _cryptoService;
         private WordprocessingDocument doc;
         private Dictionary<string, Table> tableCache = new Dictionary<string, Table>();
 
-        public TemplateDocWriter(Stream fStream)
+        public TemplateDocWriter(Stream fStream, ICryptoService cryptoService)
         {
             stream = fStream;
             doc = WordprocessingDocument.Open(stream, true, new OpenSettings()
@@ -21,6 +23,7 @@ namespace WordDocumentServices.Services
                 AutoSave = true,
             });
             closeStream = stream != Stream.Null;
+            _cryptoService = cryptoService;
         }
 
         public void Dispose()
@@ -40,7 +43,7 @@ namespace WordDocumentServices.Services
 
         public ITemplateDocumentWriter SetTemplate(string templatePath)
         {
-            return new TemplateDocWriter(TempFileHelper.CreateTempFile(templatePath));
+            return new TemplateDocWriter(TempFileHelper.CreateTempFile(templatePath), _cryptoService);
         }
 
         public void WriteToMainDoc(Dictionary<string, string> keyValuePairs)
@@ -50,7 +53,7 @@ namespace WordDocumentServices.Services
 
         public void WriteImage(Stream imagePath, string tagValue, int length = 100, int width = 100)
         {
-            DocXServiceHelper.AddImagePart(doc.MainDocumentPart!, imagePath, tagValue, length, width);
+            DocXServiceHelper.AddImagePart(doc.MainDocumentPart!, imagePath, tagValue, length, width, _cryptoService.GetMd5);
         }
 
         public void WriteToTable(string tagName, string[][] values)

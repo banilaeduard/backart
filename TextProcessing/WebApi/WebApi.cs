@@ -65,12 +65,9 @@ namespace WebApi
                         var app = builder.Build();
 
                          app.UseCors(x => x
-                            .SetIsOriginAllowed(origin => {
-                                ServiceEventSource.Current.ServiceMessage(serviceContext, @$"Origin allowed: {origin}");
-                                return true;
-                            })
-                         .AllowAnyMethod()
-                         .AllowAnyHeader()
+                            .SetIsOriginAllowed(origin => true)
+                            .AllowAnyMethod()
+                            .AllowAnyHeader()
                             .AllowCredentials());
 
                         app.UseRouting();

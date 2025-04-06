@@ -3,6 +3,7 @@
     public class ContextMap : Dictionary<string, object>
     {
         public int CurrentIndex = 0;
+        public readonly int QRSIZE = 150;
         private QrCodeService qrCodeSvc = new();
 
         public ContextMap(Dictionary<string, object> ctx)
@@ -55,9 +56,21 @@
             return CurrentIndex = 0;
         }
 
-        public Stream GenerateQrCode(string info, int size)
+        public Stream GenerateQrCode(string title, string info, int size)
         {
-            return qrCodeSvc.GenerateQrCode(info, ZXing.QrCode.Internal.ErrorCorrectionLevel.H, size);
+            return qrCodeSvc.GenerateQrCode($@"{title} :: {info}", ZXing.QrCode.Internal.ErrorCorrectionLevel.H, size);
+        }
+
+        private string WrapInCard(string title, string value)
+        {
+            return @$"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:{title}
+DESCRIPTION:{value}
+DTSTART:{DateTime.UtcNow.ToString("yyyyMMddTHHmmss")}
+END:VEVENT
+END:VCALENDAR";
         }
     }
 }

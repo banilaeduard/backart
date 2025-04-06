@@ -144,14 +144,23 @@ namespace WordDocument.Services
             }
         }
 
-        public static void AddImagePart(MainDocumentPart mainPart, Stream imageStream, string placeholderTag, int length = 100, int width = 100)
+        public static void AddImagePart(MainDocumentPart mainPart, Stream imageStream, string placeholderTag, int length = 100, int width = 100, Func<string, string> GetMd5 = null)
         {
             var sdt = mainPart.Document.Body.Descendants<SdtElement>()
                 .FirstOrDefault(s => s.SdtProperties.GetFirstChild<Tag>()?.Val == placeholderTag);
             if (sdt == null)
                 return;
 
-            var imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+            ImagePart imagePart = null;
+            if (GetMd5 != null)
+            {
+                using (var strReader = new StreamReader(imageStream, leaveOpen: true))
+                {
+                    imagePart = mainPart.AddImagePart(ImagePartType.Jpeg, $@"rId{GetMd5(strReader.ReadToEnd()).Substring(0, 6)}");
+                    imageStream.Seek(0, SeekOrigin.Begin);
+                }
+            }
+            else imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
             imagePart.FeedData(imageStream);
 
             var element = DocXDrawingService.CreateFloatingImage(mainPart.GetIdOfPart(imagePart), Guid.NewGuid().ToString(), length, width);

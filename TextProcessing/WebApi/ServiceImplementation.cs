@@ -83,7 +83,7 @@ namespace WebApi
             services.AddScoped<IReportEntryRepository, ReportEntryRepository>();
             services.AddScoped<ITransportRepository, TransportRepository>();
             services.AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>();
-            services.AddScoped<ITemplateDocumentWriter, TemplateDocWriter>((provider) => new TemplateDocWriter(Stream.Null));
+            services.AddScoped<ITemplateDocumentWriter, TemplateDocWriter>((provider) => new TemplateDocWriter(Stream.Null, provider.GetRequiredService<ICryptoService>()));
             services.AddScoped<StructuraReport, StructuraReport>();
             services.AddScoped<SimpleReport, SimpleReport>();
 #if !TEST

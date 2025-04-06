@@ -11,18 +11,18 @@ public class QrCodeService
         using var skStream = new SKManagedStream(image, true);
         using var bitmap = SKBitmap.Decode(skStream);
 
-        return Decode(bitmap);
+        return DecodeQrCode(bitmap);
     }
 
-    public string? Decode(SKBitmap bitmap)
+    public string? DecodeQrCode(SKBitmap bitmap)
     {
         var reader = new BarcodeReaderGeneric
         {
-            AutoRotate = true,
+            AutoRotate = false,
             Options = new DecodingOptions()
             {
-                TryInverted = true,
-                TryHarder = true,
+                TryInverted = false,
+                TryHarder = false,
             }
         };
 

@@ -27,6 +27,14 @@
 
             return fileStream;
         }
+
+        public static async Task<Stream> CreateTempFile(byte[] byteArr, string fPath = null)
+        {
+            string tempFilePath = fPath ?? Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
+            var fileStream = new FileStream(tempFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read, 4096, FileOptions.DeleteOnClose);
+            fileStream.Write(byteArr, 0, byteArr.Count() - 1);
+            return fileStream;
+        }
     }
 
     /// <summary>
