@@ -48,9 +48,9 @@ namespace WordDocumentServices.Services
             DocXServiceHelper.ReplaceContentControlText(doc.MainDocumentPart!, keyValuePairs);
         }
 
-        public void WriteImage(Stream imagePath, string tagValue)
+        public void WriteImage(Stream imagePath, string tagValue, int length = 100, int width = 100)
         {
-            DocXServiceHelper.AddImagePart(doc.MainDocumentPart!, imagePath, tagValue);
+            DocXServiceHelper.AddImagePart(doc.MainDocumentPart!, imagePath, tagValue, length, width);
         }
 
         public void WriteToTable(string tagName, string[][] values)

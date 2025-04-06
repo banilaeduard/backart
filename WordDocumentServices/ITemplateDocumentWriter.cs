@@ -5,7 +5,7 @@
         ITemplateDocumentWriter SetTemplate(string templatePath);
         void WriteToTable(string tagName, string[][] values);
         void WriteToMainDoc(Dictionary<string, string> keyValuePairs);
-        void WriteImage(Stream imagePath, string tagValue);
+        void WriteImage(Stream imagePath, string tagValue, int legnth = 100, int width = 100);
         Stream GetStream();
     }
 }

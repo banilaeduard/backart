@@ -106,6 +106,12 @@ namespace WebApi.Models
             {
                 entry.Accept(visitor, contextItems, context);
             }
+
+            if (context.ContainsKey("identity"))
+            {
+                using (var img = context.GenerateQrCode(context["identity"] as string, 150))
+                    visitor.WriteImage(img, "identity", 150, 150);
+            }
         }
 
         public string GetMd5(Func<string, string> getMd5)

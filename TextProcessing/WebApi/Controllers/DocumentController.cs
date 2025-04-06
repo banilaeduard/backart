@@ -229,7 +229,7 @@ namespace WebApi.Controllers
                 }
                 if (oldEntity == null || oldEntity.RowKey != md5 || !await _storageService.Exists(fName))
                 {
-                    var ctx = new Dictionary<string, object>() { { "driver_name", transport.DriverName } };
+                    var ctx = new Dictionary<string, object>() { { "driver_name", transport.DriverName }, { "identity", $@"TransportEntry/{transport.Id}/{DateTime.Now.ToString("dd-MMM-yyyy")}" } };
                     // should handle more generic Reports
                     if (item is ComplaintDocument complaint)
                     {

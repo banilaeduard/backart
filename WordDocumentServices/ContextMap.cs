@@ -3,6 +3,8 @@
     public class ContextMap : Dictionary<string, object>
     {
         public int CurrentIndex = 0;
+        private QrCodeService qrCodeSvc = new();
+
         public ContextMap(Dictionary<string, object> ctx)
         {
             if (ctx != null)
@@ -51,6 +53,11 @@
         public int ResetIndex()
         {
             return CurrentIndex = 0;
+        }
+
+        public Stream GenerateQrCode(string info, int size)
+        {
+            return qrCodeSvc.GenerateQrCode(info, ZXing.QrCode.Internal.ErrorCorrectionLevel.H, size);
         }
     }
 }

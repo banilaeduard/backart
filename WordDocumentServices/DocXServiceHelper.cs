@@ -144,7 +144,7 @@ namespace WordDocument.Services
             }
         }
 
-        public static void AddImagePart(MainDocumentPart mainPart, Stream imageStream, string placeholderTag)
+        public static void AddImagePart(MainDocumentPart mainPart, Stream imageStream, string placeholderTag, int length = 100, int width = 100)
         {
             var sdt = mainPart.Document.Body.Descendants<SdtElement>()
                 .FirstOrDefault(s => s.SdtProperties.GetFirstChild<Tag>()?.Val == placeholderTag);
@@ -154,7 +154,7 @@ namespace WordDocument.Services
             var imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
             imagePart.FeedData(imageStream);
 
-            var element = DocXDrawingService.CreateFloatingImage(mainPart.GetIdOfPart(imagePart), Guid.NewGuid().ToString(), 100, 100);
+            var element = DocXDrawingService.CreateFloatingImage(mainPart.GetIdOfPart(imagePart), Guid.NewGuid().ToString(), length, width);
 
             sdt.RemoveAllChildren();
             sdt.AppendChild(new Inline(new Run(element)));

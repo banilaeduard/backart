@@ -103,7 +103,7 @@ namespace WordDocument.Services
                 new DW.Anchor(
                     new DW.SimplePosition() { X = 0L, Y = 0L },
                     new DW.HorizontalPosition(
-                        new DW.PositionOffset(@$"-{(int)(1.5 * widthEmu)}")  // Adjust to fit inside document
+                        new DW.PositionOffset(@$"-{(int)(1 * widthEmu)}")  // Adjust to fit inside document
                     )
                     { RelativeFrom = DW.HorizontalRelativePositionValues.RightMargin },  // Align to margin, not beyond
 

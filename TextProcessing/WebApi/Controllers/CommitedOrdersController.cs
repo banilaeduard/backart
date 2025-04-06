@@ -93,7 +93,8 @@ namespace WebApi.Controllers
         {
             try
             {
-                using var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", document.LocationCode, document, null);
+                using var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", document.LocationCode, document,
+                    new() { { "identity", @$"ComplaintDocument/{document.LocationName}/{document.Date.ToString("dd-MMM-yyyy")}" } });
                 await WriteStreamToResponse(reportStream, @$"Reclamatie-{document.LocationName}.docx", wordType);
                 return new EmptyResult();
             }
@@ -109,7 +110,8 @@ namespace WebApi.Controllers
         {
             try
             {
-                using var reportStream = await _structuraReport.GenerateReport(reportName, commitedOrder.CodLocatie, commitedOrder, null);
+                using var reportStream = await _structuraReport.GenerateReport(reportName, commitedOrder.CodLocatie, commitedOrder,
+                    new() { { "identity", @$"CommitedOrder/{commitedOrder.Entry[0].NumarIntern}/{DateTime.Now.ToString("dd-MMM-yyyy")}" } });
                 await WriteStreamToResponse(reportStream, $"Transport-{reportName}-{commitedOrder.NumeLocatie}.docx", wordType);
 
                 return new EmptyResult();
