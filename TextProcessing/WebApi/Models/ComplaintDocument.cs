@@ -8,6 +8,7 @@ namespace WebApi.Models
         public string LocationName { get; set; }
         public string LocationCode { get; set; }
         public List<ComplaintEntry> complaintEntries { get; set; }
+        public int? TransportId { get; set; }
 
         public void Accept(ITemplateDocumentWriter visitor, List<int> contextItems, ContextMap context)
         {

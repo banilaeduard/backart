@@ -17,6 +17,7 @@ using PollerRecurringJob.Interfaces;
 using WebApi.Services;
 using EntityDto.CommitedOrders;
 using WorkSheetServices;
+using RepositoryContract.Transports;
 
 namespace WebApi.Controllers
 {
@@ -94,9 +95,9 @@ namespace WebApi.Controllers
             try
             {
                 using var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", document.LocationCode, document,
-                    new() { 
-                        { "identity", @$"ComplaintDocument" },
-                        { "identityD", @$"{document.LocationName} - {document.Date.ToString("dd-MMM-yyyy")}" }
+                    new() {
+                        { "identity", nameof(TransportEntry) },
+                        { "identityD", document.TransportId?.ToString() }
                     });
                 await WriteStreamToResponse(reportStream, @$"Reclamatie-{document.LocationName}.docx", wordType);
                 return new EmptyResult();
@@ -114,9 +115,9 @@ namespace WebApi.Controllers
             try
             {
                 using var reportStream = await _structuraReport.GenerateReport(reportName, commitedOrder.CodLocatie, commitedOrder,
-                    new() { 
-                        { "identity", @$"CommitedOrder {DateTime.Now.ToString("dd-MMM-yyyy")}" },
-                        { "identityD", @$"{string.Join("; ", commitedOrder.Entry.Select(x => x.NumarIntern).Distinct())}" }
+                    new() {
+                        { "identity", nameof(TransportEntry) },
+                        { "identityD", commitedOrder.TransportId?.ToString() }
                     });
                 await WriteStreamToResponse(reportStream, $"Transport-{reportName}-{commitedOrder.NumeLocatie}.docx", wordType);
 
