@@ -17,7 +17,7 @@ namespace ServiceImplementation
 
                     bmp.Save(fStream, System.Drawing.Imaging.ImageFormat.Png);
                     fStream.Seek(0, SeekOrigin.Begin);
-                    if (document.PageCount == i + 1) document.Dispose();
+                    if (document.PageCount == i + 1) { fs.Close(); document.Dispose(); }
                     yield return SKBitmap.Decode(fStream);
                 }
             }

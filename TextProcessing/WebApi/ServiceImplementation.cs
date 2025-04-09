@@ -117,7 +117,10 @@ namespace WebApi
                 cfg.CreateMap<OrderEntry, OrderModel>();
 
                 cfg.CreateMap<TransportEntry, TransportModel>()
-                    .ForMember(x => x.UserUploads, opt => opt.MapFrom(t => t.ExternalReferenceEntries));
+                    .ForMember(x => x.UserUploads, opt => opt.MapFrom(t => t.ExternalReferenceEntries)).AfterMap((src, dest) =>
+                    {
+                        if (!dest.UserUploads?.Any() == true) dest.UserUploads = null;
+                    });
                 cfg.CreateMap<TransportModel, TransportEntry>()
                     .ForMember(x => x.ExternalReferenceEntries, opt => opt.MapFrom(t => t.UserUploads));
 

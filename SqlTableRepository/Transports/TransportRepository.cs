@@ -164,15 +164,13 @@ namespace SqlTableRepository.Transport
                         t => t.Id,
                         t => t.RowKey,
                         t => t.TableName);
-                    return [..await connection.QueryAsync<ExternalReferenceGroupEntry>(
-                    $@"{TransportSql.InsertExternalAttachments(fromSql, "externalAttachments", transportId)};
-                       {TransportSql.GetAttachmetns(transportId)}", dParams)];
+                    await connection.ExecuteAsync($@"{TransportSql.InsertExternalAttachments(fromSql, "externalAttachments", transportId)};", dParams);
                 }
-                else if (deteledAttachments?.Count() > 0)
+                if (deteledAttachments?.Count() > 0)
                 {
                     await connection.ExecuteAsync(TransportSql.EnsureAttachmentDeleted(transportId), new { deteledAttachments });
                 }
-                return [];
+                return [.. await connection.QueryAsync<ExternalReferenceGroupEntry>(TransportSql.GetAttachmetns(transportId))];
             }
         }
 
