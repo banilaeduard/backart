@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Diagnostics;
 using ProjectKeys;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 
 namespace WebApi
 {
@@ -76,9 +79,10 @@ namespace WebApi
                         app.MapControllers();
 
                         app.UseExceptionHandler(cfg => cfg.Run(async context => {
+                            var logger = context.RequestServices.GetRequiredService<ILogger<WebApi>>();
                             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
                             var exception = exceptionHandlerPathFeature.Error;
-                            ServiceEventSource.Current.ServiceMessage(serviceContext, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
+                            logger.LogError(new EventId(22), "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
                         }));
 
                         //app.Services.GetRequiredService<IServiceScopeFactory>()
@@ -97,6 +101,7 @@ namespace WebApi
             {
                 logging.ClearProviders(); // Remove default providers
                 logging.AddApplicationInsights(telemetryConfiguration => {
+                    telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder.Use((next) => new ExceptionOnlyTelemetryProcessor(next)).Build();
                     telemetryConfiguration.ConnectionString = Environment.GetEnvironmentVariable(KeyCollection.InstrumentationConnectionString)!;
                 }, loggerOptions =>
                 {
@@ -148,6 +153,26 @@ namespace WebApi
                 opts.SignIn.RequireConfirmedEmail = false;
                 opts.Lockout.MaxFailedAccessAttempts = 30;
             });
+        }
+    }
+
+    public class ExceptionOnlyTelemetryProcessor : ITelemetryProcessor
+    {
+        private ITelemetryProcessor _next;
+
+        public ExceptionOnlyTelemetryProcessor(ITelemetryProcessor next)
+        {
+            _next = next;
+        }
+
+        public void Process(ITelemetry item)
+        {
+            if (item is ExceptionTelemetry)
+            {
+                // Allow exception telemetry through
+                _next.Process(item);
+            }
+            // Otherwise, ignore the telemetry item (not send it)
         }
     }
 }
