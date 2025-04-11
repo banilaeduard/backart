@@ -79,7 +79,7 @@ namespace WebApi.Controllers
 
             await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
             {
-                DestinationFolder = "_PENDING_",
+                DestinationFolder = "Archive",
                 Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
             });
             return Ok(TaskModel.From(tasks, await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]));

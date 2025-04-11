@@ -31,7 +31,7 @@ namespace ServiceImplementation
             {
                 if (retryCount < maxCount)
                 {
-                    await Task.Delay((retryCount + 1) * 1000);
+                    await Task.Delay((retryCount + 1) * 2000);
                     return await GetStreamAsync(pdfPath, ++retryCount, maxCount);
                 }
                 throw;
