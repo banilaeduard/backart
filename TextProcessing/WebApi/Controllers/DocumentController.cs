@@ -46,7 +46,7 @@ namespace WebApi.Controllers
         [HttpGet("transport-papers/{transportId}")]
         public async Task<IActionResult> GenerateTransportPapers(int transportId)
         {
-            var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport' AND Ref_count > 0");
+            var externalRefs = await _externalReferenceGroupRepository.GetExternalReferences(@$"Id = {transportId} AND TableName = 'Transport' AND EntityType='Transport' AND Ref_count > 0");
             var tempStream = TempFileHelper.CreateTempFile();
 
             var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream);
