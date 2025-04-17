@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="PollerRecurringJobPkg" Version="1.0.0" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <!-- The content will be generated during build -->
+  <ServiceTypes>
+    <StatefulServiceType ServiceTypeName="PollerRecurringJobActorServiceType">
+      <Extensions>
+        <Extension Name="__GeneratedServiceType__" GeneratedId="41155992-6e4f-4bfb-9709-39294ed9790e|None">
+          <GeneratedNames xmlns="http://schemas.microsoft.com/2015/03/fabact-no-schema">
+            <DefaultService Name="PollerRecurringJobActorService" />
+            <ReplicatorEndpoint Name="PollerRecurringJobActorServiceReplicatorEndpoint" />
+            <ReplicatorConfigSection Name="PollerRecurringJobActorServiceReplicatorConfig" />
+            <ReplicatorSecurityConfigSection Name="PollerRecurringJobActorServiceReplicatorSecurityConfig" />
+            <ServiceEndpointV2_1 Name="PollerRecurringJobActorServiceEndpointV2_1" />
+          </GeneratedNames>
+        </Extension>
+      </Extensions>
+    </StatefulServiceType>
+  </ServiceTypes>
+  <CodePackage Name="Code" Version="1.0.0">
+    <EntryPoint>
+      <ExeHost>
+        <Program>PollerRecurringJob.exe</Program>
+      </ExeHost>
+    </EntryPoint>
+    <EnvironmentVariables>
+      <EnvironmentVariable Name="external_sql_server" Value="" />
+      <EnvironmentVariable Name="storage_connection" Value="" />
+      <EnvironmentVariable Name="ConnectionString" Value="" />
+      <EnvironmentVariable Name="ConnectionString_prod" Value="" />
+      <EnvironmentVariable Name="blob_share_name" Value="" />
+      <EnvironmentVariable Name="file_share_name" Value="" />
+    </EnvironmentVariables>
+  </CodePackage>
+  <ConfigPackage Name="Config" Version="1.0.0" />
+  <Resources>
+    <Endpoints>
+      <!-- This endpoint is used by the communication listener to obtain the port on which to 
+           listen. Please note that if your service is partitioned, this port is shared with 
+           replicas of different partitions that are placed in your code. -->
+      <Endpoint Name="PollerRecurringJobActorServiceEndpointV2_1" />
+      <Endpoint Name="PollerRecurringJobActorServiceReplicatorEndpoint" />
+    </Endpoints>
+  </Resources>
+</ServiceManifest>
