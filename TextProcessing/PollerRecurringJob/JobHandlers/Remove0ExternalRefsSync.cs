@@ -9,8 +9,8 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var externalRefRepository = jobContext.provider.GetService<IExternalReferenceGroupRepository>()!;
-            var storageService = jobContext.provider.GetService<IStorageService>()!;
+            var externalRefRepository = jobContext.provider.GetRequiredService<IExternalReferenceGroupRepository>()!;
+            var storageService = jobContext.provider.GetRequiredService<IStorageService>()!;
 
             var dateTime = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
             var externalRefs = await externalRefRepository.GetExternalReferences(@$"Ref_count < 1 AND TableName in ('AttachmentEntry', 'Transport') and Date <= '{dateTime}'
@@ -32,7 +32,7 @@ namespace PollerRecurringJob.JobHandlers
             }
             await externalRefRepository.DeleteExternalRefs([.. externalRefs.Select(x => x.G_Id)]);
 
-            var ticketRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
+            var ticketRepository = jobContext.provider.GetRequiredService<ITicketEntryRepository>()!;
 
             externalRefs = await externalRefRepository.GetExternalReferences(@$"Ref_count < 1 AND TableName = 'TicketEntity' and Date <= '{dateTime}'
                 ORDER BY G_Id desc

@@ -11,12 +11,12 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            IWorkflowTrigger service = jobContext.provider.GetService<IWorkflowTrigger>()!;
+            IWorkflowTrigger service = jobContext.provider.GetRequiredService<IWorkflowTrigger>()!;
             var items = await service.GetWork<List<AddMailToTask>>("addmailtotask");
 
             if (!items.Any()) return;
 
-            ITaskRepository repo = jobContext.provider.GetService<ITaskRepository>()!;
+            ITaskRepository repo = jobContext.provider.GetRequiredService<ITaskRepository>()!;
             var tasks = await repo.GetTasks(TaskInternalState.Open);
             var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 

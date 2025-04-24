@@ -9,8 +9,8 @@ namespace PollerRecurringJob.JobHandlers
         static readonly string AttachTempArchive = $"{nameof(AttachmentEntry)}ARCHIVE";
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var ticketRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
-            var storageService = jobContext.provider.GetService<IStorageService>()!;
+            var ticketRepository = jobContext.provider.GetRequiredService<ITicketEntryRepository>()!;
+            var storageService = jobContext.provider.GetRequiredService<IStorageService>()!;
 
             var tickets = await ticketRepository.GetAll();
 

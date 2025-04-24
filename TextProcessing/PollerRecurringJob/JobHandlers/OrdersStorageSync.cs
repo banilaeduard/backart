@@ -9,10 +9,10 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var ordersImportsRepository = jobContext.provider.GetService<IImportsRepository>()!;
+            var ordersImportsRepository = jobContext.provider.GetRequiredService<IImportsRepository>()!;
 
-            var commitedOrdersRepository = jobContext.provider.GetService<ICommitedOrdersRepository>()!;
-            var ordersRepository = jobContext.provider.GetService<IOrdersRepository>()!;
+            var commitedOrdersRepository = jobContext.provider.GetRequiredService<ICommitedOrdersRepository>()!;
+            var ordersRepository = jobContext.provider.GetRequiredService<IOrdersRepository>()!;
 
             var lastCommited = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var lastOrder = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);

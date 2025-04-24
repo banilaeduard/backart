@@ -2,7 +2,6 @@
 using RepositoryContract;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Report;
-using WebApi.Controllers;
 using WordDocumentServices;
 
 namespace WebApi.Services
@@ -66,14 +65,17 @@ namespace WebApi.Services
             var countMap = new Dictionary<string, (int count, Report report)>();
             foreach (var kvp in kvps)
             {
-                var reports = rootProductMapping[kvp.Key];
-                foreach (var report in reports)
+                if (rootProductMapping.ContainsKey(kvp.Key))
                 {
-                    if (!countMap.ContainsKey(report.Display))
+                    var reports = rootProductMapping[kvp.Key];
+                    foreach (var report in reports)
                     {
-                        countMap[report.Display] = (0, report);
+                        if (!countMap.ContainsKey(report.Display))
+                        {
+                            countMap[report.Display] = (0, report);
+                        }
+                        countMap[report.Display] = (countMap[report.Display].count + kvp.Value, countMap[report.Display].report);
                     }
-                    countMap[report.Display] = (countMap[report.Display].count + kvp.Value, countMap[report.Display].report);
                 }
             }
             var items = countMap.Select(t => t.Value).OrderBy(t => t.report.Order).ToList();

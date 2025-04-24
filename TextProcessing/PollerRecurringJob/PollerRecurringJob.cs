@@ -38,6 +38,8 @@ namespace PollerRecurringJob
         internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromMinutes(2);
         internal static readonly string RemoveLostAttachmentsRefs = "RemoveLostAttachments";
         internal static readonly TimeSpan RemoveLostAttachmentsRefsDue = TimeSpan.FromMinutes(3);
+        internal static readonly string TransportJob = "TransportJob";
+        internal static readonly TimeSpan TransportJobDue = TimeSpan.FromMinutes(3);
         internal readonly ServiceProvider provider;
 
         /// <summary>
@@ -78,6 +80,10 @@ namespace PollerRecurringJob
                 else if (reminderName == RemoveLostAttachmentsRefs)
                 {
                     await RemoveLostAttachments.Execute(this);
+                }
+                else if (reminderName == TransportJob)
+                {
+                    await TransportAttachment.Execute(this);
                 }
             }
             catch (Exception ex)
@@ -124,6 +130,12 @@ namespace PollerRecurringJob
                 await UnregisterReminderAsync(previousRegistration);
             }
             catch (ReminderNotFoundException) { }
+            try
+            {
+                var previousRegistration = GetReminder(TransportJob);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
 
 
             await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(3), SyncOrdersDue);
@@ -132,11 +144,13 @@ namespace PollerRecurringJob
             await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(30), SyncMailsDue);
             await RegisterReminderAsync(Remove0ExternalRefs, null, TimeSpan.FromMinutes(0), Remove0ExternalRefsDue);
             await RegisterReminderAsync(RemoveLostAttachmentsRefs, null, TimeSpan.FromMinutes(0), RemoveLostAttachmentsRefsDue);
+            await RegisterReminderAsync(TransportJob, null, TimeSpan.FromMinutes(0), TransportJobDue);
         }
 
         public async Task SyncOrdersAndCommited()
         {
             await OrdersStorageSync.Execute(this);
+            _ = Task.Run(async () => await RegisterReminder());
         }
 
         public async Task Sync()

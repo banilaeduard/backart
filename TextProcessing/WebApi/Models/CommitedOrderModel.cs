@@ -1,5 +1,4 @@
 ﻿using EntityDto.CommitedOrders;
-using EntityDto.Reports;
 using WordDocumentServices;
 
 namespace WebApi.Models

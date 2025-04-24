@@ -12,7 +12,7 @@ namespace PollerRecurringJob.JobHandlers
     {
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            IWorkflowTrigger client = jobContext.provider.GetService<IWorkflowTrigger>()!;
+            IWorkflowTrigger client = jobContext.provider.GetRequiredService<IWorkflowTrigger>()!;
             var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
 
             var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());

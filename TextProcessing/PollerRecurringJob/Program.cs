@@ -13,12 +13,14 @@ using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
+using RepositoryContract.Transports;
 using ServiceImplementation.Caching;
 using ServiceInterface;
 using ServiceInterface.Storage;
 using SqlTableRepository.ExternalReferenceGroup;
 using SqlTableRepository.Orders;
 using SqlTableRepository.Tasks;
+using SqlTableRepository.Transport;
 using System.Globalization;
 using System.Threading;
 
@@ -75,6 +77,7 @@ namespace PollerRecurringJob
                     .AddScoped<ICacheManager<TicketEntity>, AlwaysGetCacheManager<TicketEntity>>()
                     .AddScoped<ICacheManager<AttachmentEntry>, AlwaysGetCacheManager<AttachmentEntry>>()
                     .AddScoped<ITicketEntryRepository, TicketEntryRepository>()
+                    .AddScoped<ITransportRepository, TransportRepository>()
                     .BuildServiceProvider();
         }
     }
