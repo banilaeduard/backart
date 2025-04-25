@@ -99,7 +99,7 @@ namespace WebApi.Models
                 { "date_field", context.GetOrDefault("date_field", DateTime.Now.ToString("dd/MMM/yy")) },
                 { "magazin_field", context.GetOrDefault("magazin_field", NumeLocatie) },
                 { "driver_name", context.GetOrDefault("driver_name", context.GetDots()) },
-                { "numar_aviz", context.GetOrDefault("numar_aviz", NumarAviz.HasValue ? NumarAviz.Value.ToString() : context.GetDots()) }
+                { "aviz_field", context.GetOrDefault("aviz_field", NumarAviz.HasValue ? NumarAviz.Value.ToString() : context.GetDots()) }
             });
 
             foreach (var entry in Entry)
