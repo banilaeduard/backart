@@ -241,7 +241,7 @@ namespace WebApi.Controllers
                     else if (item is CommitedOrdersBase c)
                     {
                         if (c.NumarAviz.HasValue)
-                            ctx.Add("aviz_field", c.NumarAviz.Value);
+                            ctx.Add("aviz_field", c.NumarAviz.Value.ToString());
                         reportStream = await _structuraReport.GenerateReport("Accesorii", c.CodLocatie, c, ctx);
                     }
 
