@@ -84,9 +84,22 @@ namespace WebApi.Controllers
         [HttpPost("get")]
         public async Task<IActionResult> GetCommitedOrdersIds(int[] ids)
         {
+
+            IList<ProductCodeStatsEntry>? productLinkWeights = null;
+            IList<ProductStatsEntry>? weights = null;
+            try
+            {
+
+                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
+                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(new EventId(69), ex, "GetCommitedOrders");
+            }
             var orders = await commitedOrdersRepository.GetCommitedOrders(ids);
 
-            return Ok(CommitedOrdersResponse.From(orders, [], [], [], [], []));
+            return Ok(CommitedOrdersResponse.From(orders, [], [], [], productLinkWeights ?? [], weights ?? []));
         }
 
         [HttpPost("reclamatii")]

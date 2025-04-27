@@ -40,13 +40,14 @@ namespace AzureTableRepository.CommitedOrders
             return (await CacheManager.GetAll((from) => tableStorageService.Query<CommitedOrderEntry>(t => t.Timestamp > from).ToList())).Where(t => t.DataDocument > _from).ToList();
         }
 
-        public async Task InsertCommitedOrder(CommitedOrderEntry sample)
+        public async Task InsertCommitedOrder(List<CommitedOrderEntry> sample)
         {
             var offset = DateTimeOffset.Now;
-            await tableStorageService.Insert(sample);
+            var toUpsert = tableStorageService.PrepareUpsert(sample);
+            await toUpsert.ExecuteBatch();
 
-            await CacheManager.Bust(nameof(CommitedOrderEntry), false, offset);
-            await CacheManager.UpsertCache(nameof(CommitedOrderEntry), [sample]);
+            await CacheManager.Bust(nameof(CommitedOrderEntry), false, null);
+            await CacheManager.UpsertCache(nameof(CommitedOrderEntry), toUpsert.items.Select(t => (CommitedOrderEntry)t.Entity).ToList());
         }
 
         public async Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when)

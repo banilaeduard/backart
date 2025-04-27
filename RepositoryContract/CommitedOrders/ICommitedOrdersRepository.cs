@@ -9,7 +9,7 @@ namespace RepositoryContract.CommitedOrders
         Task<List<CommitedOrderEntry>> GetCommitedOrders(DateTime? from);
         Task<DateTime?> GetLastSyncDate();
         Task DeleteCommitedOrders(List<CommitedOrderEntry> items);
-        Task InsertCommitedOrder(CommitedOrderEntry item);
+        Task InsertCommitedOrder(List<CommitedOrderEntry> item);
         Task SetDelivered(int internalNumbers, int? numarAviz);
         Task ImportCommitedOrders(IList<CommitedOrder> items, DateTime when);
     }

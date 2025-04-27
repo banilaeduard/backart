@@ -64,7 +64,7 @@ namespace SqlTableRepository.CommitedOrders
             throw new NotImplementedException();
         }
 
-        public Task InsertCommitedOrder(CommitedOrderEntry item)
+        public Task InsertCommitedOrder(List<CommitedOrderEntry> item)
         {
             throw new NotImplementedException();
         }
