@@ -25,7 +25,14 @@ namespace PollerRecurringJob.JobHandlers
                         PartitionKey = Environment.MachineName ?? "default",
                         RowKey = Guid.NewGuid().ToString()
                     }).ToList();
-                    await transportRepository.HandleExternalAttachmentRefs(attachments, (int)group.First().Model.TransportId, []);
+
+                    var transportId = (int)group.First().Model.TransportId;
+                    await transportRepository.HandleExternalAttachmentRefs(attachments, transportId, []);
+                    var transport = await transportRepository.GetTransport(transportId);
+                    //transport.Delivered = DateTime.Now.ToUniversalTime();
+                    transport.CurrentStatus = "Delivered";
+                    transport.TransportItems = [];
+                    await transportRepository.UpdateTransport(transport);
 
                     await client.ClearWork("transportattachment", [.. group]);
                 }

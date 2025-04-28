@@ -1,6 +1,7 @@
 using AzureFabricServices;
 using AzureServices;
 using AzureTableRepository.CommitedOrders;
+using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.Orders;
 using AzureTableRepository.Tickets;
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using RepositoryContract.CommitedOrders;
+using RepositoryContract.DataKeyLocation;
 using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
@@ -66,11 +68,13 @@ namespace PollerRecurringJob
                     .AddScoped<IMetadataService, FabricMetadataService>()
                     .AddScoped<ICacheManager<OrderEntry>, AlwaysGetCacheManager<OrderEntry>>()
                     .AddScoped<ICacheManager<CommitedOrderEntry>, AlwaysGetCacheManager<CommitedOrderEntry>>()
+                    .AddScoped<ICacheManager<DataKeyLocationEntry>, AlwaysGetCacheManager<DataKeyLocationEntry>>()
                     .AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>()
                     .AddScoped<IOrdersRepository, OrdersRepository>()
                     .AddScoped<IWorkflowTrigger, QueueService>()
                     .AddScoped<ITaskRepository, TaskRepository>()
                     .AddScoped<AzureFileStorage, AzureFileStorage>()
+                    .AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>()
                     .AddScoped<IImportsRepository, OrdersImportsRepository<AzureFileStorage>>()
                     .AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>()
                     .AddScoped<IStorageService, BlobAccessStorageService>()
