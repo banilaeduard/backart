@@ -228,7 +228,7 @@ namespace WebApi.Controllers
                 }
                 if (oldEntity == null || oldEntity.RowKey != md5 || !await _storageService.Exists(fName))
                 {
-                    var ctx = new Dictionary<string, object>() { 
+                    var ctx = new Dictionary<string, string>() {
                         { "driver_name", transport.DriverName }, 
                         { "identityD", $@"{transport.Id}" },
                         { "identity", $@"{nameof(TransportEntry)}" }

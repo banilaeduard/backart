@@ -50,7 +50,7 @@ namespace WebApi.Services
             }
         }
 
-        public async Task<Stream> GenerateReport(string reportName, string locationCode, IVisitable<KeyValuePair<string, int>> data, Dictionary<string, object> ctx)
+        public async Task<Stream> GenerateReport(string reportName, string locationCode, IVisitable<KeyValuePair<string, int>> data, Dictionary<string, string> ctx)
         {
             await PrepareReportName(reportName);
             var template = await _reportEntryRepository.GetReportTemplate(locationCode, reportName);

@@ -1,12 +1,12 @@
 ﻿namespace WordDocumentServices
 {
-    public class ContextMap : Dictionary<string, object>
+    public class ContextMap : Dictionary<string, string>
     {
         public int CurrentIndex = 0;
         public readonly int QRSIZE = 150;
         private QrCodeService qrCodeSvc = new();
 
-        public ContextMap(Dictionary<string, object> ctx)
+        public ContextMap(Dictionary<string, string> ctx)
         {
             if (ctx != null)
                 foreach (var item in ctx)
@@ -15,11 +15,11 @@
                 }
         }
 
-        public T GetOrDefault<T>(string key, T defaultValue)
+        public string GetOrDefault(string key, string defaultValue)
         {
             if (ContainsKey(key))
             {
-                return (T)this[key];
+                return this[key];
             }
             else
             {
@@ -28,7 +28,7 @@
             return defaultValue;
         }
 
-        public void SetValue<T>(string key, T value, bool replace = true)
+        public void SetValue(string key, string value, bool replace = true)
         {
             if (!ContainsKey(key) || replace)
             {

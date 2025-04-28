@@ -23,7 +23,7 @@ namespace WebApi.Services
             _reportEntryRepository = reportEntryRepository;
             _logger = logger;
         }
-        public async Task<Stream> GetSimpleReport<T>(string reportName, string reportLocation, IVisitable<T> model, Dictionary<string, object>? ctx)
+        public async Task<Stream> GetSimpleReport<T>(string reportName, string reportLocation, IVisitable<T> model, Dictionary<string, string>? ctx)
         {
             var template = await _reportEntryRepository.GetReportTemplate(reportLocation, reportName);
             var writer = _templateDocumentWriter.SetTemplate(Path.Combine(_connectionSettings.SqlQueryCache, template.TemplateName));
