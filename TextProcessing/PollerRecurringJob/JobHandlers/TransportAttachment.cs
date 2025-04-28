@@ -1,6 +1,8 @@
-﻿using System.Security.Cryptography;
+﻿using EntityDto;
 using Microsoft.Extensions.DependencyInjection;
+using RepositoryContract;
 using RepositoryContract.ExternalReferenceGroup;
+using RepositoryContract.Tasks;
 using RepositoryContract.Transports;
 using ServiceInterface.Storage;
 
@@ -14,6 +16,8 @@ namespace PollerRecurringJob.JobHandlers
             var items = await client.GetWork<dynamic>("transportattachment");
 
             ITransportRepository transportRepository = jobContext.provider.GetRequiredService<ITransportRepository>();
+            ITaskRepository taskRepository = jobContext.provider.GetRequiredService<ITaskRepository>();
+
 
             foreach (var group in items.GroupBy(t => t.Model?.TransportId))
             {
@@ -32,8 +36,22 @@ namespace PollerRecurringJob.JobHandlers
                     var transport = await transportRepository.GetTransport(transportId);
                     //transport.Delivered = DateTime.Now.ToUniversalTime();
                     transport.CurrentStatus = "Delivered";
+                    var ti = transport.TransportItems;
                     transport.TransportItems = [];
                     await transportRepository.UpdateTransport(transport, []);
+
+                    var taskIds = ti?.Where(t => t.DocumentType == 2).Select(x => int.Parse(x.ExternalItemId)).ToArray();
+                    if (taskIds?.Any() == true)
+                    {
+                        await taskRepository.MarkAsClosed(taskIds);
+                        var tasks = await taskRepository.GetTasks(taskIds);
+
+                        await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                        {
+                            DestinationFolder = "Archive",
+                            Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
