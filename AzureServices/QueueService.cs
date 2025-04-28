@@ -24,7 +24,7 @@ namespace AzureServices
             return JsonConvert.DeserializeObject<T>(message);
         }
 
-        public async Task Trigger<T>(string workflowName, T model) where T : class, new()
+        public async Task Trigger<T>(string workflowName, T model)
         {
             var client = await GetClient(workflowName);
             await client.SendMessageAsync(Serialize(model));

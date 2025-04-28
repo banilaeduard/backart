@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Security.Cryptography;
+using Microsoft.Extensions.DependencyInjection;
 using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Transports;
 using ServiceInterface.Storage;
@@ -18,12 +19,12 @@ namespace PollerRecurringJob.JobHandlers
             {
                 try
                 {
-                    var attachments = group.Select(t => t.Model?.File).Select(fName => new ExternalReferenceGroupEntry()
+                    var attachments = group.Select(t => t.Model).Select(model => new ExternalReferenceGroupEntry()
                     {
-                        ExternalGroupId = fName,
-                        Id = group.First().Model.TransportId,
+                        ExternalGroupId = model.File,
+                        Id = model.TransportId,
                         PartitionKey = Environment.MachineName ?? "default",
-                        RowKey = Guid.NewGuid().ToString()
+                        RowKey = SafeSubstring(model.Md5, 40)
                     }).ToList();
 
                     var transportId = (int)group.First().Model.TransportId;
@@ -32,15 +33,27 @@ namespace PollerRecurringJob.JobHandlers
                     //transport.Delivered = DateTime.Now.ToUniversalTime();
                     transport.CurrentStatus = "Delivered";
                     transport.TransportItems = [];
-                    await transportRepository.UpdateTransport(transport);
-
-                    await client.ClearWork("transportattachment", [.. group]);
+                    await transportRepository.UpdateTransport(transport, []);
                 }
                 catch (Exception ex)
                 {
                     ActorEventSource.Current.ActorMessage(jobContext, $@"Exception : {ex.Message}. {ex.StackTrace}");
+                    foreach (var item in group)
+                        await client.Trigger<dynamic>("transportattachmentpoison", item.Model);
+                }
+                finally
+                {
+                    await client.ClearWork("transportattachment", [.. group]);
                 }
             }
+        }
+
+        public static string SafeSubstring(string input, int maxLength)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            return input.Length > maxLength ? input.Substring(0, maxLength) : input;
         }
     }
 }
