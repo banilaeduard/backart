@@ -435,22 +435,16 @@ namespace MailReader.MailOperations
                     {
                         if (!string.IsNullOrEmpty(message.PreviewText))
                         {
-                            using (var stream = File.Open(Guid.NewGuid().ToString(), FileMode.Create))
-                            {
-                                await storageService.WriteTo(fname, new BinaryData(message.PreviewText).ToStream());
-                                body = message.PreviewText;
-                            }
+                            await storageService.WriteTo(fname, new BinaryData(message.PreviewText).ToStream());
+                            body = message.PreviewText;
                         }
                         else
                         {
                             var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.Body);
                             var bodyVisitor = new HtmlPreviewVisitor();
                             bodyPart.Accept(bodyVisitor);
-                            using (var stream = new MemoryStream())
-                            {
-                                await storageService.WriteTo(fname, new BinaryData(bodyVisitor.HtmlBody).ToStream());
-                                body = bodyVisitor.HtmlBody;
-                            }
+                            await storageService.WriteTo(fname, new BinaryData(bodyVisitor.HtmlBody).ToStream());
+                            body = bodyVisitor.HtmlBody;
                             body = body.Trim().Replace("__", "") ?? "";
                             body = body.Length > 2048 ? body.Substring(0, 2048) : body;
                         }
