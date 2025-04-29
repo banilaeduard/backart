@@ -28,7 +28,7 @@ namespace PollerRecurringJob.JobHandlers
                         ExternalGroupId = model.File,
                         Id = model.TransportId,
                         PartitionKey = Environment.MachineName ?? "default",
-                        RowKey = SafeSubstring(model.Md5, 40)
+                        RowKey = model.Md5
                     }).ToList();
 
                     var transportId = (int)group.First().Model.TransportId;
@@ -64,14 +64,6 @@ namespace PollerRecurringJob.JobHandlers
                     await client.ClearWork("transportattachment", [.. group]);
                 }
             }
-        }
-
-        public static string SafeSubstring(string input, int maxLength)
-        {
-            if (string.IsNullOrEmpty(input))
-                return input;
-
-            return input.Length > maxLength ? input.Substring(0, maxLength) : input;
         }
     }
 }
