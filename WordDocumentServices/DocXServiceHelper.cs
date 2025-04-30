@@ -9,7 +9,7 @@ namespace WordDocument.Services
     {
         public static async Task<WordprocessingDocument> CreateEmptyDoc(Stream stream)
         {
-            var wordDoc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document);
+            var wordDoc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, true);
             var part = wordDoc.AddMainDocumentPart();
             part.Document = new Document();
             part.Document.Append(new Body());

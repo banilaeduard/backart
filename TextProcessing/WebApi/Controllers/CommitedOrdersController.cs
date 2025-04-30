@@ -18,10 +18,7 @@ using WebApi.Services;
 using EntityDto.CommitedOrders;
 using WorkSheetServices;
 using RepositoryContract.Transports;
-using ServiceImplementation;
-using SqlTableRepository.Transport;
 using WordDocument.Services;
-using EntityDto.Transports;
 
 namespace WebApi.Controllers
 {
@@ -133,8 +130,10 @@ namespace WebApi.Controllers
         public async Task<IActionResult> ExportStructuraReportMultiple(ComplaintDocument[] commitedOrders)
         {
             var groupedCommited = GetOrdersGrouped(commitedOrders, t => t.LocationCode);
+            Stream tempStream = null;
+            string tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
 
-            using Stream tempStream = TempFileHelper.CreateTempFile();
+            tempStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite, 4096);
             using (var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream))
             {
 
@@ -150,20 +149,29 @@ namespace WebApi.Controllers
                         };
                         var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", complaint.LocationCode, complaint, ctx);
                         await DocXServiceHelper.CloneDocument(reportStream, wordDoc.MainDocumentPart!, 1, _cryptoService.GetMd5);
+                        DocXServiceHelper.AddPageBreak(wordDoc.MainDocumentPart!);
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(new EventId(69), ex, "ExportStructuraReport");
-                        return StatusCode(500, "An error occurred while exporting the report.");
+                        logger.LogError(new EventId(69), ex, @$"ExportStructuraReport : {groupedCommited[i].LocationCode}");
                     }
                 }
-
+                // cacamas pe el de main doc cur
                 wordDoc.MainDocumentPart!.Document.Save();
-                await WriteStreamToResponse(tempStream, @$"Transport-PV.docx", wordType);
+                wordDoc.Dispose();
+                try
+                {
+                    tempStream.Close();
+                }
+                catch { }
+                using (tempStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose))
+                    await WriteStreamToResponse(tempStream, @$"Transport-PV.docx", wordType);
             }
+
 
             return new EmptyResult();
         }
+        
 
         [HttpPost("pv-report/{reportName}")]
         public async Task<IActionResult> ExportStructuraReport(string reportName, CommitedOrdersBase commitedOrder)
