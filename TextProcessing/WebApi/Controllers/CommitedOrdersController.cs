@@ -19,6 +19,7 @@ using EntityDto.CommitedOrders;
 using WorkSheetServices;
 using RepositoryContract.Transports;
 using WordDocument.Services;
+using ServiceImplementation;
 
 namespace WebApi.Controllers
 {
@@ -126,14 +127,12 @@ namespace WebApi.Controllers
             }
         }
 
-        [HttpPost("pv-report-multiple")]
-        public async Task<IActionResult> ExportStructuraReportMultiple(ComplaintDocument[] commitedOrders)
+        [HttpPost("reclamatii-multiple/{repotName}")]
+        public async Task<IActionResult> ExportStructuraReportMultiple(ComplaintDocument[] commitedOrders, string repotName)
         {
             var groupedCommited = GetOrdersGrouped(commitedOrders, t => t.LocationCode);
-            Stream tempStream = null;
-            string tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
 
-            tempStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite, 4096);
+            Stream tempStream = TempFileHelper.CreateTempFile();
             using (var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream))
             {
 
@@ -142,12 +141,7 @@ namespace WebApi.Controllers
                     try
                     {
                         var complaint = groupedCommited[i];
-                        var ctx = new Dictionary<string, string>() {
-                            { "driver_name", "" },
-                            { "identityD", complaint.LocationName },
-                            { "identity", $@"REPORT" }
-                        };
-                        var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", complaint.LocationCode, complaint, ctx);
+                        var reportStream = await _simpleReport.GetSimpleReport(repotName, complaint.LocationCode, complaint, null);
                         await DocXServiceHelper.CloneDocument(reportStream, wordDoc.MainDocumentPart!, 1, _cryptoService.GetMd5);
                         DocXServiceHelper.AddPageBreak(wordDoc.MainDocumentPart!);
                     }
@@ -156,18 +150,11 @@ namespace WebApi.Controllers
                         logger.LogError(new EventId(69), ex, @$"ExportStructuraReport : {groupedCommited[i].LocationCode}");
                     }
                 }
-                // cacamas pe el de main doc cur
                 wordDoc.MainDocumentPart!.Document.Save();
                 wordDoc.Dispose();
-                try
-                {
-                    tempStream.Close();
-                }
-                catch { }
-                using (tempStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose))
-                    await WriteStreamToResponse(tempStream, @$"Transport-PV.docx", wordType);
+                tempStream.Seek(0, SeekOrigin.Begin);
+                await WriteStreamToResponse(tempStream, @$"Transport-PV.docx", wordType);
             }
-
 
             return new EmptyResult();
         }

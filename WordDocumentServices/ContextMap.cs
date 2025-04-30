@@ -6,7 +6,7 @@
         public readonly int QRSIZE = 150;
         private QrCodeService qrCodeSvc = new();
 
-        public ContextMap(Dictionary<string, string> ctx)
+        public ContextMap(Dictionary<string, string>? ctx)
         {
             if (ctx != null)
                 foreach (var item in ctx)

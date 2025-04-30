@@ -60,15 +60,15 @@ namespace WebApi.Controllers
             return new EmptyResult();
         }
 
-        [HttpPost("reclamatii-multiple/{transportId}")]
-        public async Task<IActionResult> ExportReclamatiiMultiple(ComplaintDocument[] document, int transportId)
+        [HttpPost("reclamatii-multiple/{reportName}/{transportId}")]
+        public async Task<IActionResult> ExportReclamatiiMultiple(ComplaintDocument[] document, int transportId, string reportName)
         {
             var groupedCommited = GetOrdersGrouped(document, t => t.LocationCode);
             var transport = await _transportRepository.GetTransport(transportId);
 
             if (groupedCommited.Count == 1)
             {
-                var fName = await GenerateAndWriteReport(groupedCommited.First(), transport, transport.DriverName, t => t.LocationCode);
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transport, transport.DriverName, t => t.LocationCode, reportName);
                 await _transportRepository.UpdateTransport(transport, []);
                 await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().LocationName}.docx", wordType);
                 return new EmptyResult();
@@ -81,7 +81,7 @@ namespace WebApi.Controllers
                 {
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
-                        var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.LocationCode);
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.LocationCode, reportName);
                         await CloneDocument(fName, wordDoc.MainDocumentPart!, 1, i > 0);
                     }
                 }
@@ -106,7 +106,7 @@ namespace WebApi.Controllers
 
             if (groupedCommited.Count == 1)
             {
-                var fName = await GenerateAndWriteReport(groupedCommited.First(), transport, transport.DriverName, t => t.CodLocatie);
+                var fName = await GenerateAndWriteReport(groupedCommited.First(), transport, transport.DriverName, t => t.CodLocatie, reportName);
                 await _transportRepository.UpdateTransport(transport, []);
                 await WriteStreamToResponse(fName, $"Transport-PV-{groupedCommited.First().NumeLocatie}.docx", wordType);
                 return new EmptyResult();
@@ -119,7 +119,7 @@ namespace WebApi.Controllers
                 {
                     for (int i = 0; i < groupedCommited.Count; i++)
                     {
-                        var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.CodLocatie);
+                        var fName = await GenerateAndWriteReport(groupedCommited[i], transport, transport.DriverName, t => t.CodLocatie, reportName);
                         await CloneDocument(fName, wordDoc.MainDocumentPart!, 1, i > 0);
                     }
                 }
@@ -167,7 +167,7 @@ namespace WebApi.Controllers
             return result;
         }
 
-        private async Task<string> GenerateAndWriteReport<T>(T item, TransportEntry transport, string driverName, Func<T, string> groupBy)
+        private async Task<string> GenerateAndWriteReport<T>(T item, TransportEntry transport, string driverName, Func<T, string> groupBy, string reportName)
         {
             string metaDataKey = string.Empty;
             string fName = string.Empty;
@@ -236,13 +236,13 @@ namespace WebApi.Controllers
                     // should handle more generic Reports
                     if (item is ComplaintDocument complaint)
                     {
-                        reportStream = await _simpleReport.GetSimpleReport("Reclamatii", complaint.LocationCode, complaint, ctx);
+                        reportStream = await _simpleReport.GetSimpleReport(reportName, complaint.LocationCode, complaint, ctx);
                     }
                     else if (item is CommitedOrdersBase c)
                     {
                         if (c.NumarAviz.HasValue)
                             ctx.Add("aviz_field", c.NumarAviz.Value.ToString());
-                        reportStream = await _structuraReport.GenerateReport("Accesorii", c.CodLocatie, c, ctx);
+                        reportStream = await _structuraReport.GenerateReport(reportName, c.CodLocatie, c, ctx);
                     }
 
                     await _storageService.WriteTo(fName, reportStream, true);
