@@ -2,6 +2,8 @@
 using RepositoryContract;
 using RepositoryContract.ProductCodes;
 using RepositoryContract.Report;
+using ServiceImplementation;
+using WebApi.Models;
 using WordDocumentServices;
 
 namespace WebApi.Services
@@ -50,19 +52,50 @@ namespace WebApi.Services
             }
         }
 
-        public async Task<Stream> GenerateReport(string reportName, string locationCode, IVisitable<KeyValuePair<string, int>> data, Dictionary<string, string> ctx)
+        public async Task<Stream> GenerateReport(string reportName, string locationCode, IVisitable<Dictionary<string, int>> data, Dictionary<string, string>? ctx = null)
         {
-            await PrepareReportName(reportName);
             var template = await _reportEntryRepository.GetReportTemplate(locationCode, reportName);
+            await PrepareReportName(template.ReportName);
 
             var templatePath = Path.Combine(_connectionSettings.SqlQueryCache, template.TemplateName);
-            var currentTemplateWriter = _templateDocumentWriter.SetTemplate(templatePath);
+            var currentTemplateWriter = _templateDocumentWriter.SetTemplate(TempFileHelper.CreateTempFile(templatePath));
 
-            var kvps = new List<KeyValuePair<string, int>>();
-            ContextMap contextMap = new(ctx);
-            data.Accept(currentTemplateWriter, kvps, contextMap);
+            var contextMap = new ContextMap(ctx);
+            var items = await GenerateReport(reportName, currentTemplateWriter, data, contextMap);
 
-            var countMap = new Dictionary<string, (int count, Report report)>();
+            string currentGroup = items.First().ReportInner.Group;
+
+            List<string[]> values = [];
+
+            contextMap.ResetIndex();
+            foreach (var item in items.Where(t => t.Count > 0))
+            {
+                if (item.ReportInner.Group != currentGroup)
+                {
+                    values.Add(["", "", "", ""]);
+                    currentGroup = item.ReportInner.Group;
+                }
+
+                values.Add([contextMap.IncrementIndex().ToString(), item.ReportInner.Display, item.ReportInner.UM, item.Count.ToString()]);
+            }
+
+            currentTemplateWriter.WriteToTable(reportName, [.. values]);
+            return currentTemplateWriter.GetStream();
+        }
+
+        public async Task<List<ReportModel>> GenerateReport(string reportName, ITemplateDocumentWriter currentTemplateWriter, IVisitable<Dictionary<string, int>> data, ContextMap? contextMap = null)
+        {
+            await PrepareReportName(reportName);
+
+            var kvps = new Dictionary<string, int>();
+            foreach (var kvp in rootProductMapping)
+            {
+                kvps[kvp.Key] = 0;
+            }
+
+            data.Accept(currentTemplateWriter, kvps, contextMap ?? new ContextMap(null));
+
+            var countMap = new Dictionary<string, ReportModel>();
             foreach (var kvp in kvps)
             {
                 if (rootProductMapping.ContainsKey(kvp.Key))
@@ -72,31 +105,14 @@ namespace WebApi.Services
                     {
                         if (!countMap.ContainsKey(report.Display))
                         {
-                            countMap[report.Display] = (0, report);
+                            countMap[report.Display] = new ReportModel(report, 0);
                         }
-                        countMap[report.Display] = (countMap[report.Display].count + kvp.Value, countMap[report.Display].report);
+                        countMap[report.Display].Count += (report.Quantity ?? 1) * kvp.Value;
                     }
                 }
             }
-            var items = countMap.Select(t => t.Value).OrderBy(t => t.report.Order).ToList();
-            string currentGroup = items.First().report.Group;
-
-            List<string[]> values = [];
-
-            contextMap.ResetIndex();
-            foreach (var item in items)
-            {
-                if (item.report.Group != currentGroup)
-                {
-                    values.Add(["", "", "", ""]);
-                    currentGroup = item.report.Group;
-                }
-
-                values.Add([contextMap.IncrementIndex().ToString(), item.report.Display, item.report.UM, item.count.ToString()]);
-            }
-
-            currentTemplateWriter.WriteToTable(reportName, [..values]);
-            return currentTemplateWriter.GetStream();
+            var items = countMap.Select(t => t.Value).OrderBy(t => t.ReportInner.Order).ToList();
+            return items;
         }
     }
 }

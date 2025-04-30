@@ -3,7 +3,7 @@ using WordDocumentServices;
 
 namespace WebApi.Models
 {
-    public class CommitedOrderModel : IVisitable<KeyValuePair<string, int>>
+    public class CommitedOrderModel : IVisitable<Dictionary<string, int>>
     {
         public string CodProdus { get; set; }
         public string NumeProdus { get; set; }
@@ -33,11 +33,9 @@ namespace WebApi.Models
             };
         }
 
-        public void Accept(ITemplateDocumentWriter visitor, List<KeyValuePair<string, int>> contextItems, ContextMap context)
+        public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
-            var found = contextItems.FindIndex(x => x.Key == CodProdus);
-            if (found == -1) contextItems.Add(KeyValuePair.Create(CodProdus, Cantitate));
-            else contextItems[found] = KeyValuePair.Create(CodProdus, contextItems[found].Value + Cantitate);
+            if (contextItems.ContainsKey(CodProdus)) contextItems[CodProdus] += Cantitate;
         }
     }
 }

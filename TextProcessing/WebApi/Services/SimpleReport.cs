@@ -1,5 +1,6 @@
 ﻿using RepositoryContract;
 using RepositoryContract.Report;
+using ServiceImplementation;
 using WordDocumentServices;
 
 namespace WebApi.Services
@@ -32,9 +33,9 @@ namespace WebApi.Services
                 return Stream.Null;
             }
 
-            var writer = _templateDocumentWriter.SetTemplate(Path.Combine(_connectionSettings.SqlQueryCache, template.TemplateName));
+            var writer = _templateDocumentWriter.SetTemplate(TempFileHelper.CreateTempFile(Path.Combine(_connectionSettings.SqlQueryCache, template.TemplateName)));
 
-            model.Accept(writer, null, new(ctx));
+            model.Accept(writer, default, new(ctx));
             return writer.GetStream();
         }
     }

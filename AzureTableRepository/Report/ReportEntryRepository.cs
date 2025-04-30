@@ -27,7 +27,7 @@ namespace AzureTableRepository.Report
 
         public async Task<List<ReportEntry>> GetReportEntry(string reportName)
         {
-            return tableStorageService.Query<ReportEntry>(t => true).ToList();
+            return tableStorageService.Query<ReportEntry>(t => t.PartitionKey == reportName).ToList();
         }
 
         public async Task<ReportTemplateEntry> GetReportTemplate(string codLocatie, string reportName)

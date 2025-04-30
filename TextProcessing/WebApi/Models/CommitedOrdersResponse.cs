@@ -75,7 +75,7 @@ namespace WebApi.Models
         }
     }
 
-    public class CommitedOrdersBase : IVisitable<KeyValuePair<string, int>>
+    public class CommitedOrdersBase : IVisitable<Dictionary<string, int>>
     {
         public List<CommitedOrderModel> Entry { get; set; }
         public string CodLocatie { get; set; }
@@ -92,7 +92,7 @@ namespace WebApi.Models
         public string? TransportStatus { get; set; }
         public int? TransportId { get; set; }
 
-        public void Accept(ITemplateDocumentWriter visitor, List<KeyValuePair<string, int>> contextItems, ContextMap context)
+        public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
             visitor.WriteToMainDoc(new Dictionary<string, string>()
             {

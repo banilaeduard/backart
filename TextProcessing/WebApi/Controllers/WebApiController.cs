@@ -62,11 +62,11 @@
             Response.Cookies.Append("refreshToken", token, cookieOptions);
         }
 
-        protected async Task WriteStreamToResponse(Stream stream, string fName, string contentType)
+        protected async Task WriteStreamToResponse(Stream stream, string fName, string contentType, bool resetStream = true)
         {
             try
             {
-                if (stream.CanSeek && stream.Position > 0)
+                if (stream.CanSeek && stream.Position > 0 && resetStream)
                     stream.Position = 0;
                 Response.Headers["Content-Disposition"] = $@"attachment; filename={fName}";
                 Response.ContentType = contentType;

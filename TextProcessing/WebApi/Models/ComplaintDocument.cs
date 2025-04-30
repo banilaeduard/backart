@@ -10,7 +10,7 @@ namespace WebApi.Models
         public List<ComplaintEntry> complaintEntries { get; set; }
         public int? TransportId { get; set; }
 
-        public void Accept(ITemplateDocumentWriter visitor, List<int> contextItems, ContextMap context)
+        public void Accept(ITemplateDocumentWriter visitor, int contextItems, ContextMap context)
         {
             visitor.WriteToMainDoc(new Dictionary<string, string>()
             {
@@ -54,7 +54,7 @@ namespace WebApi.Models
         public string? RefRowKey { get; set; }
         public bool? CloseTask { get; set; }
 
-        public void Accept(ITemplateDocumentWriter visitor, List<int> contextItems, ContextMap context)
+        public void Accept(ITemplateDocumentWriter visitor, int contextItems, ContextMap context)
         {
             visitor.WriteToTable("reclamatii", [[context.IncrementIndex().ToString(), Description, UM, Quantity, Observation]]);
         }

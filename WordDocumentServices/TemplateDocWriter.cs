@@ -1,6 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using ServiceImplementation;
 using ServiceInterface.Storage;
 using WordDocument.Services;
 
@@ -41,9 +40,9 @@ namespace WordDocumentServices.Services
             }
         }
 
-        public ITemplateDocumentWriter SetTemplate(string templatePath)
+        public ITemplateDocumentWriter SetTemplate(Stream stream)
         {
-            return new TemplateDocWriter(TempFileHelper.CreateTempFile(templatePath), _cryptoService);
+            return new TemplateDocWriter(stream, _cryptoService);
         }
 
         public void WriteToMainDoc(Dictionary<string, string> keyValuePairs)
