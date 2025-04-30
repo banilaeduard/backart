@@ -65,12 +65,15 @@ namespace PollerRecurringJob.JobHandlers
 
                     if (hasMain != null)
                     {
-                        var task = await repo.SaveTask(new TaskEntry()
+                        try
                         {
-                            Name = "Imported",
-                            Details = "Imported",
-                            LocationCode = hasMain.LocationCode,
-                            ExternalReferenceEntries = [..newMail.Select(ticket => new ExternalReferenceEntry()
+                            var task = await repo.SaveTask(new TaskEntry()
+                            {
+                                Name = "Imported",
+                                Details = "Imported",
+                                LocationCode = hasMain.LocationCode,
+                                TaskDate = DateTime.Now,
+                                ExternalReferenceEntries = [..newMail.Select(ticket => new ExternalReferenceEntry()
                             {
                                 PartitionKey = ticket.PartitionKey,
                                 RowKey = ticket.RowKey,
@@ -79,15 +82,21 @@ namespace PollerRecurringJob.JobHandlers
                                 Action = ActionType.External,
                                 Accepted = false,
                                 ExternalGroupId = ticket.ThreadId
-                            })]
-                        });
+                            })],
 
-                        IWorkflowTrigger client = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
-                        await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                            });
+
+                            IWorkflowTrigger client = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
+                            await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                            {
+                                DestinationFolder = "_PENDING_",
+                                Items = task.ExternalReferenceEntries.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                            });
+                        }
+                        catch (Exception ex)
                         {
-                            DestinationFolder = "_PENDING_",
-                            Items = task.ExternalReferenceEntries.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
-                        });
+                            ActorEventSource.Current.ActorMessage(jobContext, $@"Exception : {ex.Message}. {ex.StackTrace}");
+                        }
                     }
                 }
             }

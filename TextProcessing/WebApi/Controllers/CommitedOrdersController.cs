@@ -18,6 +18,10 @@ using WebApi.Services;
 using EntityDto.CommitedOrders;
 using WorkSheetServices;
 using RepositoryContract.Transports;
+using ServiceImplementation;
+using SqlTableRepository.Transport;
+using WordDocument.Services;
+using EntityDto.Transports;
 
 namespace WebApi.Controllers
 {
@@ -30,6 +34,7 @@ namespace WebApi.Controllers
         private readonly IDataKeyLocationRepository keyLocationRepository;
         private readonly StructuraReport _structuraReport;
         private readonly SimpleReport _simpleReport;
+        private readonly ICryptoService _cryptoService;
         ICacheManager<CommitedOrderEntry> cacheManager;
         IMetadataService metadataService;
 
@@ -42,6 +47,7 @@ namespace WebApi.Controllers
             IMetadataService metadataService,
             StructuraReport structuraReport,
             SimpleReport simpleReport,
+            ICryptoService cryptoService,
             IDataKeyLocationRepository keyLocationRepository,
             IMapper mapper) : base(logger, mapper)
         {
@@ -53,6 +59,7 @@ namespace WebApi.Controllers
             this.keyLocationRepository = keyLocationRepository;
             _structuraReport = structuraReport;
             _simpleReport = simpleReport;
+            _cryptoService = cryptoService;
         }
 
         [HttpGet("{date}")]
@@ -122,6 +129,42 @@ namespace WebApi.Controllers
             }
         }
 
+        [HttpPost("pv-report-multiple")]
+        public async Task<IActionResult> ExportStructuraReportMultiple(ComplaintDocument[] commitedOrders)
+        {
+            var groupedCommited = GetOrdersGrouped(commitedOrders, t => t.LocationCode);
+
+            using Stream tempStream = TempFileHelper.CreateTempFile();
+            using (var wordDoc = await DocXServiceHelper.CreateEmptyDoc(tempStream))
+            {
+
+                for (int i = 0; i < groupedCommited.Count; i++)
+                {
+                    try
+                    {
+                        var complaint = groupedCommited[i];
+                        var ctx = new Dictionary<string, string>() {
+                            { "driver_name", "" },
+                            { "identityD", complaint.LocationName },
+                            { "identity", $@"REPORT" }
+                        };
+                        var reportStream = await _simpleReport.GetSimpleReport("Reclamatii", complaint.LocationCode, complaint, ctx);
+                        await DocXServiceHelper.CloneDocument(reportStream, wordDoc.MainDocumentPart!, 1, _cryptoService.GetMd5);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(new EventId(69), ex, "ExportStructuraReport");
+                        return StatusCode(500, "An error occurred while exporting the report.");
+                    }
+                }
+
+                wordDoc.MainDocumentPart!.Document.Save();
+                await WriteStreamToResponse(tempStream, @$"Transport-PV.docx", wordType);
+            }
+
+            return new EmptyResult();
+        }
+
         [HttpPost("pv-report/{reportName}")]
         public async Task<IActionResult> ExportStructuraReport(string reportName, CommitedOrdersBase commitedOrder)
         {
@@ -180,6 +223,24 @@ namespace WebApi.Controllers
             }
             await commitedRepo.SetDelivered(internalNumber, numarAviz);
             return Ok();
+        }
+
+        private List<T> GetOrdersGrouped<T>(T[] commitedOrders, Func<T, string> groupBy)
+        {
+            var groups = commitedOrders.GroupBy(groupBy).ToList();
+            List<T> result = new();
+
+            for (int i = 0; i < groups.Count; i++)
+            {
+                var commited = groups[i];
+                result.Add(commited.First());
+                if (commited.First() is ComplaintDocument cDoc)
+                {
+                    cDoc.complaintEntries.AddRange(commited.Skip(1).Cast<ComplaintDocument>().SelectMany(t => t.complaintEntries));
+                }
+            }
+
+            return result;
         }
     }
 }
