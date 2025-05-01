@@ -19,6 +19,7 @@ namespace WebApi.Services
         private string _reportName;
         private List<Report> reportEntries;
         private Dictionary<string, Report[]> rootProductMapping = new();
+        private Dictionary<string, string> rootProductNames = new();
 
         public StructuraReport(
             ITemplateDocumentWriter templateDocumentWriter,
@@ -49,6 +50,7 @@ namespace WebApi.Services
                 rootProductMapping[product.RootCode] = reportEntries
                     .Where(re => prods.Any(p => p.Code.Contains(re.FindBy) && p.Level == re.Level))
                     .ToArray();
+                rootProductNames[product.RootCode] = product.Name;
             }
         }
 
@@ -103,16 +105,27 @@ namespace WebApi.Services
                     var reports = rootProductMapping[kvp.Key];
                     foreach (var report in reports)
                     {
-                        if (!countMap.ContainsKey(report.Display))
+                        if (!string.IsNullOrWhiteSpace(report.Display))
                         {
-                            countMap[report.Display] = new ReportModel(report, 0);
+                            if (!countMap.ContainsKey(report.Display))
+                            {
+                                countMap[report.Display] = new ReportModel(report, 0, report.Display);
+                            }
+                            countMap[report.Display].Count += (report.Quantity ?? 1) * kvp.Value;
                         }
-                        countMap[report.Display].Count += (report.Quantity ?? 1) * kvp.Value;
+                        else
+                        {
+                            if (!countMap.ContainsKey(rootProductNames[kvp.Key]))
+                            {
+                                countMap[rootProductNames[kvp.Key]] = new ReportModel(report, 0, rootProductNames[kvp.Key]);
+                            }
+                            countMap[rootProductNames[kvp.Key]].Count += (report.Quantity ?? 1) * kvp.Value;
+                        }
                     }
                 }
             }
-            var items = countMap.Select(t => t.Value).OrderBy(t => t.ReportInner.Order).ToList();
-            return items;
+
+            return [.. countMap.Select(t => t.Value).OrderBy(t => t.ReportInner.Order)];
         }
     }
 }

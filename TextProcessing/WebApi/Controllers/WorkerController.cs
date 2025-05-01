@@ -29,9 +29,9 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetWorkLoad(string workerName)
         {
             DateTime? All = DateTime.Now.AddMonths(-2);
-            var commitedOrders = (await _commitedOrdersRepository.GetCommitedOrders(All)).Where(t => !t.Livrata);
+            var commitedOrders = (await _commitedOrdersRepository.GetCommitedOrders(All)).Where(t => !t.Livrata || t.StatusName == "Pending");
             var orders = await _ordersRepository.GetOrders();
-            var perDay = commitedOrders.OrderBy(x => x.TransportDate).GroupBy(t => t.TransportDate.HasValue ? t.TransportDate.Value.ToString("dd-MM-yy") : "0");
+            var perDay = commitedOrders.OrderBy(x => x.TransportDate).GroupBy(t => t.TransportDate.HasValue ? t.TransportDate.Value.ToString("dd-MM-yy") : "Pending");
             var workItems = new List<WorkerPriorityList>();
 
             foreach (var days in perDay)
@@ -52,7 +52,7 @@ namespace WebApi.Controllers
 
                 var items = (await _structuraReport.GenerateReport(workerName, model, model)).Where(t => t.Count > 0);
                 if (items.Any())
-                {
+                { 
                     model.WorkDisplayItems.AddRange(items);
                     workItems.Add(model);
                 }
