@@ -34,5 +34,6 @@
         public DateTimeOffset? Timestamp { get; set; }
         public string StatusName { get; set; }
         public int Id { get; set; }
+        public DateTime? DueDate { get; set; }
     }
 }

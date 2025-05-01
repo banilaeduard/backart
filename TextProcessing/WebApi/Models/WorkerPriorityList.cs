@@ -4,12 +4,15 @@ namespace WebApi.Models
 {
     public class WorkerPriorityList : ITemplateDocumentWriter, IVisitable<Dictionary<string, int>>
     {
-        public WorkerPriorityList(List<WorkItem> WorkItems)
+        public string Grouping { get; set; }
+        public WorkerPriorityList(List<WorkItem> WorkItems, string grouping)
         {
             this.WorkItems = WorkItems;
+            this.WorkDisplayItems = [];
+            Grouping = grouping;
         }
         public List<WorkItem> WorkItems { get; set; }
-        public List<WorkDisplayItem> WorkDisplayItems { get; set; } = new List<WorkDisplayItem>();
+        public List<ReportModel> WorkDisplayItems { get; set; }
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
             foreach(var wItem in WorkItems)
