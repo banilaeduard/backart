@@ -28,7 +28,9 @@ namespace WebApi.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetWorkLoad(string workerName)
         {
-            var commitedOrders = await _commitedOrdersRepository.GetCommitedOrders(DateTime.MinValue);
+            DateTime? All = DateTime.Now.AddMonths(-2);
+            var commitedOrders = (await _commitedOrdersRepository.GetCommitedOrders(All)).Where(t => !t.Livrata);
+            var orders = await _ordersRepository.GetOrders();
             var perDay = commitedOrders.OrderBy(x => x.TransportDate).GroupBy(t => t.TransportDate.HasValue ? t.TransportDate.Value.ToString("dd-MM-yy") : "0");
             var workItems = new List<WorkerPriorityList>();
 
@@ -48,11 +50,34 @@ namespace WebApi.Controllers
                     });
                 }
 
-                model.WorkDisplayItems.AddRange(await _structuraReport.GenerateReport(workerName, model, model));
-                workItems.Add(model);
+                var items = (await _structuraReport.GenerateReport(workerName, model, model)).Where(t => t.Count > 0);
+                if (items.Any())
+                {
+                    model.WorkDisplayItems.AddRange(items);
+                    workItems.Add(model);
+                }
             }
 
-            return Ok(workItems);
+            var orderItems = new List<WorkerPriorityList>();
+            foreach (var orderGroup in orders.GroupBy(t => t.CodArticol))
+            {
+                var model = new WorkerPriorityList([], "orders");
+                var orderSample = orderGroup.First();
+                model.WorkItems.Add(new WorkItem()
+                {
+                    CodProdus = orderSample.CodArticol,
+                    Cantitate = orderGroup.Sum(x => x.Cantitate),
+                    NumeProdus = orderSample.NumeArticol,
+                });
+                var items = (await _structuraReport.GenerateReport(workerName, model, model)).Where(t => t.Count > 0);
+                if (items.Any())
+                {
+                    model.WorkDisplayItems.AddRange(items);
+                    orderItems.Add(model);
+                }
+            }
+
+            return Ok(new { workItems, orderItems });
         }
     }
 }

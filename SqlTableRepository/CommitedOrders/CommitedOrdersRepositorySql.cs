@@ -50,7 +50,7 @@ namespace SqlTableRepository.CommitedOrders
             using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
             {
                 var sql = "[dbo].[CommitedOrders]";
-                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { @Date1 = from ?? DateTime.Now.AddMonths(-2) }, commandType: System.Data.CommandType.StoredProcedure))];
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, new { @Date1 = SqlDateTimeHelper.ClampToSqlDateTimeRange(from ?? DateTime.Now.AddMonths(-2)) }, commandType: System.Data.CommandType.StoredProcedure))];
             }
         }
 
