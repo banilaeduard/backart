@@ -48,6 +48,7 @@
     <ProjectReference Include="..\..\EntityDto\EntityDto.csproj" />
     <ProjectReference Include="..\..\ProjectKeys\ProjectKeys.csproj" />
     <ProjectReference Include="..\..\RepositoryContract\RepositoryContract.csproj" />
+    <ProjectReference Include="..\..\RepositoryServices\RepositoryServices.csproj" />
     <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
     <ProjectReference Include="..\..\Services\ServiceInterface.csproj" />
     <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />

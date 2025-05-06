@@ -40,6 +40,7 @@ using AzureTableRepository.Report;
 using WordDocumentServices;
 using WordDocumentServices.Services;
 using Microsoft.Extensions.Options;
+using RepositoryServices;
 
 namespace WebApi
 {
@@ -85,6 +86,7 @@ namespace WebApi
             services.AddScoped<IExternalReferenceGroupRepository, ExternalReferenceGroupSql>();
             services.AddScoped<ITemplateDocumentWriter, TemplateDocWriter>((provider) => new TemplateDocWriter(Stream.Null, provider.GetRequiredService<ICryptoService>()));
             services.AddScoped<StructuraReport, StructuraReport>();
+            services.AddScoped<StructuraReportWriter, StructuraReportWriter>();
             services.AddScoped<SimpleReport, SimpleReport>();
 #if !TEST
             services.AddScoped<IProductCodeRepository, ProductCodesRepository>();

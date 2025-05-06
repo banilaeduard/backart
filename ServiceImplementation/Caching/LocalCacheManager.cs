@@ -14,13 +14,10 @@ namespace ServiceImplementation.Caching
         private ConcurrentDictionary<string, string?> tokens = new();
         private ConcurrentDictionary<string, ConcurrentBag<T>> cache = new();
         private Semaphore _semaphore = new(1, 1);
-        private ILogger<T> logger;
 
-        public LocalCacheManager(IMetadataService metadataService, ILogger<T> logger)
+        public LocalCacheManager(IMetadataService metadataService)
         {
             this.metadataService = metadataService;
-            this.logger = logger;
-            logger.LogInformation(@$"Initialized {nameof(LocalCacheManager<T>)}");
         }
 
         private static readonly DateTimeOffset minValueForAzure = new(2024, 1, 1, 1, 1, 1, TimeSpan.Zero);
@@ -80,7 +77,6 @@ namespace ServiceImplementation.Caching
                             }
                             catch (Exception e)
                             {
-                                logger.LogError(new EventId(69), e, nameof(LocalCacheManager<T>));
                             }
                         }
 
@@ -97,7 +93,7 @@ namespace ServiceImplementation.Caching
                                 metaData["timestamp"] = lastModified[tableName].ToString();
                                 await metadataService.SetMetadata(GetCacheKey(tableName), null, metaData);
                             }
-                            catch (Exception e) { logger.LogError(new EventId(69), e, nameof(LocalCacheManager<T>)); }
+                            catch (Exception e) {  }
                         }
                     }
 

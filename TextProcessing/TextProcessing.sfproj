@@ -48,6 +48,7 @@
       <ServiceLaunchUrl>
       </ServiceLaunchUrl>
     </ProjectReference>
+    <ProjectReference Include="WorkLoadService\WorkLoadService.csproj" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
   <PropertyGroup>

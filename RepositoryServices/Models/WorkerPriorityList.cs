@@ -1,6 +1,6 @@
 ﻿using WordDocumentServices;
 
-namespace WebApi.Models
+namespace RepositoryServices.Models
 {
     public class WorkerPriorityList : ITemplateDocumentWriter, IVisitable<Dictionary<string, int>>
     {

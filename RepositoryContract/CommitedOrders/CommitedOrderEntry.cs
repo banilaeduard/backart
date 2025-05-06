@@ -36,9 +36,9 @@ namespace RepositoryContract.CommitedOrders
                 NumarAviz = entry.NumarAviz,
                 DataAviz = entry.DataAviz,
                 TransportStatus = entry.TransportStatus,
-                TransportDate = entry.TransportDate,
+                TransportDate = entry.TransportDate?.ToUniversalTime(),
                 TransportId = entry.TransportId,
-                DueDate = entry.DueDate,
+                DueDate = entry.DueDate?.ToUniversalTime(),
             };
         }
 

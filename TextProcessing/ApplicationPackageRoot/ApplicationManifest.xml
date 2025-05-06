@@ -17,6 +17,18 @@
        should match the Name and Version attributes of the ServiceManifest element defined in the 
        ServiceManifest.xml file. -->
   <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="WorkLoadServicePkg" ServiceManifestVersion="1.0.0" />
+    <ConfigOverrides />
+    <EnvironmentOverrides CodePackageRef="code">
+      <EnvironmentVariable Name="storage_connection" Value="[storage_connection]" />
+      <EnvironmentVariable Name="ConnectionString" Value="[WebApi_ConnectionString]" />
+      <EnvironmentVariable Name="ConnectionString_prod" Value="[WebApi_ConnectionString_prod]" />
+      <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
+      <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
+      <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
+    </EnvironmentOverrides>
+  </ServiceManifestImport>
+  <ServiceManifestImport>
     <ServiceManifestRef ServiceManifestName="MetadataServicePkg" ServiceManifestVersion="1.0.0" />
     <EnvironmentOverrides CodePackageRef="code" />
   </ServiceManifestImport>

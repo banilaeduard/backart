@@ -4,8 +4,8 @@ using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.Orders;
 using AzureTableRepository.Tickets;
+using Dapper;
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using RepositoryContract.CommitedOrders;
@@ -23,6 +23,7 @@ using SqlTableRepository.ExternalReferenceGroup;
 using SqlTableRepository.Orders;
 using SqlTableRepository.Tasks;
 using SqlTableRepository.Transport;
+using System.Data;
 using System.Globalization;
 using System.Threading;
 
@@ -64,6 +65,7 @@ namespace PollerRecurringJob
 
         private static ServiceProvider BuildServiceProvider()
         {
+            SqlMapper.AddTypeHandler(new DateTimeHandler());
             return new ServiceCollection()
                     .AddScoped<IMetadataService, FabricMetadataService>()
                     .AddScoped<ICacheManager<OrderEntry>, AlwaysGetCacheManager<OrderEntry>>()
@@ -83,6 +85,19 @@ namespace PollerRecurringJob
                     .AddScoped<ITicketEntryRepository, TicketEntryRepository>()
                     .AddScoped<ITransportRepository, TransportRepository>()
                     .BuildServiceProvider();
+        }
+        private class DateTimeHandler : SqlMapper.TypeHandler<DateTime>
+        {
+            public override void SetValue(IDbDataParameter parameter, DateTime value)
+            {
+                parameter.Value = value;
+            }
+
+            public override DateTime Parse(object value)
+            {
+                var v = (DateTime)value;
+                return v.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind((DateTime)value, DateTimeKind.Utc) : v;
+            }
         }
     }
 }

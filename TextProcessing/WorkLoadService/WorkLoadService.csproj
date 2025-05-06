@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsServiceFabricServiceProject>True</IsServiceFabricServiceProject>
+    <ServerGarbageCollection>True</ServerGarbageCollection>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>True</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+	  <PackageReference Include="Microsoft.Diagnostics.EventFlow.Inputs.EventSource" Version="1.5.0" />
+	  <PackageReference Include="Microsoft.Diagnostics.EventFlow.Inputs.MicrosoftLogging" Version="1.6.1" />
+	  <PackageReference Include="Microsoft.Diagnostics.EventFlow.Outputs.ApplicationInsights" Version="1.9.1" />
+	  <PackageReference Include="Microsoft.Diagnostics.EventFlow.ServiceFabric" Version="1.8.0" />
+    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="7.1.2493" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\AzureTableRepository\AzureTableRepository.csproj" />
+		<ProjectReference Include="..\..\RepositoryServices\RepositoryServices.csproj" />
+		<ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />
+		<ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
+	</ItemGroup>
+</Project>
