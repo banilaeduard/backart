@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Globalization;
 using AzureFabricServices;
 using AzureServices;
+using AzureTableRepository.CommitedOrders;
+using AzureTableRepository.Orders;
 using AzureTableRepository.ProductCodes;
 using AzureTableRepository.Report;
 using Microsoft.Diagnostics.EventFlow.ServiceFabric;
@@ -63,8 +65,17 @@ namespace WorkLoadService
             return new ServiceCollection()
                     .AddSingleton<IMetadataService, FabricMetadataService>()
                     .AddScoped<StructuraReportWriter, StructuraReportWriter>()
+#if RELEASE
                     .AddScoped<IProductCodeRepository, ProductCodesRepository>()
                     .AddScoped<IReportEntryRepository, ReportEntryRepository>()
+#else
+                    .AddScoped<IProductCodeRepository, ProductCodesRepository>()
+                    .AddScoped<IReportEntryRepository, ReportEntryRepository>()
+                    .AddSingleton<ICacheManager<CommitedOrderEntry>, AlwaysGetCacheManager<CommitedOrderEntry>>()
+                    .AddSingleton<ICacheManager<OrderEntry>, AlwaysGetCacheManager<OrderEntry>>()
+                    .AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>()
+                    .AddScoped<IOrdersRepository, OrdersRepository>()
+#endif
                     .AddSingleton<ICacheManager<ProductCodeEntry>, AlwaysGetCacheManager<ProductCodeEntry>>()
                     .AddSingleton<ICacheManager<ProductStatsEntry>, AlwaysGetCacheManager<ProductStatsEntry>>()
                     .AddSingleton<ICacheManager<ProductCodeStatsEntry>, AlwaysGetCacheManager<ProductCodeStatsEntry>>()

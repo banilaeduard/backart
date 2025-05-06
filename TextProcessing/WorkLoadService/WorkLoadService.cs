@@ -9,6 +9,8 @@ using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using ProjectKeys;
+using RepositoryContract.CommitedOrders;
+using RepositoryContract.Orders;
 using RepositoryServices;
 using RepositoryServices.Models;
 using V2.Interfaces;
@@ -69,29 +71,27 @@ namespace WorkLoadService
                         workItems.Add(model);
                     }
                 });
-                await tx.CommitAsync();
             }
 
             var orderItems = new List<WorkerPriorityList>();
             using (var tx = StateManager.CreateTransaction())
             {
+                var model = new WorkerPriorityList([], "orders");
                 await IterateDictionary<WorkItem>(OrdersKey, tx, async (entry) =>
                 {
-                    var model = new WorkerPriorityList([], "orders");
                     model.WorkItems.Add(new WorkItem()
                     {
                         CodProdus = entry.Value.CodProdus,
                         Cantitate = entry.Value.Cantitate,
                         NumeProdus = entry.Value.NumeProdus,
                     });
-                    var items = (await _structuraReport.GenerateReport(workerName, model, model)).Where(t => t.Count > 0);
-                    if (items.Any())
-                    {
-                        model.WorkDisplayItems.AddRange(items);
-                        orderItems.Add(model);
-                    }
                 });
-                await tx.CommitAsync();
+                var items = (await _structuraReport.GenerateReport(workerName, model, model)).Where(t => t.Count > 0);
+                if (items.Any())
+                {
+                    model.WorkDisplayItems.AddRange(items);
+                    orderItems.Add(model);
+                }
             }
 
             var workList = new Items(workItems, orderItems);
@@ -104,22 +104,58 @@ namespace WorkLoadService
 
             return workList;
         }
-        
+
+        private async Task<List<WorkListItem>> GetWorkListItems()
+        {
+            List<WorkListItem> workList = null;
+#if RELEASE
+            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
+            {
+                return [..connection.Query<WorkListItem>("SELECT * FROM dbo.TotalNelivrat")];
+            }
+#else
+            var commited = await _provider.GetRequiredService<ICommitedOrdersRepository>().GetCommitedOrders(DateTime.MinValue);
+            var orders = await _provider.GetRequiredService<IOrdersRepository>().GetOrders();
+
+            return [..commited.Where(t => t.Cantitate > 0).Select(x => new WorkListItem() {
+                Cantitate = x.Cantitate,
+                CodArticol = x.CodProdus,
+                CodLocatie = x.CodLocatie,
+                DataDoc = x.DataDocument,
+                Delivered = x.TransportDate,
+                DetaliiDoc = x.DetaliiDoc,
+                DetaliiLinie = x.DetaliiLinie,
+                DocId = x.NumarIntern,
+                DueDate = x.DueDate,
+                Tip = WorkListItem.Commited,
+            }), ..orders.Where(t => t.Cantitate > 0).Select(x => new WorkListItem() {
+                Tip = WorkListItem.Order,
+                CodArticol = x.CodArticol,
+                Cantitate = x.Cantitate,
+                CodLocatie = x.CodLocatie,
+                DataDoc = x.DataDoc,
+                DetaliiLinie = x.DetaliiLinie,
+                DocId = x.DocId.ToString(),
+                DueDate = x.DueDate,
+                NumeArticol = x.NumeArticol,
+                NumeLocatie = x.NumeLocatie,
+                NumarComanda = x.NumarComanda,
+                NumePartener = x.NumePartener,
+                StatusName = x.StatusName
+            })];
+#endif
+        }
 
         public async Task Publish()
         {
-            List<WorkListItem> result = null;
-            using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
-            {
-                result = [.. await connection.QueryAsync<WorkListItem>("SELECT * FROM dbo.TotalNelivrat")];
-            }
+            List<WorkListItem> result = await GetWorkListItems();
 
-
+            var tempOrdersDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, WorkItem>>(OrdersKey);
+            await tempOrdersDictionary.ClearAsync();
+            var orders = result.Where(t => t.Tip == WorkListItem.Order).ToList();
             using (var tx = StateManager.CreateTransaction())
             {
-                var tempOrdersDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, WorkItem>>(OrdersKey);
-                await tempOrdersDictionary.ClearAsync();
-                foreach (var orderGroup in result.Where(t => t.Tip == WorkListItem.Order).GroupBy(t => t.CodArticol))
+                foreach (var orderGroup in orders.GroupBy(t => t.CodArticol))
                 {
                     var orderSample = orderGroup.First();
                     await tempOrdersDictionary.SetAsync(tx, orderGroup.Key, new WorkItem()
@@ -129,12 +165,15 @@ namespace WorkLoadService
                         NumeProdus = orderSample.NumeArticol,
                     });
                 }
+                await tx.CommitAsync();
+            }
+            var commited = result.Where(t => t.Tip == WorkListItem.Commited && (t.TransportStatus == "Pending" || string.IsNullOrEmpty(t.TransportStatus))).ToList();
+            var perDay = commited.OrderBy(x => x.Delivered).GroupBy(t => t.Delivered.HasValue ? t.Delivered.Value.ToString("dd-MM-yy") : "Pending");
 
-                var perDay = result.Where(t => t.Tip == WorkListItem.Commited && (t.TransportStatus == "Pending" || string.IsNullOrEmpty(t.TransportStatus)))
-                                   .OrderBy(x => x.Delivered).GroupBy(t => t.Delivered.HasValue ? t.Delivered.Value.ToString("dd-MM-yy") : "Pending");
-
-                var dayDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, List<WorkItem>>>(DailyKey);
-                await dayDictionary.ClearAsync();
+            var dayDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, List<WorkItem>>>(DailyKey);
+            await dayDictionary.ClearAsync();
+            using (var tx = StateManager.CreateTransaction())
+            {
                 foreach (var days in perDay)
                 {
                     await dayDictionary.SetAsync(tx, days.Key, [..days.Select( commited => new WorkItem()
@@ -160,7 +199,7 @@ namespace WorkLoadService
         /// <param name="cancellationToken">Canceled when Service Fabric needs to shut down this service replica.</param>
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var dictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, Items>>(cacheName);
+            await Publish();
         }
 
         protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()

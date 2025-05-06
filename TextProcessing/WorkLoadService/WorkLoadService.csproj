@@ -24,5 +24,6 @@
 		<ProjectReference Include="..\..\RepositoryServices\RepositoryServices.csproj" />
 		<ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />
 		<ProjectReference Include="..\V2.Interfaces\V2.Interfaces.csproj" />
+		<ProjectReference Include="..\WebApi\WebApi.csproj" />
 	</ItemGroup>
 </Project>
