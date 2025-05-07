@@ -1,12 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Runtime;
+using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using PollerRecurringJob.Interfaces;
 using PollerRecurringJob.JobHandlers;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
+using V2.Interfaces;
 
 namespace PollerRecurringJob
 {
@@ -153,8 +155,22 @@ namespace PollerRecurringJob
             _ = Task.Run(async () => await RegisterReminder());
         }
 
+        private IWorkLoadService GetService()
+        {
+            var serviceUri = new Uri("fabric:/TextProcessing/WorkLoadService");
+            return serviceProxy.CreateServiceProxy<IWorkLoadService>(serviceUri, ServicePartitionKey.Singleton);
+        }
+
         public async Task Sync()
         {
+            _ = Task.Run(async () =>
+            {
+                try { await GetService().Publish(); }
+                catch (Exception ex)
+                {
+                    ActorEventSource.Current.ActorMessage(this, @$"EXCEPTION PUBLISH POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
+                }
+            });
             await RegisterReminder();
         }
 
