@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.ServiceFabric.Services.Client;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
+using V2.Interfaces;
 
 namespace PollerRecurringJob.JobHandlers
 {
@@ -19,6 +21,18 @@ namespace PollerRecurringJob.JobHandlers
 
             var latest = await ordersImportsRepository.PollForNewContent();
 
+            if (latest.commited > lastCommited)
+            {
+                try
+                {
+                    await RunPublish(jobContext);
+                }
+                catch (Exception ex)
+                {
+                    ActorEventSource.Current.ActorMessage(jobContext, $@"Exception : {ex.Message}. {ex.StackTrace}");
+                }
+            }
+
             if (latest.order > lastOrder && latest.commited > lastCommited)
             {
                 var sourceOrders = await ordersImportsRepository.GetImportCommitedOrders(lastCommited, new DateTime(2024, 5, 5));
@@ -35,6 +49,11 @@ namespace PollerRecurringJob.JobHandlers
                 var commited = await ordersImportsRepository.GetImportCommited(lastCommited);
                 await commitedOrdersRepository.ImportCommitedOrders(commited, latest.commited);
             }
+        }
+
+        private static Task RunPublish(PollerRecurringJob jobContext)
+        {
+            return jobContext.serviceProxy.CreateServiceProxy<IWorkLoadService>(new Uri("fabric:/TextProcessing/WorkLoadService"), ServicePartitionKey.Singleton).ThrottlePublish(TimeSpan.FromSeconds(1));
         }
     }
 }

@@ -8,12 +8,29 @@
     using Microsoft.Extensions.Logging;
     using AutoMapper;
     using System.Text.RegularExpressions;
+    using Microsoft.ServiceFabric.Services.Remoting.Client;
+    using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+    using Microsoft.ServiceFabric.Services.Client;
+    using V2.Interfaces;
+    using Microsoft.ServiceFabric.Services.Remoting;
+    using MetadataService.Interfaces;
 
     [Authorize]
     [ApiController]
     [Route("[controller]")]
     public class WebApiController2 : ControllerBase
     {
+        protected Lazy<ServiceProxyFactory> serviceProxy = new Lazy<ServiceProxyFactory>(() => new ServiceProxyFactory((c) =>
+        {
+            return new FabricTransportServiceRemotingClientFactory();
+        }));
+
+        protected Dictionary<string, Uri> SFURL = new Dictionary<string, Uri>()
+        {
+            { nameof(IWorkLoadService), new Uri("fabric:/TextProcessing/WorkLoadService") },
+            { nameof(IMetadataServiceFabric), new Uri("fabric:/TextProcessing/MetadataService") }
+        };
+
         protected const string wordType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         protected const string octetStream = "application/octet-stream";
 
@@ -76,6 +93,13 @@
             {
                 stream.Close();
             }
+        }
+
+        
+
+        protected T GetService<T>() where T : IService
+        {
+            return serviceProxy.Value.CreateServiceProxy<T>(SFURL[typeof(T).Name], ServicePartitionKey.Singleton);
         }
 
         protected string SanitizeFileName(string name)

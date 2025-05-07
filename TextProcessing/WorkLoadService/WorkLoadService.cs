@@ -111,7 +111,7 @@ namespace WorkLoadService
 #if RELEASE
             using (var connection = new SqlConnection(Environment.GetEnvironmentVariable(KeyCollection.ConnectionString)))
             {
-                return [..connection.Query<WorkListItem>("SELECT * FROM dbo.TotalNelivrat")];
+                return [.. connection.Query<WorkListItem>("SELECT * FROM dbo.TotalNelivrat")];
             }
 #else
             var commited = await _provider.GetRequiredService<ICommitedOrdersRepository>().GetCommitedOrders(DateTime.MinValue);
@@ -222,6 +222,36 @@ namespace WorkLoadService
                     var current = enumerator.Current;
                     act(current);
                 }
+            }
+        }
+
+        private CancellationTokenSource _throttleCts;
+        private readonly TimeSpan _throttleDelay = TimeSpan.FromMinutes(5);
+
+        public Task ThrottlePublish(TimeSpan? timeSpan)
+        {
+            _throttleCts?.Cancel();
+            _throttleCts = new CancellationTokenSource();
+            var token = _throttleCts.Token;
+
+            _ = ExecuteAfterDelayAsync(token, timeSpan ?? _throttleDelay);
+
+            return Task.CompletedTask;
+        }
+
+        private async Task ExecuteAfterDelayAsync(CancellationToken token, TimeSpan span)
+        {
+            try
+            {
+                await Task.Delay(span, token); // Wait delay
+                if (!token.IsCancellationRequested)
+                {
+                    await Publish(); // Actual logic here
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore if cancelled — expected during throttling
             }
         }
     }

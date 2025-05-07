@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Transports;
+using V2.Interfaces;
 using WebApi.Models;
 
 namespace WebApi.Controllers
@@ -37,13 +38,17 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> SaveTransport(TransportModel transport)
         {
-            return Ok(mapper.Map<TransportModel>(await _transportRepository.SaveTransport(mapper.Map<TransportEntry>(transport))));
+            var saved = mapper.Map<TransportModel>(await _transportRepository.SaveTransport(mapper.Map<TransportEntry>(transport)));
+            await GetService<IWorkLoadService>().ThrottlePublish(null);
+            return Ok(saved);
         }
 
         [HttpPatch]
         public async Task<IActionResult> UpdateTransport(TransportModel transport, [FromQuery] int[] transportItemsToRemove)
         {
-            return Ok(mapper.Map<TransportModel>(await _transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport), transportItemsToRemove ?? [])));
+            var result = mapper.Map<TransportModel>(await _transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport), transportItemsToRemove ?? []));
+            await GetService<IWorkLoadService>().ThrottlePublish(null);
+            return Ok(result);
         }
 
         [HttpPost("attachments/{transportId}")]
@@ -58,6 +63,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> DeleteTransport(int transportId)
         {
             await _transportRepository.DeleteTransport(transportId);
+            await GetService<IWorkLoadService>().ThrottlePublish(null);
             return Ok(new { success = true });
         }
     }
