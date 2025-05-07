@@ -64,7 +64,7 @@ namespace WorkLoadService
         {
             return new ServiceCollection()
                     .AddSingleton<IMetadataService, FabricMetadataService>()
-                    .AddScoped<StructuraReportWriter, StructuraReportWriter>()
+                    .AddTransient<StructuraReportWriter, StructuraReportWriter>()
 #if RELEASE
                     .AddScoped<IProductCodeRepository, ProductCodesRepository>()
                     .AddScoped<IReportEntryRepository, ReportEntryRepository>()

@@ -30,6 +30,8 @@ namespace RepositoryServices
         {
             if (_reportName == reportName) return;
             _reportName = reportName;
+            rootProductNames = new();
+            rootProductMapping = new();
             reportEntries = (await _reportEntryRepository.GetReportEntry(reportName)).Cast<Report>().ToList();
             var productHierarchy = (await _productCodesRepository.GetProductCodes(c =>
                                                                         reportEntries.Any(re => c.Code.Contains(re.FindBy) && c.Level == re.Level))
