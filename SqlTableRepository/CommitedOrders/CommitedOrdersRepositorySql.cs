@@ -91,7 +91,7 @@ namespace SqlTableRepository.CommitedOrders
 
         private IEnumerable<CommitedOrderEntry> Aggregate(IEnumerable<CommitedOrderEntry> items)
         {
-            foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
+            foreach (var group in items.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda, t.DetaliiLinie }))
                 yield return CommitedOrderEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate), group.Sum(x => x.Greutate ?? 0) * group.Sum(t => t.Cantitate));
         }
     }
