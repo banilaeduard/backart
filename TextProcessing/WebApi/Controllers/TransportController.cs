@@ -46,8 +46,13 @@ namespace WebApi.Controllers
         [HttpPatch]
         public async Task<IActionResult> UpdateTransport(TransportModel transport, [FromQuery] int[] transportItemsToRemove)
         {
+            var initial = await _transportRepository.GetTransport(transport.Id!.Value);
             var result = mapper.Map<TransportModel>(await _transportRepository.UpdateTransport(mapper.Map<TransportEntry>(transport), transportItemsToRemove ?? []));
-            await GetService<IWorkLoadService>().ThrottlePublish(null);
+            if (initial.CurrentStatus == "Pending" || result.CurrentStatus == "Pending"
+                && (initial.CurrentStatus != result.CurrentStatus || initial.Delivered?.ToShortDateString() != result.Delivered?.ToShortDateString()))
+            {
+                await GetService<IWorkLoadService>().ThrottlePublish(null);
+            }
             return Ok(result);
         }
 
