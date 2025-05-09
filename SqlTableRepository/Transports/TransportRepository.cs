@@ -50,8 +50,9 @@ namespace SqlTableRepository.Transport
                 }
                 else
                 {
-                    sql = $@"{TransportSql.GetTransports(pageSize!.Value)} WHERE [CurrentStatus] = 'Delivered' AND Delivered < @since ORDER BY Delivered DESC";
-                    return [.. await connection.QueryAsync<TransportEntry>(sql)];
+                    var to = since?.AddDays(-7);
+                    sql = $@"{TransportSql.GetTransports(pageSize!.Value)} WHERE [CurrentStatus] = 'Delivered' AND Delivered < @since AND Delivered >= @to ORDER BY Delivered DESC";
+                    return [.. await connection.QueryAsync<TransportEntry>(sql, new { since, to })];
                 }
             }
         }

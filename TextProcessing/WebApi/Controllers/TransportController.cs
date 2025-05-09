@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Globalization;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RepositoryContract.ExternalReferenceGroup;
@@ -27,6 +28,13 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetAll()
         {
             return Ok(await _transportRepository.GetTransports());
+        }
+
+        [HttpGet("{date}/{pageSize}")]
+        public async Task<IActionResult> GetAllSince(string date, int pageSize)
+        {
+            var from = DateTime.Parse(date, CultureInfo.InvariantCulture);
+            return Ok(await _transportRepository.GetTransports(from, pageSize));
         }
 
         [HttpGet("{transportId}")]
