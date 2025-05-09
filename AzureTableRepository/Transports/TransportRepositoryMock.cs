@@ -37,7 +37,7 @@ namespace AzureTableRepository.Transports
             };
         }
 
-        public async Task<List<TransportEntry>> GetTransports(DateTime? since = null, int? pageSize = null)
+        public async Task<List<TransportEntry>> GetTransports(int skip = 0, int take = 0)
         {
             return [new TransportEntry()
             {

@@ -30,11 +30,10 @@ namespace WebApi.Controllers
             return Ok(await _transportRepository.GetTransports());
         }
 
-        [HttpGet("{date}/{pageSize}")]
-        public async Task<IActionResult> GetAllSince(string date, int pageSize)
+        [HttpGet("{skip}/{take}")]
+        public async Task<IActionResult> GetAllSince(int skip, int take)
         {
-            var from = DateTime.Parse(date, CultureInfo.InvariantCulture);
-            return Ok(await _transportRepository.GetTransports(from, pageSize));
+            return Ok(await _transportRepository.GetTransports(skip, take));
         }
 
         [HttpGet("{transportId}")]

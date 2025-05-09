@@ -35,24 +35,19 @@ namespace SqlTableRepository.Transport
             }
         }
 
-        public async Task<List<TransportEntry>> GetTransports(DateTime? since = null, int? pageSize = null)
+        public async Task<List<TransportEntry>> GetTransports(int skip = 0, int take = 0)
         {
             using (var connection = GetConnection())
             {
                 var sql = string.Empty;
-                if (!pageSize.HasValue && !since.HasValue)
+                if (skip == 0 && take == 0)
                 {
-                    sql = $@"{TransportSql.GetTransports()} WHERE [CurrentStatus] <> 'Delivered' ORDER BY Delivered DESC;
-
-                            {TransportSql.GetTransports(20)} WHERE [CurrentStatus] = 'Delivered' ORDER BY Delivered DESC;";
-                    var multi = await connection.QueryMultipleAsync(sql);
-                    return [.. multi.Read<TransportEntry>(), .. multi.Read<TransportEntry>()];
+                    return [.. await connection.QueryAsync<TransportEntry>($@"{TransportSql.GetTransports()} WHERE [CurrentStatus] <> 'Delivered' ORDER BY Delivered DESC;")];
                 }
                 else
                 {
-                    var to = since?.AddDays(-7);
-                    sql = $@"{TransportSql.GetTransports(pageSize!.Value)} WHERE [CurrentStatus] = 'Delivered' AND Delivered < @since AND Delivered >= @to ORDER BY Delivered DESC";
-                    return [.. await connection.QueryAsync<TransportEntry>(sql, new { since, to })];
+                    sql = $@"{TransportSql.GetTransports()} WHERE [CurrentStatus] = 'Delivered' ORDER BY Delivered DESC OFFSET {skip} ROWS FETCH NEXT {take} ROWS ONLY";
+                    return [.. await connection.QueryAsync<TransportEntry>(sql)];
                 }
             }
         }

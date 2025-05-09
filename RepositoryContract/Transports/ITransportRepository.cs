@@ -9,6 +9,6 @@ namespace RepositoryContract.Transports
         public Task<TransportEntry> GetTransport(int transportId);
         public Task<List<ExternalReferenceGroupEntry>> HandleExternalAttachmentRefs(List<ExternalReferenceGroupEntry>? externalReferenceGroupEntries, int transportId, int[] deteledAttachments);
         public Task DeleteTransport(int transportId);
-        public Task<List<TransportEntry>> GetTransports(DateTime? since = null, int? pageSize = null);
+        public Task<List<TransportEntry>> GetTransports(int skip = 0, int take = 0);
     }
 }

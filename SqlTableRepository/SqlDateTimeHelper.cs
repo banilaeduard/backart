@@ -11,5 +11,11 @@
             if (dateTime > SqlDateTimeMax) return SqlDateTimeMax;
             return dateTime;
         }
+
+        internal static DateTime StartOfWeek(this DateTime dt, DayOfWeek startOfWeek)
+        {
+            int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;
+            return ClampToSqlDateTimeRange(dt.AddDays(-1 * diff).Date);
+        }
     }
 }
