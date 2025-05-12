@@ -20,7 +20,7 @@ namespace RepositoryServices.Models
         public List<ReportModel> WorkDisplayItems { get; set; }
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
-            foreach(var wItem in WorkItems)
+            foreach (var wItem in WorkItems)
             {
                 wItem.Accept(visitor, contextItems, context);
             }
@@ -70,7 +70,15 @@ namespace RepositoryServices.Models
         [DataMember]
         public DateTime? DeliveryDate { get; set; }
         [DataMember]
+        public string DocId { get; set; }
+        [DataMember]
         public int Cantitate { get; set; }
+        [DataMember]
+        public int CantRemoved { get; set; }
+        [DataMember]
+        public int Hash { get; set; }
+        [DataMember]
+        public string Detalii { get; set; }
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
             if (contextItems.ContainsKey(CodProdus)) contextItems[CodProdus] += Cantitate;

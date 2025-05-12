@@ -44,6 +44,12 @@ namespace RepositoryServices
                     .ToArray();
                 rootProductNames[product.RootCode] = product.Name;
             }
+
+            var publishReports = (await _reportEntryRepository.GetReportEntry("Publish")).Cast<Report>().ToList();
+            foreach (var item in publishReports)
+            {
+                rootProductMapping[item.FindBy] = [item];
+            }
         }
 
         public async Task<List<ReportModel>> GenerateReport(string reportName, ITemplateDocumentWriter currentTemplateWriter, IVisitable<Dictionary<string, int>> data, ContextMap? contextMap = null)

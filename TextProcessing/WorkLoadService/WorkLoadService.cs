@@ -61,6 +61,9 @@ namespace WorkLoadService
                             DeliveryDate = commited.DeliveryDate,
                             NumarComanda = commited.NumarComanda,
                             NumeProdus = commited.NumeProdus,
+                            Hash = commited.Hash,
+                            Detalii = commited.Detalii,
+                            DocId = commited.DocId,
                         });
                     }
 
@@ -77,13 +80,19 @@ namespace WorkLoadService
             using (var tx = StateManager.CreateTransaction())
             {
                 var model = new WorkerPriorityList([], "orders");
-                await IterateDictionary<WorkItem>(OrdersKey, tx, async (entry) =>
+                await IterateDictionary<WorkItem>(OrdersKey, tx, (entry) =>
                 {
                     model.WorkItems.Add(new WorkItem()
                     {
                         CodProdus = entry.Value.CodProdus,
                         Cantitate = entry.Value.Cantitate,
                         NumeProdus = entry.Value.NumeProdus,
+                        Hash = entry.Value.Hash,
+                        DocId = entry.Value.DocId,
+                        Detalii = entry.Value.Detalii,
+                        CodLocatie = entry.Value.CodLocatie,
+                        NumarComanda = entry.Value.NumarComanda,
+                        DeliveryDate = entry.Value.DeliveryDate,
                     });
                 });
                 var items = (await _structuraReport.GenerateReport(workerName, model, model)).Where(t => t.Count > 0);
@@ -126,6 +135,9 @@ namespace WorkLoadService
                 DetaliiDoc = x.DetaliiDoc,
                 DetaliiLinie = x.DetaliiLinie,
                 DocId = x.NumarIntern,
+                NumeArticol = x.NumeProdus,
+                NumeLocatie = x.NumeLocatie,
+                NumarComanda = x.NumarComanda,
                 DueDate = x.DueDate,
                 Tip = WorkListItem.Commited,
             }), ..orders.Where(t => t.Cantitate > 0).Select(x => new WorkListItem() {
@@ -155,18 +167,24 @@ namespace WorkLoadService
             var orders = result.Where(t => t.Tip == WorkListItem.Order).ToList();
             using (var tx = StateManager.CreateTransaction())
             {
-                foreach (var orderGroup in orders.GroupBy(t => t.CodArticol))
+                foreach (var order in orders)
                 {
-                    var orderSample = orderGroup.First();
-                    await tempOrdersDictionary.SetAsync(tx, orderGroup.Key, new WorkItem()
+                    await tempOrdersDictionary.SetAsync(tx, GetWorkItemHash(order).ToString(), new WorkItem()
                     {
-                        CodProdus = orderSample.CodArticol,
-                        Cantitate = orderGroup.Sum(x => x.Cantitate),
-                        NumeProdus = orderSample.NumeArticol,
+                        CodProdus = order.CodArticol,
+                        Cantitate = order.Cantitate,
+                        NumeProdus = order.NumeArticol,
+                        CodLocatie = order.CodLocatie,
+                        DocId = order.DocId,
+                        DeliveryDate = order.DueDate,
+                        Detalii = string.Join(";", order.DetaliiDoc, order.DetaliiLinie),
+                        NumarComanda = order.NumarComanda,
+                        Hash = GetWorkItemHash(order),
                     });
                 }
                 await tx.CommitAsync();
             }
+
             var commited = result.Where(t => t.Tip == WorkListItem.Commited && (t.TransportStatus == "Pending" || string.IsNullOrEmpty(t.TransportStatus))).ToList();
             var perDay = commited.OrderBy(x => x.Delivered).GroupBy(t => t.Delivered.HasValue ? t.Delivered.Value.ToString("dd-MM-yy") : "Pending");
 
@@ -184,6 +202,9 @@ namespace WorkLoadService
                                 DeliveryDate = commited.Delivered,
                                 NumarComanda = commited.NumarComanda,
                                 NumeProdus = commited.NumeArticol,
+                                DocId = commited.DocId,
+                                Hash = GetWorkItemHash(commited),
+                                Detalii =  string.Join(";", commited.DetaliiDoc, commited.DetaliiLinie)
                             })]);
                 }
                 await tx.CommitAsync();
@@ -252,6 +273,32 @@ namespace WorkLoadService
             catch (TaskCanceledException)
             {
                 // Ignore if cancelled — expected during throttling
+            }
+        }
+
+        private static int GetWorkItemHash(WorkListItem item)
+        {
+            return GetStableHashCode(item.NumarComanda) ^ GetStableHashCode(item.CodArticol) ^ GetStableHashCode(item.CodLocatie)
+                ^ GetStableHashCode(item.DetaliiDoc) ^ GetStableHashCode(item.DetaliiLinie);
+        }
+
+        private static int GetStableHashCode(string? str)
+        {
+            if (str == null) return 0;
+            unchecked
+            {
+                int hash1 = 5381;
+                int hash2 = hash1;
+
+                for (int i = 0; i < str.Length && str[i] != '\0'; i += 2)
+                {
+                    hash1 = ((hash1 << 5) + hash1) ^ str[i];
+                    if (i == str.Length - 1 || str[i + 1] == '\0')
+                        break;
+                    hash2 = ((hash2 << 5) + hash2) ^ str[i + 1];
+                }
+
+                return hash1 + (hash2 * 1566083941);
             }
         }
     }
