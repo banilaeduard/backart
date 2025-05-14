@@ -42,11 +42,11 @@ namespace SqlTableRepository.Transport
                 var sql = string.Empty;
                 if (skip == 0 && take == 0)
                 {
-                    return [.. await connection.QueryAsync<TransportEntry>($@"{TransportSql.GetTransports()} WHERE [CurrentStatus] <> 'Delivered' ORDER BY Delivered DESC;")];
+                    return [.. await connection.QueryAsync<TransportEntry>($@"{TransportSql.GetTransports()} WHERE [CurrentStatus] <> 'Delivered' ORDER BY Delivered DESC, Id DESC;")];
                 }
                 else
                 {
-                    sql = $@"{TransportSql.GetTransports()} WHERE [CurrentStatus] = 'Delivered' ORDER BY Delivered DESC OFFSET {skip} ROWS FETCH NEXT {take} ROWS ONLY";
+                    sql = $@"{TransportSql.GetTransports()} WHERE [CurrentStatus] = 'Delivered' ORDER BY Delivered DESC, Id DESC OFFSET {skip} ROWS FETCH NEXT {take} ROWS ONLY";
                     return [.. await connection.QueryAsync<TransportEntry>(sql)];
                 }
             }
