@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using System.Fabric;
 using Dapper;
@@ -160,6 +161,20 @@ namespace WorkLoadService
 
         public async Task Publish()
         {
+            try
+            {
+                _throttleCts?.Cancel();
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore if cancelled — expected during throttling
+            }
+
+            await this.PublishInternal();
+        }
+
+        public async Task PublishInternal()
+        {
             List<WorkListItem> result = await GetWorkListItems();
 
             var tempOrdersDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, WorkItem>>(OrdersKey);
@@ -267,7 +282,7 @@ namespace WorkLoadService
                 await Task.Delay(span, token); // Wait delay
                 if (!token.IsCancellationRequested)
                 {
-                    await Publish(); // Actual logic here
+                    await PublishInternal(); // Actual logic here
                 }
             }
             catch (TaskCanceledException)

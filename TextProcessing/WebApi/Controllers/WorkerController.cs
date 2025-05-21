@@ -1,10 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.ServiceFabric.Services.Client;
-using RepositoryContract.CommitedOrders;
-using RepositoryContract.Orders;
-using RepositoryServices;
 using V2.Interfaces;
 
 namespace WebApi.Controllers

@@ -148,11 +148,13 @@ namespace MailReader.MailOperations
                         List<IMessageSummary> toProcess = new();
                         if (uids?.Any() == true)
                             foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.InternalDate
-                                | MessageSummaryItems.EmailId
+                                | MessageSummaryItems.EmailId | MessageSummaryItems.Envelope
                                 | MessageSummaryItems.UniqueId))
                             {
                                 if (await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null
-                                    || await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null)
+                                    || await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null
+                                    || await ticketEntryRepository.GetTicket(GetPartitionKeyOld(messageSummary), GetRowKeyOld(messageSummary)) != null
+                                    || await ticketEntryRepository.GetTicket(GetPartitionKeyOld(messageSummary), GetRowKeyOld(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null)
                                     continue;
 
                                 toProcess.Add(messageSummary);
@@ -529,8 +531,15 @@ namespace MailReader.MailOperations
                 , Encoding.UTF8.GetString(Convert.FromBase64String(settings.Password)), cancellationToken);
             return client;
         }
-        private static string GetPartitionKey(IMessageSummary id) => id.UniqueId.Validity.ToString();
-        private static string GetRowKey(IMessageSummary id) => id.UniqueId.Id.ToString();
+
+        private static string GetPartitionKey(IMessageSummary id) {
+            var str = id.Envelope.Subject + id.Envelope.Date?.ToString() + id.Envelope.From.FirstOrDefault()?.Name;
+            var hash = GetStableHashCode(str).ToString();
+            return hash.Length > 4 ? hash.Substring(0, 4) : hash;
+        }
+        private static string GetRowKey(IMessageSummary id) => id.Envelope.MessageId ?? @$"{GetPartitionKeyOld(id)}_{GetRowKeyOld(id)}";
+        private static string GetPartitionKeyOld(IMessageSummary id) => id.UniqueId.Validity.ToString();
+        private static string GetRowKeyOld(IMessageSummary id) => id.UniqueId.Id.ToString();
         private static void LogError(Exception ex)
         {
             logger.ActorMessage(actor, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
@@ -543,6 +552,26 @@ namespace MailReader.MailOperations
             {
                 if (personal.Name.ToLower().Equals(folder.ToLower())) yield return personal;
                 else yield return personal.GetSubfolder(folder, cancellationToken);
+            }
+        }
+
+        private static int GetStableHashCode(string? str)
+        {
+            if (str == null) return 0;
+            unchecked
+            {
+                int hash1 = 5381;
+                int hash2 = hash1;
+
+                for (int i = 0; i < str.Length && str[i] != '\0'; i += 2)
+                {
+                    hash1 = ((hash1 << 5) + hash1) ^ str[i];
+                    if (i == str.Length - 1 || str[i + 1] == '\0')
+                        break;
+                    hash2 = ((hash2 << 5) + hash2) ^ str[i + 1];
+                }
+
+                return hash1 + (hash2 * 1566083941);
             }
         }
     }
