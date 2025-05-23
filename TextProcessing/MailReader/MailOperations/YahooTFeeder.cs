@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using AzureFabricServices;
 using AzureServices;
@@ -532,12 +533,24 @@ namespace MailReader.MailOperations
             return client;
         }
 
-        private static string GetPartitionKey(IMessageSummary id) {
-            var str = id.Envelope.Subject + id.Envelope.Date?.ToString() + id.Envelope.From.FirstOrDefault()?.Name;
-            var hash = GetStableHashCode(str).ToString();
-            return hash.Length > 4 ? hash.Substring(0, 4) : hash;
+        private static string GetPartitionKey(IMessageSummary id)
+        {
+            var sent = id.Envelope.Date?.ToString("yyMM", CultureInfo.InvariantCulture) ?? "";
+
+            if (!string.IsNullOrEmpty(sent)) return sent;
+
+            var now = id.InternalDate ?? DateTime.Now;
+            return @$"{now.Year}@{now.Month}";
         }
-        private static string GetRowKey(IMessageSummary id) => id.Envelope.MessageId ?? @$"{GetPartitionKeyOld(id)}_{GetRowKeyOld(id)}";
+
+        private static string GetRowKey(IMessageSummary id)
+        {
+            var rowKey = id.Envelope.MessageId ?? @$"{GetPartitionKeyOld(id)}_{GetRowKeyOld(id)}";
+            var str = id.Envelope.Subject + id.Envelope.Date?.ToString() + id.Envelope.From.FirstOrDefault()?.Name;
+            var hash2 = Math.Abs(GetStableHashCode(Math.Abs(GetStableHashCode(str)).ToString())).ToString();
+            return $@"{rowKey}_{(hash2.Length > 10 ? hash2.Substring(0, 10) : hash2)}";
+        }
+
         private static string GetPartitionKeyOld(IMessageSummary id) => id.UniqueId.Validity.ToString();
         private static string GetRowKeyOld(IMessageSummary id) => id.UniqueId.Id.ToString();
         private static void LogError(Exception ex)
