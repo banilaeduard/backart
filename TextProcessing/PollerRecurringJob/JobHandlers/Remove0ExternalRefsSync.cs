@@ -13,7 +13,7 @@ namespace PollerRecurringJob.JobHandlers
             var storageService = jobContext.provider.GetRequiredService<IStorageService>()!;
 
             var dateTime = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
-            var externalRefs = await externalRefRepository.GetExternalReferences(@$"Ref_count < 1 AND TableName in ('AttachmentEntry', 'Transport') and Date <= '{dateTime}'
+            var externalRefs = await externalRefRepository.GetExternalReferences(@$"Ref_count < 1 AND EntityType in ('AttachmentEntry', 'Transport') and Date <= '{dateTime}'
                 ORDER BY G_Id desc
                 OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
             ");
@@ -34,7 +34,7 @@ namespace PollerRecurringJob.JobHandlers
 
             var ticketRepository = jobContext.provider.GetRequiredService<ITicketEntryRepository>()!;
 
-            externalRefs = await externalRefRepository.GetExternalReferences(@$"Ref_count < 1 AND TableName = 'TicketEntity' and Date <= '{dateTime}'
+            externalRefs = await externalRefRepository.GetExternalReferences(@$"Ref_count < 1 AND EntityType = 'TicketEntity' and Date <= '{dateTime}'
                 ORDER BY G_Id desc
                 OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
             ");

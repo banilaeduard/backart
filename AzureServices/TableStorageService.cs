@@ -16,6 +16,13 @@ namespace AzureServices
             return tableClient.Query(expr);
         }
 
+        public Azure.Pageable<T> Query<T>(string filter, string? tableName = null) where T : class, ITableEntity
+        {
+            tableName = tableName ?? typeof(T).Name;
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            return tableClient.Query<T>(filter);
+        }
+
         public async Task Insert<T>(T entry, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? entry.GetType().Name;

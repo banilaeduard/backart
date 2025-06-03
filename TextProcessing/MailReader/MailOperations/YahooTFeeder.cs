@@ -42,10 +42,7 @@ namespace MailReader.MailOperations
         {
             IMailSettingsRepository mailSettings = jobContext.provider.GetService<IMailSettingsRepository>()!;
             IMetadataService metadataService = jobContext.provider.GetService<IMetadataService>()!;
-            ITicketEntryRepository ticketEntryRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
 
-            IList<TicketEntity> tickets = null;
-            IList<AttachmentEntry> attachments = null;
             Dictionary<string, List<string>> folderRecipients = null;
 
             bool downlaod = (op & Operation.Download) == Operation.Download;
@@ -59,13 +56,6 @@ namespace MailReader.MailOperations
                 return;
             }
             var mSettings = (await mailSettings.GetMailSetting(settings.PartitionKey)).ToList();
-
-            if (downlaod || move)
-            {
-                tickets = await ticketEntryRepository.GetAll();
-                if (downlaod)
-                    attachments = await ticketEntryRepository.GetAllAttachments();
-            }
 
             if (fetch)
             {
@@ -85,11 +75,11 @@ namespace MailReader.MailOperations
             {
                 if (downlaod)
                 {
-                    await DownloadAll(jobContext, client, mSettings, tickets!, attachments!, download_uids);
+                    await DownloadAll(jobContext, client, mSettings, download_uids);
                 }
                 if (move)
                 {
-                    await Move(client, mSettings, tickets!, messages);
+                    await Move(client, mSettings, messages);
                 }
                 if (fetch)
                 {
@@ -201,12 +191,11 @@ namespace MailReader.MailOperations
 
         internal static async Task DownloadAll(
             MailReader jobContext, ImapClient client,
-            List<MailSettingEntry> mailSettingEntries, IList<TicketEntity> tickets,
-            IList<AttachmentEntry> attachmentEntries, TableEntityPK[] uids)
+            List<MailSettingEntry> mailSettingEntries, TableEntityPK[] uids)
         {
             IStorageService blob = jobContext.provider.GetService<IStorageService>()!;
             ITicketEntryRepository ticketEntryRepository = jobContext.provider.GetService<ITicketEntryRepository>()!;
-
+            IList<AttachmentEntry> attachmentEntries = await ticketEntryRepository.GetAllAttachments();
             List<TableEntityPK> result = new();
             try
             {
@@ -225,6 +214,7 @@ namespace MailReader.MailOperations
                 if (result.Count == uids.Count()) return;
 
                 var missingUids = uids.Except(result);
+                List<TicketEntity> tickets = await GetTickets(missingUids, ticketEntryRepository);
                 tickets = [.. tickets.Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey))];
                 var allFolders = mailSettingEntries.SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries)).Distinct().ToArray();
 
@@ -342,7 +332,6 @@ namespace MailReader.MailOperations
         internal static async Task Move(
             ImapClient client,
             List<MailSettingEntry> mailSettingEntries,
-            IList<TicketEntity> tickets,
             MoveToMessage<TableEntityPK>[] messages)
         {
             IMetadataService metadataService = new FabricMetadataService();
@@ -359,7 +348,7 @@ namespace MailReader.MailOperations
             {
                 var destinationFolder = GetFolders(client, [msg.DestinationFolder], CancellationToken.None).ElementAt(0);
 
-                var entries = tickets.Where(x => msg.Items.Any(f => f.RowKey == x.RowKey && f.PartitionKey == x.PartitionKey)).ToList();
+                var entries = await GetTickets(msg.Items, ticketEntryRepository);
                 var foundIn = entries.Where(x => !string.IsNullOrEmpty(x.CurrentFolder))
                                     .Select(x => x.CurrentFolder)
                                     .Distinct()
@@ -518,6 +507,7 @@ namespace MailReader.MailOperations
                 ThreadId = t.ThreadId,
                 Date = t.CreatedDate,
                 TableName = nameof(TicketEntity),
+                EntityType = nameof(TicketEntity),
                 LocationRowKey = t?.LocationRowKey ?? "",
                 LocationPartitionKey = t?.LocationPartitionKey ?? ""
             }).ToList());
@@ -586,6 +576,18 @@ namespace MailReader.MailOperations
 
                 return hash1 + (hash2 * 1566083941);
             }
+        }
+
+        private static async Task<List<TicketEntity>> GetTickets(IEnumerable<TableEntityPK> tableEntityPKs, ITicketEntryRepository repository)
+        {
+            List<TicketEntity> ticketEntities = new();
+            foreach (var tableEntity in tableEntityPKs.GroupBy(t => t.PartitionKey))
+            {
+                ticketEntities.AddRange(await repository.GetSome(nameof(TicketEntity), tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
+                ticketEntities.AddRange(await repository.GetSome($@"{nameof(TicketEntity)}Archive", tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
+            }
+
+            return [.. ticketEntities.DistinctBy(t => new { t.PartitionKey, t.RowKey })];
         }
     }
 }

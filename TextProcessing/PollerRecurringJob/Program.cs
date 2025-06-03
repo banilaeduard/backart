@@ -84,6 +84,7 @@ namespace PollerRecurringJob
                     .AddScoped<ICacheManager<AttachmentEntry>, AlwaysGetCacheManager<AttachmentEntry>>()
                     .AddScoped<ITicketEntryRepository, TicketEntryRepository>()
                     .AddScoped<ITransportRepository, TransportRepository>()
+                    .AddScoped<TableStorageService, TableStorageService>()
                     .BuildServiceProvider();
         }
         private class DateTimeHandler : SqlMapper.TypeHandler<DateTime>

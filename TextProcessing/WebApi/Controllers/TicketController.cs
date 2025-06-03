@@ -14,8 +14,6 @@ namespace WebApi.Controllers
     using RepositoryContract;
     using AutoMapper;
     using MailReader.Interfaces;
-    using Microsoft.ServiceFabric.Actors.Client;
-    using Microsoft.ServiceFabric.Actors;
     using ServiceInterface.Storage;
     using RepositoryContract.ExternalReferenceGroup;
     using EntityDto.Tasks;
@@ -123,7 +121,7 @@ namespace WebApi.Controllers
 
             if (missing.Any())
             {
-                var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+                var proxy = GetActor<IMailReader>("source1");
                 await proxy.DownloadAll([.. missing.Select(x => new TableEntityPK() {
                         PartitionKey = x.PartitionKey,
                         RowKey = x.RowKey
@@ -141,7 +139,7 @@ namespace WebApi.Controllers
             var attachments = await ticketEntryRepository.GetAllAttachments(entry.RowKey);
             if (!attachments.Any())
             {
-                var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+                var proxy = GetActor<IMailReader>("source1");
                 await proxy.DownloadAll([ new TableEntityPK() {
                     PartitionKey = entry.PartitionKey,
                     RowKey = entry.RowKey,

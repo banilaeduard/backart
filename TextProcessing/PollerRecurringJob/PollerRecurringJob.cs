@@ -185,5 +185,10 @@ namespace PollerRecurringJob
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
         }
+
+        public async Task ArchiveMail()
+        {
+            await ArchiveMails.Execute(this);
+        }
     }
 }

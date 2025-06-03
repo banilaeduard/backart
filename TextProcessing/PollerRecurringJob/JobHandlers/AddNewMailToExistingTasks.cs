@@ -20,7 +20,7 @@ namespace PollerRecurringJob.JobHandlers
 
             ITaskRepository repo = jobContext.provider.GetRequiredService<ITaskRepository>();
             var tasks = await repo.GetTasks(TaskInternalState.Open);
-            var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
+            var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 
             var items2 = items.SelectMany(t => t.Model).Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
 
@@ -30,7 +30,7 @@ namespace PollerRecurringJob.JobHandlers
                 // make sure we don't have the external mail attached
                 var intersect = items2.Where(newMail => externalRefs.Any(er => er.TaskId == task.Id
                     && er.ExternalGroupId.Equals(newMail.ThreadId)
-                    && $"{er.PartitionKey}_{er.RowKey}_{er.TableName}" != $"{newMail.PartitionKey}_{newMail.RowKey}_{newMail.TableName}"
+                    && $"{er.PartitionKey}_{er.RowKey}_{er.EntityType}" != $"{newMail.PartitionKey}_{newMail.RowKey}_{newMail.EntityType}"
                 )).ToList();
                 if (intersect.Any())
                 {
@@ -40,6 +40,7 @@ namespace PollerRecurringJob.JobHandlers
                         PartitionKey = ticket.PartitionKey,
                         RowKey = ticket.RowKey,
                         TableName = ticket.TableName,
+                        EntityType = ticket.EntityType,
                         Date = ticket.Date,
                         Action = ActionType.External,
                         Accepted = false,
@@ -78,6 +79,7 @@ namespace PollerRecurringJob.JobHandlers
                                 PartitionKey = ticket.PartitionKey,
                                 RowKey = ticket.RowKey,
                                 TableName = ticket.TableName,
+                                EntityType = ticket.EntityType,
                                 Date = ticket.Date,
                                 Action = ActionType.External,
                                 Accepted = false,

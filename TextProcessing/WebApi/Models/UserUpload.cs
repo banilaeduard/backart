@@ -6,6 +6,7 @@
         public string FileName { get; set; }
         public string Path { get; set; }
         public string? Type { get; set; }
+        public string? EntityType { get; set; }
         public DateTime? Created {  get; set; }
     }
 }

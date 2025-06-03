@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SqlTableRepository
 {
-    internal static class SqlHelper
+    public static class SqlHelper
     {
         static SqlHelper()
         {
@@ -28,7 +28,7 @@ namespace SqlTableRepository
         /// <param name="sqlName"></param>
         /// <param name="selectors"></param>
         /// <returns></returns>
-        internal static string FromValues<T>(this IEnumerable<T> range, DynamicParameters dParams, string sqlName, params Expression<Func<T, object>>[] selectors)
+        public static string FromValues<T>(this IEnumerable<T> range, DynamicParameters dParams, string sqlName, params Expression<Func<T, object>>[] selectors)
         {
             Dictionary<string, Func<T, object>> selectorNames = selectors.ToDictionary(selector => GetExpressionName(selector), t => t.Compile());
             var itemCount = range.Count();

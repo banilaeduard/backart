@@ -26,6 +26,15 @@ namespace AzureTableRepository.Tickets
             return (await CacheManagerTicket.GetAll((from) => tableStorageService.Query<TicketEntity>(t => t.Timestamp > from, tableName).ToList(), tableName)).ToList();
         }
 
+        public async Task<IList<TicketEntity>> GetSome(string tableName, string partitionKey, string minKeyRange = null, string maxKeyRange = null)
+        {
+            tableName = tableName ?? nameof(TicketEntity);
+            string filter = TableClient.CreateQueryFilter(
+                        $"PartitionKey eq {partitionKey} and RowKey ge {minKeyRange} and RowKey le {maxKeyRange}"
+                    );
+            return tableStorageService.Query<TicketEntity>(filter, tableName).ToList();
+        }
+
         public async Task Save(AttachmentEntry[] entry, string tableName = null)
         {
             tableName = tableName ?? nameof(AttachmentEntry);

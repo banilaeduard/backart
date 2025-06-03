@@ -1,21 +1,26 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.ServiceFabric.Actors.Client;
-using Microsoft.ServiceFabric.Actors;
 using AutoMapper;
 using MailReader.Interfaces;
 using PollerRecurringJob.Interfaces;
 using MetadataService.Interfaces;
+using WebApi.Models;
+using ServiceInterface.Storage;
+using EntityDto;
+using RepositoryContract.Tickets;
 
 namespace WebApi.Controllers
 {
     [Authorize(Roles = "admin")]
     public class JobsController : WebApiController2
     {
+        private readonly IWorkflowTrigger _workflowTrigger;
         public JobsController(
             ILogger<JobsController> logger,
+            IWorkflowTrigger workflowTrigger,
             IMapper mapper) : base(logger, mapper)
         {
+            _workflowTrigger = workflowTrigger;
         }
 
         [HttpGet()]
@@ -34,13 +39,39 @@ namespace WebApi.Controllers
             }
         }
 
+        [HttpPost("ArchiveMails")]
+        public async Task<IActionResult> ArchiveMails(TableEntryModel[] archiveEntries)
+        {
+            try
+            {
+                var proxy2 = GetActor<IPollerRecurringJob>("ArchiveMails");
+                foreach (var batch in archiveEntries.GroupBy(t => t.PartitionKey))
+                {
+                    await _workflowTrigger.Trigger<List<ArchiveMail>>("archivemail", [..batch.Select(t => new ArchiveMail()
+                    {
+                        FromTable = nameof(TicketEntity),
+                        PartitionKey = t.PartitionKey,
+                        RowKey = t.RowKey,
+                        ToTable = $@"{nameof(TicketEntity)}Archive"
+                    })]);
+                }
+                await proxy2.ArchiveMail();
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(new EventId(69), ex, nameof(JobsController));
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpGet("orders")]
         public async Task<IActionResult> TriggerOrders()
         {
             try
             {
-                var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
-                var proxy2 = ActorProxy.Create<IPollerRecurringJob>(new ActorId("source2"), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService"));
+                var proxy = GetActor<IMailReader>("source1");
+                var proxy2 = GetActor<IPollerRecurringJob>("source2");
 
                 await Task.WhenAll(proxy.FetchMails(), proxy2.SyncOrdersAndCommited());
 

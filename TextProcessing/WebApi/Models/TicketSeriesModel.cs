@@ -30,7 +30,7 @@
         {
             var map = (TicketEntity e) =>
             {
-                return TicketModel.FromEntry(e, externalRefs?.FirstOrDefault(x => x.PartitionKey == e.PartitionKey && x.RowKey == e.RowKey && x.TableName == nameof(TicketEntity)));
+                return TicketModel.FromEntry(e, externalRefs?.FirstOrDefault(x => x.PartitionKey == e.PartitionKey && x.RowKey == e.RowKey && x.EntityType == nameof(TicketEntity)));
             };
             var complaint = complaints.MaxBy(t => t.CreatedDate)!;
 

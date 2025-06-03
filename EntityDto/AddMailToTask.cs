@@ -7,6 +7,7 @@
         public string ThreadId { get; set; }
         public DateTime Date { get; set; }
         public string TableName { get; set; }
+        public string EntityType { get; set; }
         public string LocationRowKey { get; set; }
         public string LocationPartitionKey { get; set; }
     }

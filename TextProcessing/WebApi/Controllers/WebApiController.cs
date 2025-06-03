@@ -14,6 +14,10 @@
     using V2.Interfaces;
     using Microsoft.ServiceFabric.Services.Remoting;
     using MetadataService.Interfaces;
+    using Microsoft.ServiceFabric.Actors.Client;
+    using Microsoft.ServiceFabric.Actors;
+    using PollerRecurringJob.Interfaces;
+    using MailReader.Interfaces;
 
     [Authorize]
     [ApiController]
@@ -28,7 +32,9 @@
         protected Dictionary<string, Uri> SFURL = new Dictionary<string, Uri>()
         {
             { nameof(IWorkLoadService), new Uri("fabric:/TextProcessing/WorkLoadService") },
-            { nameof(IMetadataServiceFabric), new Uri("fabric:/TextProcessing/MetadataService") }
+            { nameof(IMetadataServiceFabric), new Uri("fabric:/TextProcessing/MetadataService") },
+            { nameof(IPollerRecurringJob), new Uri("fabric:/TextProcessing/PollerRecurringJobActorService") },
+            { nameof(IMailReader), new Uri("fabric:/TextProcessing/MailReaderActorService") }
         };
 
         protected const string wordType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -95,11 +101,16 @@
             }
         }
 
-        
+
 
         protected T GetService<T>() where T : IService
         {
             return serviceProxy.Value.CreateServiceProxy<T>(SFURL[typeof(T).Name], ServicePartitionKey.Singleton);
+        }
+
+        protected T GetActor<T>(string actorId) where T : IActor
+        {
+            return ActorProxy.Create<T>(new ActorId(actorId), SFURL[typeof(T).Name]);
         }
 
         protected string SanitizeFileName(string name)

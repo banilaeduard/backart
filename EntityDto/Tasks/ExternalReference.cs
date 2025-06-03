@@ -7,6 +7,7 @@ namespace EntityDto.Tasks
         public int TaskId { get; set; }
         public int TaskActionId { get; set; }
         public string TableName { get; set; }
+        public string EntityType { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public bool IsRemoved { get; set; }

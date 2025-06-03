@@ -6,6 +6,7 @@ namespace RepositoryContract.Tickets
     public interface ITicketEntryRepository
     {
         Task<IList<TicketEntity>> GetAll(string tableName = null);
+        Task<IList<TicketEntity>> GetSome(string tableName, string partitionKey, string minKeyRange = null, string maxKeyRange = null);
         Task<IList<AttachmentEntry>> GetAllAttachments(string? partitionKey = null, string tableName = null);
         Task Save(AttachmentEntry[] entry, string tableName = null);
         Task Save(TicketEntity[] entry, string tableName = null);

@@ -13,6 +13,7 @@ namespace PollerRecurringJob.JobHandlers
             var storageService = jobContext.provider.GetRequiredService<IStorageService>()!;
 
             var tickets = await ticketRepository.GetAll();
+            var ticketsArchived = await ticketRepository.GetAll($@"{nameof(TicketEntity)}Archive");
 
             var allAttach = await ticketRepository.GetAllAttachments();
             var allArchiveAttach = await ticketRepository.GetAllAttachments(null, AttachTempArchive);
@@ -37,7 +38,7 @@ namespace PollerRecurringJob.JobHandlers
             await ticketRepository.DeleteEntity([.. allAttachments]);
             await ticketRepository.Save([.. allAttachments, .. allAttachments2], AttachTempArchive);
 
-            var deleted = allArchiveAttach.Where(x => x.IsDeleted.HasValue && x.IsDeleted == true && x.Timestamp > DateTime.Now.AddDays(-4)).Take(99);
+            var deleted = allArchiveAttach.Where(x => x.IsDeleted.HasValue && x.IsDeleted == true && !ticketsArchived.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)).Take(99);
             await ticketRepository.DeleteEntity([.. deleted], null, AttachTempArchive);
         }
     }

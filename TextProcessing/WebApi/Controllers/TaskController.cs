@@ -38,9 +38,8 @@ namespace WebApi.Controllers
         {
             var taskLists = await taskRepository.GetTasks(Enum.Parse<TaskInternalState>(status));
 
-            var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
-            return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
+            return Ok(TaskModel.From(taskLists, await GetRelatedEntities(taskLists), synonimLocations));
         }
 
         [HttpPost("get")]
@@ -48,9 +47,8 @@ namespace WebApi.Controllers
         {
             var taskLists = await taskRepository.GetTasks(taskIds);
 
-            var tickets = await ticketEntryRepository.GetAll();
             var synonimLocations = (await keyLocationRepository.GetLocations()).Where(t => taskLists.Any(o => o.LocationCode == t.LocationCode)).ToList();
-            return Ok(TaskModel.From(taskLists, tickets, synonimLocations));
+            return Ok(TaskModel.From(taskLists, await GetRelatedEntities(taskLists), synonimLocations));
         }
 
         [HttpPost]
@@ -68,7 +66,7 @@ namespace WebApi.Controllers
                 });
             }
 
-            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
+            return Ok(TaskModel.From([newTask], await GetRelatedEntities([newTask]), [.. await keyLocationRepository.GetLocations()]).First());
         }
 
         [HttpPost("mark-as-closed")]
@@ -82,7 +80,7 @@ namespace WebApi.Controllers
                 DestinationFolder = "Archive",
                 Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
             });
-            return Ok(TaskModel.From(tasks, await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]));
+            return Ok(TaskModel.From(tasks, await GetRelatedEntities(tasks), [.. await keyLocationRepository.GetLocations()]));
         }
 
         [HttpDelete("{taskId}")]
@@ -127,12 +125,25 @@ namespace WebApi.Controllers
                     await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
                     {
                         DestinationFolder = "Archive",
-                        Items = newTask.ExternalReferenceEntries.Where(t => t.TableName == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))
+                        Items = newTask.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))
                     });
                 }
             }
 
-            return Ok(TaskModel.From([newTask], await ticketEntryRepository.GetAll(), [.. await keyLocationRepository.GetLocations()]).First());
+            return Ok(TaskModel.From([newTask], await GetRelatedEntities([newTask]), [.. await keyLocationRepository.GetLocations()]).First());
+        }
+
+        private async Task<List<TicketEntity>> GetRelatedEntities(IList<TaskEntry> taskLists)
+        {
+            var mailExternalRefs = taskLists.SelectMany(t => t.ExternalReferenceEntries.Where(er => er.EntityType == nameof(TicketEntity)));
+
+            List<TicketEntity> entries = new();
+            foreach (var batch in mailExternalRefs.GroupBy(t => new { t.TableName, t.PartitionKey }))
+            {
+                entries.AddRange(await ticketEntryRepository.GetSome(batch.Key.TableName, batch.Key.PartitionKey, batch.Min(x => x.RowKey), batch.Max(x => x.RowKey)));
+            }
+
+            return entries;
         }
     }
 }

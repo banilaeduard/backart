@@ -63,7 +63,7 @@ namespace SqlTableRepository.Tasks
                     dParam.Add($"@TaskId", taskAction.TaskId);
                     dParam.Add($"@TaskActionId", taskAction.Id);
 
-                    string fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName);
+                    string fromSql = task.ExternalReferenceEntries.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName, t => t.EntityType);
 
                     externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE ta.TaskId = @TaskId",
                         TaskSql.ExternalRefs.mapper
@@ -112,7 +112,7 @@ namespace SqlTableRepository.Tasks
                         dParam.Add($"@TaskId", taskAction.TaskId);
                         dParam.Add($"@TaskActionId", taskAction.Id);
 
-                        string fromSql = newExternal.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName);
+                        string fromSql = newExternal.FromValues(dParam, "tickets", t => t.PartitionKey, t => t.RowKey, t => t.ExternalGroupId, t => t.Date, t => t.TableName, t => t.EntityType);
 
                         externalRef = (await connection.QueryAsync($"{TaskSql.UpsertExternalReference(fromSql)}; {TaskSql.InsertEntityRef(fromSql)}; {TaskSql.ExternalRefs.sql} WHERE ta.TaskId = @TaskId",
                             TaskSql.ExternalRefs.mapper
@@ -156,13 +156,13 @@ namespace SqlTableRepository.Tasks
                                                 from dbo.TaskAction ta
                                                 join dbo.ExternalReferenceEntry er on ta.Id = er.TaskActionId
                                                 join dbo.ExternalReferenceGroup erg on erg.G_Id = er.GroupId
-                                                where erg.PartitionKey = @PartitionKey and erg.RowKey = @RowKey and erg.TableName = @TableName and ta.TaskId = @TaskId"
+                                                where erg.PartitionKey = @PartitionKey and erg.RowKey = @RowKey and erg.EntityType = @EntityType and ta.TaskId = @TaskId"
                                                 , new
                                                 {
                                                     PartitionKey = partitionKey,
                                                     RowKey = rowKey,
                                                     TaskId = taskId,
-                                                    TableName = nameof(TicketEntity)
+                                                    EntityType = nameof(TicketEntity),
                                                 });
             }
         }

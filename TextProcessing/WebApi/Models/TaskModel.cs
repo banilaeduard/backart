@@ -37,6 +37,7 @@ namespace WebApi.Models
                 PartitionKey = t.PartitionKey,
                 RowKey = t.RowKey,
                 TableName = nameof(TicketEntity),
+                EntityType = nameof(TicketEntity),
                 IsRemoved = t.IsRemoved,
                 Date = t.Created ?? DateTime.Now
             }).ToList() ?? [];
@@ -46,6 +47,7 @@ namespace WebApi.Models
                 PartitionKey = u.PartitionKey,
                 RowKey = u.RowKey,
                 TableName = nameof(AttachmentEntry),
+                EntityType = nameof(AttachmentEntry),
                 IsRemoved = false,
                 ExternalGroupId = u.Path,
                 Date = u.Created ?? DateTime.Now,
@@ -82,16 +84,17 @@ namespace WebApi.Models
                 result.Add(taskModel);
 
                 var relatedTickets = tickets.Where(t => task.ExternalReferenceEntries?.Any(
-                    er => er.TableName == nameof(TicketEntity)
+                    er => er.EntityType == nameof(TicketEntity)
                             && er.PartitionKey == t.PartitionKey && er.RowKey == t.RowKey) == true)
                     .GroupBy(T => T.ThreadId)
                     .Select(t => TicketSeriesModel.from([.. t], [.. task.ExternalReferenceEntries]))
                     .ToList();
 
                 taskModel.ExternalMailReferences = relatedTickets ?? [];
-                taskModel.UserUploads = task.ExternalReferenceEntries?.Where(x => x.TableName == nameof(AttachmentEntry)).Select(a => new UserUpload()
+                taskModel.UserUploads = task.ExternalReferenceEntries?.Where(x => x.EntityType == nameof(AttachmentEntry)).Select(a => new UserUpload()
                 {
                     TableName = a.TableName,
+                    EntityType = a.EntityType,
                     Created = a.Created,
                     PartitionKey = a.PartitionKey,
                     RowKey = a.RowKey,
