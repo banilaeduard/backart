@@ -18,8 +18,12 @@ namespace PollerRecurringJob.JobHandlers
             var allAttach = await ticketRepository.GetAllAttachments();
             var allArchiveAttach = await ticketRepository.GetAllAttachments(null, AttachTempArchive);
 
-            var allAttachments = allAttach.Where(x => !tickets.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)).Take(20).ToList();
-            var allAttachments2 = allArchiveAttach.Where(x => (!x.IsDeleted.HasValue || x.IsDeleted == false) && !tickets.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)).Take(20).ToList();
+            var allAttachments = allAttach.Where(x => !tickets.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)
+                && !ticketsArchived.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)).Take(20).ToList();
+            var allAttachments2 = allArchiveAttach.Where(x => (!x.IsDeleted.HasValue || x.IsDeleted == false)
+                && !tickets.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)
+                && !ticketsArchived.Any(t => t.PartitionKey == x.RefPartition && t.RowKey == x.RefKey)
+            ).Take(20).ToList();
 
             foreach (var attach in (AttachmentEntry[])[.. allAttachments, .. allAttachments2])
             {

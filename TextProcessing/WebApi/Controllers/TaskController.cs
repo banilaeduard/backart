@@ -2,6 +2,7 @@
 using EntityDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PollerRecurringJob.Interfaces;
 using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tasks;
@@ -75,11 +76,27 @@ namespace WebApi.Controllers
             await taskRepository.MarkAsClosed(taskIds);
             var tasks = await taskRepository.GetTasks(taskIds);
 
-            await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+            var externalMail = tasks.SelectMany(x => x.ExternalReferenceEntries).Where(t => t.EntityType == nameof(TicketEntity)).ToList();
+
+            if (externalMail.Any())
             {
-                DestinationFolder = "Archive",
-                Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
-            });
+                await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                {
+                    DestinationFolder = "Archive",
+                    Items = externalMail.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                });
+
+                await workflowTrigger.Trigger("archivemail", externalMail.Select(x => new ArchiveMail()
+                {
+                    FromTable = nameof(TicketEntity),
+                    ToTable = $@"{nameof(TicketEntity)}Archive",
+                    PartitionKey = x.PartitionKey,
+                    RowKey = x.RowKey,
+                }).ToList()
+                            );
+                var actor = GetActor<IPollerRecurringJob>("taskcontroller");
+                _ = System.Threading.Tasks.Task.Run(async () => await actor.ArchiveMail());
+            }
             return Ok(TaskModel.From(tasks, await GetRelatedEntities(tasks), [.. await keyLocationRepository.GetLocations()]));
         }
 
@@ -122,14 +139,30 @@ namespace WebApi.Controllers
                 var lastAction = newTask.Actions.OrderByDescending(t => t.Created).First();
                 if (lastAction.Description.Contains("Mark as closed"))
                 {
-                    await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                    var externalMail = newTask.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity)).ToList();
+
+                    if (externalMail.Any())
                     {
-                        DestinationFolder = "Archive",
-                        Items = newTask.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))
-                    });
+                        await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                        {
+                            DestinationFolder = "Archive",
+                            Items = newTask.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))
+                        });
+                        await workflowTrigger.Trigger("archivemail",
+                               newTask.ExternalReferenceEntries.Select(x => new ArchiveMail()
+                               {
+                                   FromTable = nameof(TicketEntity),
+                                   ToTable = $@"{nameof(TicketEntity)}Archive",
+                                   PartitionKey = x.PartitionKey,
+                                   RowKey = x.RowKey,
+                               }).ToList()
+                            );
+
+                        var actor = GetActor<IPollerRecurringJob>("taskcontroller");
+                        _ = System.Threading.Tasks.Task.Run(async () => await actor.ArchiveMail());
+                    }
                 }
             }
-
             return Ok(TaskModel.From([newTask], await GetRelatedEntities([newTask]), [.. await keyLocationRepository.GetLocations()]).First());
         }
 

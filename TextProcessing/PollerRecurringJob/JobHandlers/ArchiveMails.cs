@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using Azure.Data.Tables;
+﻿using Azure.Data.Tables;
 using AzureServices;
 using Dapper;
 using EntityDto;

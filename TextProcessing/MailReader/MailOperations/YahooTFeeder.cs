@@ -5,6 +5,7 @@ using AzureServices;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.Tickets;
 using EntityDto;
+using HtmlAgilityPack;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
@@ -138,14 +139,14 @@ namespace MailReader.MailOperations
 
                         List<IMessageSummary> toProcess = new();
                         if (uids?.Any() == true)
-                            foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.InternalDate
-                                | MessageSummaryItems.EmailId | MessageSummaryItems.Envelope
-                                | MessageSummaryItems.UniqueId))
+                            foreach (var messageSummary in await folder.FetchAsync(uids,  MessageSummaryItems.UniqueId
+                                        | MessageSummaryItems.InternalDate
+                                        | MessageSummaryItems.Envelope
+                                        | MessageSummaryItems.EmailId
+                                        | MessageSummaryItems.ThreadId))
                             {
                                 if (await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null
-                                    || await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null
-                                    || await ticketEntryRepository.GetTicket(GetPartitionKeyOld(messageSummary), GetRowKeyOld(messageSummary)) != null
-                                    || await ticketEntryRepository.GetTicket(GetPartitionKeyOld(messageSummary), GetRowKeyOld(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null)
+                                    || await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null)
                                     continue;
 
                                 toProcess.Add(messageSummary);
@@ -202,8 +203,6 @@ namespace MailReader.MailOperations
                 var attachments = attachmentEntries.Where(t => uids.Any(u => u.RowKey == t.RefKey && u.PartitionKey == t.RefPartition)).ToList();
                 foreach (var uid in uids)
                 {
-                    var fname = $"attachments/{uid.PartitionKey}/{uid.RowKey}/body.eml";
-
                     if (attachments.Any(a => a.RefPartition == uid.PartitionKey && a.RefKey == uid.RowKey))
                     {
                         result.Add(uid);
@@ -214,8 +213,31 @@ namespace MailReader.MailOperations
                 if (result.Count == uids.Count()) return;
 
                 var missingUids = uids.Except(result);
-                List<TicketEntity> tickets = await GetTickets(missingUids, ticketEntryRepository);
+                List<TicketEntity> tickets = [
+                    .. await GetTickets(missingUids, ticketEntryRepository, nameof(TicketEntity)),
+                    .. await GetTickets(missingUids, ticketEntryRepository, $@"{nameof(TicketEntity)}Archive")
+                    ];
+
                 tickets = [.. tickets.Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey))];
+                List<UniqueId> found = [];
+
+                foreach (var ticket in tickets)
+                {
+                    var fname = $"attachments/{ticket.PartitionKey}/{ticket.RowKey}/body.eml";
+                    var details = $"attachments/{ticket.PartitionKey}/{ticket.RowKey}/details/";
+
+                    if (!await blob.Exists(fname))
+                    {
+                        continue;
+                    }
+                    await DownloadMessage(await MimeMessage.LoadAsync(blob.Access(fname, out var _)), ticket, ticketEntryRepository, blob);
+                    found.Add(new UniqueId((uint)ticket.Validity, (uint)ticket.Uid));
+                }
+
+                tickets = [.. tickets.ExceptBy(found, t => new UniqueId((uint)t.Validity, (uint)t.Uid))];
+
+                if (!tickets.Any()) return;
+
                 var allFolders = mailSettingEntries.SelectMany(t => t.Folders.Split(";", StringSplitOptions.TrimEntries)).Distinct().ToArray();
 
                 var foundIn = tickets.Where(x => !string.IsNullOrEmpty(x.CurrentFolder)).Select(x => x.CurrentFolder)
@@ -228,26 +250,41 @@ namespace MailReader.MailOperations
                     if (uidsMissing.Count == 0) return;
                     if (!folder.IsOpen)
                         await folder.OpenAsync(FolderAccess.ReadOnly);
-                    var found = folder.Search(SearchQuery.Uids(uidsMissing));
+                    found = [.. folder.Search(SearchQuery.Uids(uidsMissing))];
 
                     foreach (var uid in found)
                     {
                         var entry = tickets.First(t => uid.Validity == t.Validity && uid.Id == t.Uid);
                         var msg = folder.GetMessage(uid);
-                        HtmlPreviewVisitor visitor = new();
-                        msg.Accept(visitor);
+                        await DownloadMessage(msg, entry, ticketEntryRepository, blob);
+                    }
+                    tickets = [.. tickets.ExceptBy(found, t => new UniqueId((uint)t.Validity, (uint)t.Uid))];
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+                throw;
+            }
+        }
 
-                        var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
-                        var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
-                        if (!await blob.Exists(fname))
-                            using (var fileStream = TempFileHelper.CreateTempFile())
-                            {
-                                msg.WriteTo(FormatOptions.Default, fileStream);
-                                fileStream.Position = 0;
-                                await blob.WriteTo(fname, fileStream);
-                            }
+        internal static async Task DownloadMessage(MimeMessage msg, TicketEntity entry, ITicketEntryRepository ticketEntryRepository, IStorageService blob)
+        {
+            HtmlPreviewVisitor visitor = new();
+            msg.Accept(visitor);
 
-                        await ticketEntryRepository.Save([new AttachmentEntry()
+            var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
+            var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
+
+            if (!await blob.Exists(fname))
+                using (var fileStream = TempFileHelper.CreateTempFile())
+                {
+                    msg.WriteTo(FormatOptions.Default, fileStream);
+                    fileStream.Position = 0;
+                    await blob.WriteTo(fname, fileStream);
+                }
+
+            await ticketEntryRepository.Save([new AttachmentEntry()
                                 {
                                     PartitionKey = entry.Uid.ToString(),
                                     RowKey = entry.Validity + "eml",
@@ -267,66 +304,90 @@ namespace MailReader.MailOperations
                                     RefKey = entry.RowKey,
                                 }]);
 
-                        if (!await blob.Exists(details + "body.html"))
-                            await blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody).ToStream());
+            if (!await blob.Exists(details + "body.html"))
+                await blob.WriteTo(details + "body.html", new BinaryData(visitor.HtmlBody).ToStream());
 
-                        int idx = 0;
-                        attachmentEntries = new List<AttachmentEntry>();
-                        foreach (var attachment in visitor.Attachments)
+            int idx = 0;
+            var attachmentEntries = new List<AttachmentEntry>();
+            foreach (var attachment in visitor.Attachments)
+            {
+                try
+                {
+                    var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
+                    var filePath = details + idx + fileName;
+                    if (!await blob.Exists(filePath))
+                        using (var fStream = TempFileHelper.CreateTempFile())
                         {
-                            try
+                            if (attachment is MessagePart)
                             {
-                                var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType?.Name ?? Guid.NewGuid().ToString().Replace("-", "");
-                                var filePath = details + idx + fileName;
-                                if (!await blob.Exists(filePath))
-                                    using (var fStream = TempFileHelper.CreateTempFile())
-                                    {
-                                        if (attachment is MessagePart)
-                                        {
-                                            var part = (MessagePart)attachment;
-                                            await part.Message.WriteToAsync(fStream);
-                                        }
-                                        else
-                                        {
-                                            var part = (MimePart)attachment;
-                                            await part.Content.DecodeToAsync(fStream);
-                                        }
-                                        fStream.Position = 0;
-                                        await blob.WriteTo(filePath, fStream);
-                                    }
-                                attachmentEntries.Add(new AttachmentEntry()
-                                {
-                                    PartitionKey = entry.Uid.ToString(),
-                                    RowKey = Guid.NewGuid().ToString(),
-                                    Data = filePath,
-                                    Title = fileName,
-                                    ContentType = attachment.ContentType?.MimeType,
-                                    RefPartition = entry.PartitionKey,
-                                    RefKey = entry.RowKey,
-                                    ContentId = attachment.ContentId
-                                });
-
-                                idx++;
+                                var part = (MessagePart)attachment;
+                                await part.Message.WriteToAsync(fStream);
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                LogError(ex);
+                                var part = (MimePart)attachment;
+                                await part.Content.DecodeToAsync(fStream);
                             }
+                            fStream.Position = 0;
+                            await blob.WriteTo(filePath, fStream);
                         }
-                        if (attachmentEntries.Any())
-                            await ticketEntryRepository.Save([.. attachmentEntries]);
-                        var uu = missingUids.First(t => t.PartitionKey == entry.PartitionKey && t.RowKey == entry.RowKey);
-                        result.Add(uu);
-                    }
-                    tickets = [.. tickets.ExceptBy(found, t => new UniqueId((uint)t.Validity, (uint)t.Uid))];
+                    attachmentEntries.Add(new AttachmentEntry()
+                    {
+                        PartitionKey = entry.Uid.ToString(),
+                        RowKey = Guid.NewGuid().ToString(),
+                        Data = filePath,
+                        Title = fileName,
+                        ContentType = attachment.ContentType?.MimeType,
+                        RefPartition = entry.PartitionKey,
+                        RefKey = entry.RowKey,
+                        ContentId = attachment.ContentId
+                    });
 
+                    idx++;
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex);
+                }
+            }
+
+            try
+            {
+                if (msg.From[0].ToString().Contains("noreply@dedeman.ro"))
+                {
+                    if (msg.Subject.StartsWith("P.V. rece"))
+                    {
+                        var link = entry.NrComanda!.Split(";").First(x => x.StartsWith("http"));
+                        var refId = entry.NrComanda!.Split(";").First(x => !x.StartsWith("http")) + ".zip";
+                        var filePath = details + refId;
+                        string contentType = "";
+                        if (!await blob.Exists(filePath))
+                            using (var fStream = TempFileHelper.CreateTempFile())
+                            {
+                                contentType = await DownloadFile(link, fStream);
+                                await blob.WriteTo(filePath, fStream);
+                            }
+                        attachmentEntries.Add(new AttachmentEntry()
+                        {
+                            PartitionKey = entry.Uid.ToString(),
+                            RowKey = Guid.NewGuid().ToString(),
+                            Data = filePath,
+                            Title = refId,
+                            ContentType = contentType,
+                            RefPartition = entry.PartitionKey,
+                            RefKey = entry.RowKey,
+                            ContentId = contentType
+                        });
+                    }
                 }
             }
             catch (Exception ex)
             {
                 LogError(ex);
-                throw;
             }
+
+            if (attachmentEntries.Any())
+                await ticketEntryRepository.Save([.. attachmentEntries]);
         }
 
         internal static async Task Move(
@@ -348,41 +409,45 @@ namespace MailReader.MailOperations
             {
                 var destinationFolder = GetFolders(client, [msg.DestinationFolder], CancellationToken.None).ElementAt(0);
 
-                var entries = await GetTickets(msg.Items, ticketEntryRepository);
-                var foundIn = entries.Where(x => !string.IsNullOrEmpty(x.CurrentFolder))
-                                    .Select(x => x.CurrentFolder)
-                                    .Distinct()
-                                    .ToList();
-                allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
-                var uids = entries.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList();
-
-                foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                foreach (var tableName in (string[])[nameof(TicketEntity), $@"{nameof(TicketEntity)}Archive"])
                 {
-                    if (folder.Name == destinationFolder.Name) continue;
-                    if (!uids.Any()) break;
-                    await folder.OpenAsync(FolderAccess.ReadWrite);
-                    var found = await folder.SearchAsync(SearchQuery.Uids(uids));
-                    if (found.Any())
-                    {
-                        var mapping = await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
-                        var moved = entries.Where(x => found.Any(f => f.Validity == x.Validity && f.Id == x.Uid)).ToList();
-                        foreach (var x in moved)
-                        {
-                            var currentKey = new UniqueId((uint)x.Validity, (uint)x.Uid);
-                            x.CurrentFolder = msg.DestinationFolder;
-                            if (string.IsNullOrEmpty(x.FoundInFolder))
-                            {
-                                x.FoundInFolder = folder.Name;
-                            }
-                            if (mapping.ContainsKey(currentKey))
-                            {
-                                x.Validity = (int)mapping[currentKey].Validity;
-                                x.Uid = (int)mapping[currentKey].Id;
-                            }
-                        }
-                        await ticketEntryRepository.Save([.. moved]);
+                    var entries = await GetTickets(msg.Items, ticketEntryRepository, tableName);
+                    var foundIn = entries.Where(x => !string.IsNullOrEmpty(x.CurrentFolder))
+                                        .Select(x => x.CurrentFolder)
+                                        .Distinct()
+                                        .ToList();
+                    allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
+                    var uids = entries.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList();
+                    if (!uids.Any()) continue;
 
-                        uids = [.. uids.Except(found)];
+                    foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                    {
+                        if (folder.Name == destinationFolder.Name) continue;
+                        if (!uids.Any()) break;
+                        await folder.OpenAsync(FolderAccess.ReadWrite);
+                        var found = await folder.SearchAsync(SearchQuery.Uids(uids));
+                        if (found.Any())
+                        {
+                            var mapping = await folder.MoveToAsync(uids, destinationFolder, CancellationToken.None);
+                            var moved = entries.Where(x => found.Any(f => f.Validity == x.Validity && f.Id == x.Uid)).ToList();
+                            foreach (var x in moved)
+                            {
+                                var currentKey = new UniqueId((uint)x.Validity, (uint)x.Uid);
+                                x.CurrentFolder = msg.DestinationFolder;
+                                if (string.IsNullOrEmpty(x.FoundInFolder))
+                                {
+                                    x.FoundInFolder = folder.Name;
+                                }
+                                if (mapping.ContainsKey(currentKey))
+                                {
+                                    x.Validity = (int)mapping[currentKey].Validity;
+                                    x.Uid = (int)mapping[currentKey].Id;
+                                }
+                            }
+                            await ticketEntryRepository.Save([.. moved], tableName);
+
+                            uids = [.. uids.Except(found)];
+                        }
                     }
                 }
             }
@@ -393,67 +458,61 @@ namespace MailReader.MailOperations
             BlobAccessStorageService storageService = new();
             IMetadataService metadataService = new FabricMetadataService();
             DataKeyLocationRepository locationRepository = new(new AlwaysGetCacheManager<DataKeyLocationEntry>(metadataService));
-            messages = await folder.FetchAsync([.. messages.Select(t => t.UniqueId)],
-                         MessageSummaryItems.UniqueId
-                                        | MessageSummaryItems.InternalDate
-                                        | MessageSummaryItems.Envelope
-                                        | MessageSummaryItems.EmailId
-                                        | MessageSummaryItems.ThreadId
-                                        | MessageSummaryItems.References
-                                        | MessageSummaryItems.BodyStructure
-                                        | MessageSummaryItems.PreviewText);
+
             List<TicketEntity> toSave = [];
 
-            foreach (var message in messages)
+            foreach (var _msg in messages)
             {
                 string contentId = "";
+                var fname = $"attachments/{GetPartitionKey(_msg)}/{GetRowKey(_msg)}/body.eml";
 
-                string extension = message.HtmlBody != null ? "html" : "txt";
-                var fname = $"attachments/{GetPartitionKey(message)}/{GetRowKey(message)}/body.{extension}";
-
+                string description = "";
                 string body = "";
+                MimeMessage message = await storageService.Exists(fname) ? await MimeMessage.LoadAsync(storageService.Access(fname, out var _)) : await _msg.Folder.GetMessageAsync(_msg.UniqueId);
+                if (!await storageService.Exists(fname))
+                    using (var fileStream = TempFileHelper.CreateTempFile())
+                    {
+                        message.WriteTo(FormatOptions.Default, fileStream);
+                        fileStream.Position = 0;
+                        await storageService.WriteTo(fname, fileStream);
+                    }
                 try
                 {
-                    if (await storageService.Exists(fname))
-                    {
-                        using (var stream = storageService.Access(fname, out var contentType))
-                        using (var reader = new StreamReader(stream))
-                        {
-                            body = reader.ReadToEnd();
-                            body = body.Length > 512 ? body.Substring(0, 512) : body;
-                        }
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(message.PreviewText))
-                        {
-                            await storageService.WriteTo(fname, new BinaryData(message.PreviewText).ToStream());
-                            body = message.PreviewText;
-                        }
-                        else
-                        {
-                            var bodyPart = message.Folder.GetBodyPart(message.UniqueId, message.Body);
-                            var bodyVisitor = new HtmlPreviewVisitor();
-                            bodyPart.Accept(bodyVisitor);
-                            await storageService.WriteTo(fname, new BinaryData(bodyVisitor.HtmlBody).ToStream());
-                            body = bodyVisitor.HtmlBody;
-                            body = body.Trim().Replace("__", "") ?? "";
-                            body = body.Length > 2048 ? body.Substring(0, 2048) : body;
-                        }
-                    }
+                    body = message.HtmlBody.Trim().Replace("__", "") ?? "";
+                    description = body.Length > 2048 ? body.Substring(0, 2048) : body;
                 }
                 catch (Exception ex)
                 {
                     LogError(ex);
-                    body = "Error";
+                    description = "Error";
                 }
 
-                var froms = message.Envelope.From?.Select(t => t.ToString()).ToArray();
+                string[] froms = [];
+                string[] NumarComanda = [];
+                if (message.From.Any())
+                {
+                    if (message.From[0].ToString().Contains("noreply@dedeman.ro"))
+                    {
+                        if (message.Subject.StartsWith("P.V. rece"))
+                        {
+                            var doc = new HtmlDocument();
+                            doc.LoadHtml(message.HtmlBody);
+                            froms = [Extract(doc, $@"//td[starts-with(normalize-space(), 'Loc')]")];
+                            NumarComanda = [Extract(doc, $@"//td[starts-with(normalize-space(), 'Recep')]"), Extract(doc, $@"//td[starts-with(normalize-space(), 'Link')]")];
+                        }
+                    }
+                    else
+                    {
+                        froms = message.From.Select(t => t.ToString()).ToArray() ?? [];
+                    }
+                }
+
                 DataKeyLocationEntry? location = null;
                 DataKeyLocationEntry? locationMain = null;
-                if (froms?.Any() == true)
+                var locations = await locationRepository.GetLocations();
+
+                if (froms.Any())
                 {
-                    var locations = await locationRepository.GetLocations();
                     location = locations.FirstOrDefault(loc => froms.Any(frm => loc.LocationName == frm));
                     if (location == null)
                     {
@@ -472,29 +531,29 @@ namespace MailReader.MailOperations
 
                 toSave.Add(new TicketEntity()
                 {
-                    Sender = message.Envelope.Sender?.FirstOrDefault()?.ToString(),
-                    From = string.Join(";", message.Envelope.From?.Select(t => t.ToString()) ?? []),
+                    Sender = message.Sender?.ToString(),
+                    From = string.Join(";", froms!),
                     Locations = string.Join(";", [""]),
                     CreatedDate = message.Date.Date.ToUniversalTime(),
-                    NrComanda = "",
-                    PartitionKey = GetPartitionKey(message),
-                    RowKey = GetRowKey(message),
-                    InReplyTo = message.Envelope.InReplyTo,
-                    MessageId = message.Envelope.MessageId,
-                    References = string.Join(";", message.References),
-                    Subject = message.NormalizedSubject,
-                    Description = body,
-                    ThreadId = message.ThreadId + "_" + message.UniqueId.Validity,
-                    EmailId = message.EmailId,
-                    Uid = Convert.ToInt32(message.UniqueId.Id),
-                    Validity = Convert.ToInt32(message.UniqueId.Validity),
+                    NrComanda = string.Join(";", NumarComanda!),
+                    PartitionKey = GetPartitionKey(_msg),
+                    RowKey = GetRowKey(_msg),
+                    InReplyTo = message.InReplyTo,
+                    MessageId = message.MessageId,
+                    References = string.Join(";", message.References ?? []),
+                    Subject = message.Subject,
+                    Description = description,
+                    ThreadId = _msg.ThreadId + "_" + _msg.UniqueId.Validity,
+                    EmailId = _msg.EmailId,
+                    Uid = Convert.ToInt32(_msg.UniqueId.Id),
+                    Validity = Convert.ToInt32(_msg.UniqueId.Validity),
                     OriginalBodyPath = fname,
                     LocationCode = location?.LocationCode,
                     LocationRowKey = location?.RowKey,
                     LocationPartitionKey = location?.PartitionKey,
                     HasAttachments = message.Attachments?.Any() == true,
-                    FoundInFolder = message.Folder.Name,
-                    CurrentFolder = message.Folder.Name
+                    FoundInFolder = _msg.Folder.Name,
+                    CurrentFolder = _msg.Folder.Name
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
@@ -511,6 +570,21 @@ namespace MailReader.MailOperations
                 LocationRowKey = t?.LocationRowKey ?? "",
                 LocationPartitionKey = t?.LocationPartitionKey ?? ""
             }).ToList());
+        }
+
+        static string Extract(HtmlDocument doc, string select)
+        {
+            // Modify the XPath to suit your specific email structure
+            var linkNode = doc.DocumentNode.SelectSingleNode(select);
+
+            if (linkNode != null)
+            {
+                // Get the next sibling <td>
+                var valueTd = linkNode.SelectSingleNode("following-sibling::td[1]");
+                return valueTd?.InnerText.Trim();
+            }
+            Console.WriteLine("Label not found.");
+            return null;
         }
 
         private static async Task<ImapClient> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)
@@ -558,6 +632,30 @@ namespace MailReader.MailOperations
             }
         }
 
+        static async Task<string> DownloadFile(string url, Stream fStream)
+        {
+            string destinationPath = @"file.zip";
+
+            using HttpClient client = new HttpClient();
+
+            try
+            {
+                using HttpResponseMessage response = await client.GetAsync(url);
+                response.EnsureSuccessStatusCode(); // Throws if not 2xx
+                using Stream contentStream = await response.Content.ReadAsStreamAsync();
+                await contentStream.CopyToAsync(fStream);
+                fStream.Position = 0;
+                Console.WriteLine("Download completed: " + destinationPath);
+                return response.Content.Headers.ContentType.MediaType;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Download failed: " + ex.Message);
+            }
+
+            return "";
+        }
+
         private static int GetStableHashCode(string? str)
         {
             if (str == null) return 0;
@@ -578,13 +676,12 @@ namespace MailReader.MailOperations
             }
         }
 
-        private static async Task<List<TicketEntity>> GetTickets(IEnumerable<TableEntityPK> tableEntityPKs, ITicketEntryRepository repository)
+        private static async Task<List<TicketEntity>> GetTickets(IEnumerable<TableEntityPK> tableEntityPKs, ITicketEntryRepository repository, string tableName)
         {
             List<TicketEntity> ticketEntities = new();
             foreach (var tableEntity in tableEntityPKs.GroupBy(t => t.PartitionKey))
             {
-                ticketEntities.AddRange(await repository.GetSome(nameof(TicketEntity), tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
-                ticketEntities.AddRange(await repository.GetSome($@"{nameof(TicketEntity)}Archive", tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
+                ticketEntities.AddRange(await repository.GetSome(tableName, tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
             }
 
             return [.. ticketEntities.DistinctBy(t => new { t.PartitionKey, t.RowKey })];

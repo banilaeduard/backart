@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RepositoryContract;
 using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Tasks;
+using RepositoryContract.Tickets;
 using RepositoryContract.Transports;
 using ServiceInterface.Storage;
 
@@ -51,6 +52,16 @@ namespace PollerRecurringJob.JobHandlers
                             DestinationFolder = "Archive",
                             Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
                         });
+
+                        await client.Trigger("archivemail",
+                           tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => new ArchiveMail()
+                           {
+                               FromTable = nameof(TicketEntity),
+                               ToTable = $@"{nameof(TicketEntity)}Archive",
+                               PartitionKey = x.PartitionKey,
+                               RowKey = x.RowKey,
+                           }).ToList()
+                        );
                     }
                 }
                 catch (Exception ex)
@@ -64,6 +75,8 @@ namespace PollerRecurringJob.JobHandlers
                     await client.ClearWork("transportattachment", [.. group]);
                 }
             }
+
+            await ArchiveMails.Execute(jobContext);
         }
     }
 }
