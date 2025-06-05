@@ -16,7 +16,7 @@ namespace RepositoryContract
             return new TableEntityPK()
             {
                 PartitionKey = partitionKey,
-                RowKey = rowKey
+                RowKey = rowKey,
             };
         }
 
