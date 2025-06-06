@@ -5,6 +5,7 @@ using MailReader.MailOperations;
 using EntityDto;
 using RepositoryContract;
 using Microsoft.Extensions.DependencyInjection;
+using ServiceInterface.Storage;
 
 namespace MailReader
 {
@@ -52,9 +53,35 @@ namespace MailReader
 
         public async Task FetchMails()
         {
+            IWorkflowTrigger client = provider.GetRequiredService<IWorkflowTrigger>()!;
+            var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
+
+            var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());
+            foreach (var message in items.OrderBy(t => t.Timestamp))
+            {
+                foreach (var item in message.Model.Items)
+                    finalList[item] = message.Model.DestinationFolder;
+            }
+
+            List<MoveToMessage<TableEntityPK>> move = new();
+            if (finalList.Any())
+            {
+                move = finalList.GroupBy(l => l.Value).Select(x =>
+                    new MoveToMessage<TableEntityPK>()
+                    {
+                        DestinationFolder = x.Key,
+                        Items = x.Select(it => it.Key).Distinct()
+                    }).ToList();
+            }
+            var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
+
             await YahooTFeeder.Batch(this,
-                Source,
-                Operation.Fetch, null, null, CancellationToken.None);
+            Source,
+            Operation.Download | Operation.Move | Operation.Fetch,
+                [.. downloadLazy],
+                [.. move], CancellationToken.None);
+
+            await client.ClearWork("movemailto", [.. items]);
         }
 
         /// <summary>

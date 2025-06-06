@@ -52,15 +52,15 @@ namespace WebApi
                                                         });
                         ConfigureServices(builder.Services, serviceContext);
 
-                        builder.WebHost
-                                    .UseKestrel(opt =>
-                                    {
-                                        int port = serviceContext.CodePackageActivationContext.GetEndpoint(endpoint).Port;
-                                        opt.Listen(IPAddress.IPv6Any, port, listenOptions =>
-                                        {
-                                            //listenOptions.UseHttps(GetCertificateFromStore()!);
-                                        });
-                                    })
+                        builder.WebHost.UseKestrel()
+                                    //.UseKestrel(opt =>
+                                    //{
+                                    //    int port = serviceContext.CodePackageActivationContext.GetEndpoint(endpoint).Port;
+                                    //    opt.Listen(IPAddress.IPv6Any, port, listenOptions =>
+                                    //    {
+                                    //        //listenOptions.UseHttps(GetCertificateFromStore()!);
+                                    //    });
+                                    //})
                                     .UseContentRoot(Directory.GetCurrentDirectory())
                                     .UseServiceFabricIntegration(listener, ServiceFabricIntegrationOptions.None)
                                     .UseUrls(url);

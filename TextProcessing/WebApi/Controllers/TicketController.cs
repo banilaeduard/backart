@@ -75,7 +75,7 @@ namespace WebApi.Controllers
                 await ticketEntryRepository.DeleteEntity([.. attachments]);
                 await ticketEntryRepository.Save([.. attachments], $@"{nameof(AttachmentEntry)}ARCHIVE");
             }
-            await ticketEntryRepository.Save([.. items], $@"{nameof(TicketEntity)}ARCHIVE");
+            await ticketEntryRepository.Save([.. items], $@"{nameof(TicketEntity)}Archive");
             return Ok();
         }
 

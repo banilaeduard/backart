@@ -7,5 +7,9 @@ namespace RepositoryContract.Tickets
     public class TicketEntity : Ticket, ITableEntity
     {
         public ETag ETag { get; set; }
+        public override string ToString()
+        {
+            return $@"{this.PartitionKey} - {this.RowKey}";
+        }
     }
 }

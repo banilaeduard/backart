@@ -139,17 +139,26 @@ namespace MailReader.MailOperations
 
                         List<IMessageSummary> toProcess = new();
                         if (uids?.Any() == true)
-                            foreach (var messageSummary in await folder.FetchAsync(uids,  MessageSummaryItems.UniqueId
+                            foreach (var messageSummary in await folder.FetchAsync(uids, MessageSummaryItems.UniqueId
                                         | MessageSummaryItems.InternalDate
                                         | MessageSummaryItems.Envelope
                                         | MessageSummaryItems.EmailId
                                         | MessageSummaryItems.ThreadId))
                             {
-                                if (await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary)) != null
-                                    || await ticketEntryRepository.GetTicket(GetPartitionKey(messageSummary), GetRowKey(messageSummary), $@"{nameof(TicketEntity)}ARCHIVE") != null)
-                                    continue;
+                                var partitionKey = GetPartitionKey(messageSummary);
+                                var rowKey = GetRowKey(messageSummary);
+                                try
+                                {
+                                    if (await ticketEntryRepository.GetTicket(partitionKey, rowKey) != null
+                                        || await ticketEntryRepository.GetTicket(partitionKey, rowKey, $@"{nameof(TicketEntity)}Archive") != null)
+                                        continue;
 
-                                toProcess.Add(messageSummary);
+                                    toProcess.Add(messageSummary);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogError(new Exception(@$"{partitionKey} - {rowKey}", ex));
+                                }
                             }
                         if (toProcess.Count > 0)
                         {
@@ -457,7 +466,7 @@ namespace MailReader.MailOperations
                                 }
                             }
 
-                            var uuid = folder.Search(SearchQuery.Uids(group.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList()).Or(query));
+                            var uuid = await folder.SearchAsync(SearchQuery.Uids(group.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList()).Or(query));
                             if (uuid.Count == 0) continue;
                             var found = await folder.FetchAsync(uuid, MessageSummaryItems.UniqueId
                                             | MessageSummaryItems.InternalDate
@@ -465,7 +474,7 @@ namespace MailReader.MailOperations
                                             | MessageSummaryItems.EmailId
                                             | MessageSummaryItems.ThreadId);
 
-                            var toMove = found.Select(f => (f, entries.FirstOrDefault(x => GetPartitionKey(f) == x.PartitionKey && GetRowKey(f) == x.RowKey))).Where(t => t.Item2 != null).ToList();
+                            var toMove = found.Select(f => (f, group.FirstOrDefault(x => GetPartitionKey(f) == x.PartitionKey && GetRowKey(f) == x.RowKey))).Where(t => t.Item2 != null).ToList();
                             var mapping = await folder.MoveToAsync(toMove.Select(x => x.f.UniqueId).ToList(), destinationFolder, CancellationToken.None);
 
                             foreach (var kvp in toMove)
@@ -482,10 +491,14 @@ namespace MailReader.MailOperations
                                     x.Validity = (int)mapping[currentKey].Validity;
                                     x.Uid = (int)mapping[currentKey].Id;
                                 }
-
+                                await ticketEntryRepository.Save([x], tableName);
                                 entries.Remove(x);
                             }
-                            await ticketEntryRepository.Save([.. toMove.Select(t => t.Item2!)], tableName);
+
+                            if (group.Count() != toMove.Count)
+                            {
+                                LogError(new Exception(@$"One of the inbox messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
+                            }
                         }
                     }
                 }
@@ -638,24 +651,16 @@ namespace MailReader.MailOperations
 
         private static string GetPartitionKey(IMessageSummary id)
         {
-            var sent = id.Envelope.Date?.ToString("yyMM", CultureInfo.InvariantCulture) ?? "";
-
-            if (!string.IsNullOrEmpty(sent)) return sent;
-
-            var now = id.InternalDate ?? DateTime.Now;
-            return @$"{now.Year}@{now.Month}";
+            return AzureTableKeySanitizer.Sanitize(id.Envelope.Date.GetValueOrDefault(id.Date).ToString("yyMM"));
         }
 
         private static string GetRowKey(IMessageSummary id)
         {
-            var rowKey = id.Envelope.MessageId ?? @$"{GetPartitionKeyOld(id)}_{GetRowKeyOld(id)}";
-            var str = id.Envelope.Subject + id.Envelope.Date?.ToString() + id.Envelope.From.FirstOrDefault()?.Name;
-            var hash2 = Math.Abs(GetStableHashCode(Math.Abs(GetStableHashCode(str)).ToString())).ToString();
-            return $@"{rowKey}_{(hash2.Length > 10 ? hash2.Substring(0, 10) : hash2)}";
-        }
+            var part1 = Math.Abs(GetStableHashCode(id.Envelope.Subject + id.Envelope.Date?.ToString() + string.Join(";", id.Envelope.From ?? []))).ToString();
+            var rowKey = !string.IsNullOrEmpty(id.Envelope.MessageId) ? id.Envelope.MessageId : part1;
 
-        private static string GetPartitionKeyOld(IMessageSummary id) => id.UniqueId.Validity.ToString();
-        private static string GetRowKeyOld(IMessageSummary id) => id.UniqueId.Id.ToString();
+            return AzureTableKeySanitizer.Sanitize($@"{rowKey}_{Math.Abs(GetStableHashCode(part1 + id.Date.ToString()))}");
+        }
         private static void LogError(Exception ex)
         {
             logger.ActorMessage(actor, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
