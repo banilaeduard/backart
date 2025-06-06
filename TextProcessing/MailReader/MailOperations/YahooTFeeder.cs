@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using AzureFabricServices;
 using AzureServices;
@@ -37,26 +36,18 @@ namespace MailReader.MailOperations
         internal static Actor actor;
 
         internal static async Task Batch(
-            MailReader jobContext, string sourceName, Operation op,
+            ImapClient client,
+            MailSourceEntry settings, List<MailSettingEntry> mSettings,
+            MailReader jobContext, Operation op,
             TableEntityPK[] download_uids, MoveToMessage<TableEntityPK>[] messages,
             CancellationToken cancellationToken)
         {
-            IMailSettingsRepository mailSettings = jobContext.provider.GetService<IMailSettingsRepository>()!;
             IMetadataService metadataService = jobContext.provider.GetService<IMetadataService>()!;
-
             Dictionary<string, List<string>> folderRecipients = null;
 
             bool downlaod = (op & Operation.Download) == Operation.Download;
             bool move = (op & Operation.Move) == Operation.Move;
             bool fetch = (op & Operation.Fetch) == Operation.Fetch;
-
-            var settings = (await mailSettings.GetMailSource()).FirstOrDefault(t => t.PartitionKey == sourceName);
-            if (settings == null)
-            {
-                logger.ActorMessage(actor, "No settings for {0}. Cannot run the mail service", sourceName);
-                return;
-            }
-            var mSettings = (await mailSettings.GetMailSetting(settings.PartitionKey)).ToList();
 
             if (fetch)
             {
@@ -72,20 +63,17 @@ namespace MailReader.MailOperations
                                                         .ToList());
             }
 
-            using (ImapClient client = await ConnectAsync(settings, cancellationToken))
+            if (downlaod)
             {
-                if (downlaod)
-                {
-                    await DownloadAll(jobContext, client, mSettings, download_uids);
-                }
-                if (move)
-                {
-                    await Move(client, mSettings, messages);
-                }
-                if (fetch)
-                {
-                    await ReadMails(jobContext, client, folderRecipients!, settings.DaysBefore, cancellationToken);
-                }
+                await DownloadAll(jobContext, client, mSettings, download_uids);
+            }
+            if (move)
+            {
+                await Move(client, mSettings, messages);
+            }
+            if (fetch)
+            {
+                await ReadMails(jobContext, client, folderRecipients!, settings.DaysBefore, cancellationToken);
             }
         }
 
@@ -609,9 +597,7 @@ namespace MailReader.MailOperations
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
-
-            IWorkflowTrigger processQueue = jobContext.provider.GetService<IWorkflowTrigger>()!;
-            await processQueue.Trigger("addmailtotask", toSave.Select(t => new AddMailToTask()
+            await AddNewMailToExistingTasks.Execute(jobContext, toSave.Select(t => new AddMailToTask()
             {
                 PartitionKey = t.PartitionKey,
                 RowKey = t.RowKey,
@@ -639,7 +625,7 @@ namespace MailReader.MailOperations
             return null;
         }
 
-        private static async Task<ImapClient> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)
+        internal static async Task<ImapClient> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)
         {
             ImapClient client = new ImapClient();
             client.ServerCertificateValidationCallback = (s, c, h, e) => true;

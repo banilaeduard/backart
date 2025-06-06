@@ -30,16 +30,12 @@ namespace PollerRecurringJob
 
         internal static readonly string SyncOrders = "SyncOrders";
         internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(5);
-        internal static readonly string MoveTo = "MoveToFolder";
-        internal static readonly TimeSpan MoveToDue = TimeSpan.FromMinutes(7);
-        internal static readonly string AddNewMail = "AddNewMailToExistingTasks";
-        internal static readonly TimeSpan AddNewMailDue = TimeSpan.FromMinutes(13);
         internal static readonly string SyncMails = "SyncNewMails";
         internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(17);
         internal static readonly string Remove0ExternalRefs = "Remove0ExternalRefs";
-        internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromMinutes(2);
+        internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromHours(2);
         internal static readonly string RemoveLostAttachmentsRefs = "RemoveLostAttachments";
-        internal static readonly TimeSpan RemoveLostAttachmentsRefsDue = TimeSpan.FromMinutes(3);
+        internal static readonly TimeSpan RemoveLostAttachmentsRefsDue = TimeSpan.FromHours(3);
         internal static readonly string TransportJob = "TransportJob";
         internal static readonly TimeSpan TransportJobDue = TimeSpan.FromMinutes(3);
         internal readonly ServiceProvider provider;
@@ -62,14 +58,6 @@ namespace PollerRecurringJob
                 if (reminderName == SyncOrders)
                 {
                     await OrdersStorageSync.Execute(this);
-                }
-                else if (reminderName == MoveTo)
-                {
-                    await MoveToFolder.Execute(this);
-                }
-                else if (reminderName == AddNewMail)
-                {
-                    await AddNewMailToExistingTasks.Execute(this);
                 }
                 else if (reminderName == SyncMails)
                 {
@@ -104,18 +92,6 @@ namespace PollerRecurringJob
             catch (ReminderNotFoundException) { }
             try
             {
-                var previousRegistration = GetReminder(MoveTo);
-                await UnregisterReminderAsync(previousRegistration);
-            }
-            catch (ReminderNotFoundException) { }
-            try
-            {
-                var previousRegistration = GetReminder(AddNewMail);
-                await UnregisterReminderAsync(previousRegistration);
-            }
-            catch (ReminderNotFoundException) { }
-            try
-            {
                 var previousRegistration = GetReminder(SyncMails);
                 await UnregisterReminderAsync(previousRegistration);
             }
@@ -141,8 +117,6 @@ namespace PollerRecurringJob
 
 
             await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(3), SyncOrdersDue);
-            await RegisterReminderAsync(MoveTo, null, TimeSpan.FromMinutes(15), MoveToDue);
-            await RegisterReminderAsync(AddNewMail, null, TimeSpan.FromMinutes(15), AddNewMailDue);
             await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(30), SyncMailsDue);
             await RegisterReminderAsync(Remove0ExternalRefs, null, TimeSpan.FromMinutes(0), Remove0ExternalRefsDue);
             await RegisterReminderAsync(RemoveLostAttachmentsRefs, null, TimeSpan.FromMinutes(0), RemoveLostAttachmentsRefsDue);

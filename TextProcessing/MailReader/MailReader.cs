@@ -6,6 +6,8 @@ using EntityDto;
 using RepositoryContract;
 using Microsoft.Extensions.DependencyInjection;
 using ServiceInterface.Storage;
+using MailKit.Net.Imap;
+using RepositoryContract.MailSettings;
 
 namespace MailReader
 {
@@ -33,25 +35,88 @@ namespace MailReader
             this.provider = provider;
         }
 
+        internal async Task<(MailSourceEntry mailSource, List<MailSettingEntry> mailSettingEntries)> GetSettings()
+        {
+            IMailSettingsRepository mailSettings = provider.GetService<IMailSettingsRepository>()!;
+
+            var settings = (await mailSettings.GetMailSource()).FirstOrDefault(t => t.PartitionKey == Source);
+
+            if (settings == null)
+            {
+                ActorEventSource.Current.ActorMessage(this, "No settings for {0}. Cannot run the mail service", Source);
+                throw new ArgumentException("MAIL SOURCE");
+            }
+            var mSettings = (await mailSettings.GetMailSetting(settings.PartitionKey)).ToList();
+
+            return (settings, mSettings);
+        }
+
         public async Task BatchAsync(List<MoveToMessage<TableEntityPK>> move)
         {
+            var cfg = await GetSettings();
             var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
-            await YahooTFeeder.Batch(this,
-                Source,
-                Operation.Download | Operation.Move | Operation.Fetch,
-                [.. downloadLazy],
-                [.. move],
+
+            using (ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None))
+            {
+                await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                    this,
+                    Operation.Download | Operation.Move | Operation.Fetch,
+                    [.. downloadLazy],
+                    [.. move],
                 CancellationToken.None);
+
+                await GetMoveQueue(async (moveNew, downloadNew) =>
+                {
+                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                    this,
+                    Operation.Move | Operation.Download,
+                    [.. downloadNew],
+                    [.. moveNew],
+                CancellationToken.None);
+                });
+            }
         }
 
         public async Task DownloadAll(List<TableEntityPK> entityPKs)
         {
-            await YahooTFeeder.Batch(this,
-                Source,
-                Operation.Download, [.. entityPKs], null, CancellationToken.None);
+            var cfg = await GetSettings();
+            using (ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None))
+            {
+                await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                this,
+                Operation.Download, [.. entityPKs], [], CancellationToken.None);
+            }
         }
 
         public async Task FetchMails()
+        {
+            var cfg = await GetSettings();
+
+            using (ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None))
+            {
+                await GetMoveQueue(async (moveNew, downloadNew) =>
+                {
+                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                    this,
+                    Operation.Move | Operation.Fetch | Operation.Download,
+                    [.. downloadNew],
+                    [.. moveNew],
+                CancellationToken.None);
+                });
+
+                await GetMoveQueue(async (moveNew, downloadNew) =>
+                {
+                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                    this,
+                    Operation.Move | Operation.Download,
+                    [.. downloadNew],
+                    [.. moveNew],
+                CancellationToken.None);
+                });
+            }
+        }
+
+        internal async Task GetMoveQueue(Action<List<MoveToMessage<TableEntityPK>>, List<TableEntityPK>> action)
         {
             IWorkflowTrigger client = provider.GetRequiredService<IWorkflowTrigger>()!;
             var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
@@ -75,13 +140,11 @@ namespace MailReader
             }
             var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
 
-            await YahooTFeeder.Batch(this,
-            Source,
-            Operation.Download | Operation.Move | Operation.Fetch,
-                [.. downloadLazy],
-                [.. move], CancellationToken.None);
-
-            await client.ClearWork("movemailto", [.. items]);
+            if (move.Any() || downloadLazy.Any())
+            {
+                action(move, downloadLazy);
+                await client.ClearWork("movemailto", [.. items]);
+            }
         }
 
         /// <summary>

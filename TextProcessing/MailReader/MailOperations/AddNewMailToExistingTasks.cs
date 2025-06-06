@@ -7,22 +7,19 @@ using Microsoft.Extensions.DependencyInjection;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract;
 
-namespace PollerRecurringJob.JobHandlers
+namespace MailReader.MailOperations
 {
     internal static class AddNewMailToExistingTasks
     {
-        internal static async Task Execute(PollerRecurringJob jobContext)
+        internal static async Task Execute(MailReader jobContext, List<AddMailToTask> items)
         {
-            IWorkflowTrigger service = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
-            var items = await service.GetWork<List<AddMailToTask>>("addmailtotask");
-
             if (!items.Any()) return;
 
             ITaskRepository repo = jobContext.provider.GetRequiredService<ITaskRepository>();
             var tasks = await repo.GetTasks(TaskInternalState.Open);
             var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
 
-            var items2 = items.SelectMany(t => t.Model).Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
+            var items2 = items.Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
 
             // update only active tasks
             foreach (var task in tasks)
@@ -51,9 +48,8 @@ namespace PollerRecurringJob.JobHandlers
                 }
             }
 
-            await service.ClearWork("addmailtotask", [.. items]);
 
-            var newMails = items.SelectMany(t => t.Model).Where(newMail => !externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).GroupBy(newMail => newMail.ThreadId).ToList() ?? [];
+            var newMails = items.Where(newMail => !externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).GroupBy(newMail => newMail.ThreadId).ToList() ?? [];
             if (newMails.Count > 0)
             {
                 IDataKeyLocationRepository locationRepository = jobContext.provider.GetRequiredService<IDataKeyLocationRepository>()!;
@@ -75,17 +71,17 @@ namespace PollerRecurringJob.JobHandlers
                                 LocationCode = hasMain.LocationCode,
                                 TaskDate = DateTime.Now,
                                 ExternalReferenceEntries = [..newMail.Select(ticket => new ExternalReferenceEntry()
-                            {
-                                PartitionKey = ticket.PartitionKey,
-                                RowKey = ticket.RowKey,
-                                TableName = ticket.TableName,
-                                EntityType = ticket.EntityType,
-                                Date = ticket.Date,
-                                Action = ActionType.External,
-                                Accepted = false,
-                                ExternalGroupId = ticket.ThreadId
-                            })],
-
+                                                                {
+                                                                    PartitionKey = ticket.PartitionKey,
+                                                                    RowKey = ticket.RowKey,
+                                                                    TableName = ticket.TableName,
+                                                                    EntityType = ticket.EntityType,
+                                                                    Date = ticket.Date,
+                                                                    Action = ActionType.External,
+                                                                    Accepted = false,
+                                                                    ExternalGroupId = ticket.ThreadId
+                                                                })
+                                ],
                             });
 
                             IWorkflowTrigger client = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
@@ -105,3 +101,4 @@ namespace PollerRecurringJob.JobHandlers
         }
     }
 }
+

@@ -31,6 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\AzureTableRepository\AzureTableRepository.csproj" />
     <ProjectReference Include="..\..\ServiceImplementation\ServiceImplementation.csproj" />
+    <ProjectReference Include="..\..\SqlTableRepository\SqlTableRepository.csproj" />
     <ProjectReference Include="..\AzureFabricServices\AzureFabricServices.csproj" />
     <ProjectReference Include="..\V21.Interfaces\V21.Interfaces.csproj" />
   </ItemGroup>
