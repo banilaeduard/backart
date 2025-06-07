@@ -26,62 +26,38 @@ namespace WebApi.Controllers
         [HttpGet()]
         public IActionResult Statuses()
         {
-            try
-            {
-                return Ok(
-                    null
-                    );
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(69), ex, nameof(JobsController));
-                return NotFound();
-            }
+            return Ok(
+                null
+                );
         }
 
         [HttpPost("ArchiveMails")]
         public async Task<IActionResult> ArchiveMails(TableEntryModel[] archiveEntries)
         {
-            try
+            var proxy2 = GetActor<IPollerRecurringJob>("ArchiveMails");
+            foreach (var batch in archiveEntries.GroupBy(t => t.PartitionKey))
             {
-                var proxy2 = GetActor<IPollerRecurringJob>("ArchiveMails");
-                foreach (var batch in archiveEntries.GroupBy(t => t.PartitionKey))
-                {
-                    await _workflowTrigger.Trigger<List<ArchiveMail>>("archivemail", [..batch.Select(t => new ArchiveMail()
+                await _workflowTrigger.Trigger<List<ArchiveMail>>("archivemail", [..batch.Select(t => new ArchiveMail()
                     {
                         FromTable = nameof(TicketEntity),
                         PartitionKey = t.PartitionKey,
                         RowKey = t.RowKey,
                         ToTable = $@"{nameof(TicketEntity)}Archive"
                     })]);
-                }
-                await proxy2.ArchiveMail();
-                return Ok();
             }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(69), ex, nameof(JobsController));
-                return BadRequest(ex.Message);
-            }
+            await proxy2.ArchiveMail();
+            return Ok();
         }
 
         [HttpGet("orders")]
         public async Task<IActionResult> TriggerOrders()
         {
-            try
-            {
-                var proxy = GetActor<IMailReader>("source1");
-                var proxy2 = GetActor<IPollerRecurringJob>("source2");
+            var proxy = GetActor<IMailReader>("source1");
+            var proxy2 = GetActor<IPollerRecurringJob>("source2");
 
-                await Task.WhenAll(proxy.FetchMails(), proxy2.SyncOrdersAndCommited());
+            await Task.WhenAll(proxy.FetchMails(), proxy2.SyncOrdersAndCommited());
 
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(69), ex, nameof(JobsController));
-                return BadRequest(ex.Message);
-            }
+            return Ok();
         }
 
         [HttpGet("bust/{collection}")]

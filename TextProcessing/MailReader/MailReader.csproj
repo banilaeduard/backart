@@ -18,14 +18,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MailKit" Version="4.9.0" />
+    <PackageReference Include="MailKit" Version="4.12.1" />
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.Inputs.EventSource" Version="1.5.0" />
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.Inputs.MicrosoftLogging" Version="1.6.1" />
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.Outputs.ApplicationInsights" Version="1.9.1" />
     <PackageReference Include="Microsoft.Diagnostics.EventFlow.ServiceFabric" Version="1.8.0" />
     <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="7.1.2175" />
-    <PackageReference Include="MimeKit" Version="4.9.0" />
-    <PackageReference Include="System.Memory.Data" Version="9.0.0" />
+    <PackageReference Include="MimeKit" Version="4.12.0" />
+    <PackageReference Include="System.Memory.Data" Version="9.0.5" />
   </ItemGroup>
 
   <ItemGroup>

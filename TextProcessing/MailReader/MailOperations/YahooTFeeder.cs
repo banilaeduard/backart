@@ -8,6 +8,7 @@ using HtmlAgilityPack;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
+using MailKit.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using MimeKit;
@@ -123,7 +124,7 @@ namespace MailReader.MailOperations
                         if (!folder.IsOpen)
                             folder.Open(FolderAccess.ReadOnly, cancellationToken);
 
-                        uids = folder.Search(query, cancellationToken).ToList();
+                        uids = [.. await folder.SearchAsync(query, cancellationToken)];
 
                         List<IMessageSummary> toProcess = new();
                         if (uids?.Any() == true)
@@ -221,13 +222,12 @@ namespace MailReader.MailOperations
                 foreach (var ticket in tickets.ToList())
                 {
                     var fname = $"attachments/{ticket.PartitionKey}/{ticket.RowKey}/body.eml";
-                    var details = $"attachments/{ticket.PartitionKey}/{ticket.RowKey}/details/";
 
                     if (!await blob.Exists(fname))
                     {
                         continue;
                     }
-                    await DownloadMessage(await MimeMessage.LoadAsync(blob.Access(fname, out var _)), ticket, ticketEntryRepository, blob);
+                    await DownloadMessage(null, ticket, ticketEntryRepository, blob);
                     tickets.Remove(ticket);
                 }
 
@@ -244,7 +244,7 @@ namespace MailReader.MailOperations
                     if (tickets.Count == 0) return;
                     if (!folder.IsOpen)
                         await folder.OpenAsync(FolderAccess.ReadOnly);
-                    foreach (var group in tickets.ToList().Chunk(15))
+                    foreach (var group in tickets.ToList().Chunk(7))
                     {
                         SearchQuery query = SearchQuery.HeaderContains("Message-ID", group[0].MessageId);
 
@@ -256,7 +256,7 @@ namespace MailReader.MailOperations
                             }
                         }
 
-                        found = folder.Search(SearchQuery.Uids(group.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList()).Or(query));
+                        found = await folder.SearchAsync(SearchQuery.Uids(group.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList()).Or(query));
                         var items = await folder.FetchAsync(found, MessageSummaryItems.UniqueId
                                             | MessageSummaryItems.InternalDate
                                             | MessageSummaryItems.Envelope
@@ -268,8 +268,7 @@ namespace MailReader.MailOperations
                             var entry = tickets.FirstOrDefault(t => t.PartitionKey == GetPartitionKey(mSummary) && t.RowKey == GetRowKey(mSummary));
                             if (entry != null)
                             {
-                                var msg = folder.GetMessage(mSummary.UniqueId);
-                                await DownloadMessage(msg, entry, ticketEntryRepository, blob);
+                                await DownloadMessage(folder.GetMessageAsync(mSummary.UniqueId), entry, ticketEntryRepository, blob);
                                 tickets.Remove(entry);
                             }
                         }
@@ -283,21 +282,27 @@ namespace MailReader.MailOperations
             }
         }
 
-        internal static async Task DownloadMessage(MimeMessage msg, TicketEntity entry, ITicketEntryRepository ticketEntryRepository, IStorageService blob)
+        internal static async Task DownloadMessage(Task<MimeMessage> msgTask, TicketEntity entry, ITicketEntryRepository ticketEntryRepository, IStorageService blob)
         {
-            HtmlPreviewVisitor visitor = new();
-            msg.Accept(visitor);
-
             var fname = $"attachments/{entry.PartitionKey}/{entry.RowKey}/body.eml";
             var details = $"attachments/{entry.PartitionKey}/{entry.RowKey}/details/";
+            MimeMessage? msg = null;
 
             if (!await blob.Exists(fname))
                 using (var fileStream = TempFileHelper.CreateTempFile())
                 {
+                    msg = await msgTask;
                     msg.WriteTo(FormatOptions.Default, fileStream);
                     fileStream.Position = 0;
                     await blob.WriteTo(fname, fileStream);
                 }
+            else
+            {
+                msg = await MimeMessage.LoadAsync(blob.Access(fname, out _));
+            }
+
+            HtmlPreviewVisitor visitor = new();
+            msg.Accept(visitor);
 
             await ticketEntryRepository.Save([new AttachmentEntry()
                                 {
@@ -442,7 +447,7 @@ namespace MailReader.MailOperations
                         if (!entries.Any()) break;
                         await folder.OpenAsync(FolderAccess.ReadWrite);
 
-                        foreach (var group in entries.ToList().Chunk(15))
+                        foreach (var group in entries.ToList().Chunk(7))
                         {
                             SearchQuery query = SearchQuery.HeaderContains("Message-ID", group[0].MessageId);
 
@@ -627,12 +632,34 @@ namespace MailReader.MailOperations
 
         internal static async Task<ImapClient> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)
         {
-            ImapClient client = new ImapClient();
-            client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-            await client.ConnectAsync(Encoding.UTF8.GetString(Convert.FromBase64String(settings.Host)), settings.Port, settings.UseSSL, cancellationToken);
-            await client.AuthenticateAsync(Encoding.UTF8.GetString(Convert.FromBase64String(settings.UserName))
-                , Encoding.UTF8.GetString(Convert.FromBase64String(settings.Password)), cancellationToken);
-            return client;
+            try
+            {
+                ImapClient client = new ImapClient();
+                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                for (int attempt = 1; attempt <= 3; attempt++)
+                {
+                    try
+                    {
+                        await client.ConnectAsync(Encoding.UTF8.GetString(Convert.FromBase64String(settings.Host)), settings.Port, SecureSocketOptions.SslOnConnect, cancellationToken);
+                        break; // Success
+                    }
+                    catch (SslHandshakeException ex) when (attempt < 3)
+                    {
+                        LogError(ex);
+                        await Task.Delay(1000 * attempt); // Wait longer each attempt
+                    }
+                }
+
+                await client.AuthenticateAsync(Encoding.UTF8.GetString(Convert.FromBase64String(settings.UserName))
+                    , Encoding.UTF8.GetString(Convert.FromBase64String(settings.Password)), cancellationToken);
+                return client;
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+                return null;
+            }
         }
 
         private static string GetPartitionKey(IMessageSummary id)
@@ -680,7 +707,7 @@ namespace MailReader.MailOperations
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Download failed: " + ex.Message);
+                LogError(ex);
             }
 
             return "";
