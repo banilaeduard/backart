@@ -91,9 +91,9 @@ namespace MailReader
 
             await client.DisconnectAsync(true);
         }
-        
 
-        internal async Task GetMoveQueue(Action<List<MoveToMessage<TableEntityPK>>, List<TableEntityPK>> action)
+
+        internal async Task GetMoveQueue(Func<List<MoveToMessage<TableEntityPK>>, List<TableEntityPK>, Task> handler)
         {
             IWorkflowTrigger client = provider.GetRequiredService<IWorkflowTrigger>()!;
             var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
@@ -117,7 +117,7 @@ namespace MailReader
             }
             var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
 
-            action(move, downloadLazy);
+            await handler(move, downloadLazy);
             if (items.Any())
             {
                 await client.ClearWork("movemailto", [.. items]);
