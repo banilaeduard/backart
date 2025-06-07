@@ -54,43 +54,44 @@ namespace MailReader
         public async Task DownloadAll(List<TableEntityPK> entityPKs)
         {
             var cfg = await GetSettings();
-            using (ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None))
-            {
-                await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
-                this,
+            using ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None);
+            await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries, this,
                 Operation.Download, [.. entityPKs], [], CancellationToken.None);
-            }
+            await client.DisconnectAsync(true);
         }
 
         public async Task FetchMails()
         {
             var cfg = await GetSettings();
 
-            using (ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None))
-            {
-                await GetMoveQueue(async (moveNew, downloadNew) =>
-                {
-                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
-                    this,
-                    Operation.Move | Operation.Fetch | Operation.Download,
-                    [.. downloadNew],
-                    [.. moveNew],
-                CancellationToken.None);
-                });
+            using ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None);
 
-                await GetMoveQueue(async (moveNew, downloadNew) =>
+            await GetMoveQueue(async (moveNew, downloadNew) =>
+            {
+                await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                this,
+                Operation.Move | Operation.Fetch | Operation.Download,
+                [.. downloadNew],
+                [.. moveNew],
+            CancellationToken.None);
+            });
+
+            await GetMoveQueue(async (moveNew, downloadNew) =>
+            {
+                if (moveNew.Any() || downloadNew.Any())
                 {
-                    if (moveNew.Any() || downloadNew.Any())
-                        ActorEventSource.Current.ActorMessage(this, "Processing {0} move and {1} download requests", moveNew.Count, downloadNew.Count);
-                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
-                    this,
-                    Operation.Move | Operation.Download,
-                    [.. downloadNew],
-                    [.. moveNew],
+                    ActorEventSource.Current.ActorMessage(this, "Processing {0} move and {1} download requests", moveNew.Count, downloadNew.Count);
+                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries, this,
+                        Operation.Move | Operation.Download,
+                        [.. downloadNew],
+                        [.. moveNew],
                 CancellationToken.None);
-                });
-            }
+                }
+            });
+
+            await client.DisconnectAsync(true);
         }
+        
 
         internal async Task GetMoveQueue(Action<List<MoveToMessage<TableEntityPK>>, List<TableEntityPK>> action)
         {
