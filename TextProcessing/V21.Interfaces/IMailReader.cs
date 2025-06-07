@@ -1,4 +1,3 @@
-using EntityDto;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Remoting.FabricTransport;
 using Microsoft.ServiceFabric.Services.Remoting;
@@ -13,7 +12,6 @@ namespace MailReader.Interfaces
     /// </summary>
     public interface IMailReader : IActor
     {
-        Task BatchAsync(List<MoveToMessage<TableEntityPK>> move);
         Task FetchMails();
         Task DownloadAll(List<TableEntityPK> pks);
     }
