@@ -51,32 +51,6 @@ namespace MailReader
             return (settings, mSettings);
         }
 
-        public async Task BatchAsync(List<MoveToMessage<TableEntityPK>> move)
-        {
-            var cfg = await GetSettings();
-            var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
-
-            using (ImapClient client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None))
-            {
-                await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
-                    this,
-                    Operation.Download | Operation.Move | Operation.Fetch,
-                    [.. downloadLazy],
-                    [.. move],
-                CancellationToken.None);
-
-                await GetMoveQueue(async (moveNew, downloadNew) =>
-                {
-                    await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
-                    this,
-                    Operation.Move | Operation.Download,
-                    [.. downloadNew],
-                    [.. moveNew],
-                CancellationToken.None);
-                });
-            }
-        }
-
         public async Task DownloadAll(List<TableEntityPK> entityPKs)
         {
             var cfg = await GetSettings();
@@ -106,6 +80,8 @@ namespace MailReader
 
                 await GetMoveQueue(async (moveNew, downloadNew) =>
                 {
+                    if (moveNew.Any() || downloadNew.Any())
+                        ActorEventSource.Current.ActorMessage(this, "Processing {0} move and {1} download requests", moveNew.Count, downloadNew.Count);
                     await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
                     this,
                     Operation.Move | Operation.Download,
@@ -140,9 +116,9 @@ namespace MailReader
             }
             var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
 
-            if (move.Any() || downloadLazy.Any())
+            action(move, downloadLazy);
+            if (move.Any())
             {
-                action(move, downloadLazy);
                 await client.ClearWork("movemailto", [.. items]);
             }
         }
@@ -155,11 +131,7 @@ namespace MailReader
         {
             YahooTFeeder.logger = ActorEventSource.Current;
             YahooTFeeder.actor = this;
-#if DEBUG
-            return;
-#else
             Source = this.GetActorId().GetStringId();
-#endif
         }
     }
 }
