@@ -81,7 +81,8 @@ namespace RepositoryServices.Models
         public string Detalii { get; set; }
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
-            if (contextItems.ContainsKey(CodProdus)) contextItems[CodProdus] += Cantitate;
+            if (string.IsNullOrEmpty(CodProdus)) CodProdus = "NOT FOUND";
+            if (CodProdus != null && contextItems.ContainsKey(CodProdus)) contextItems[CodProdus] += Cantitate;
         }
     }
     [DataContract]
