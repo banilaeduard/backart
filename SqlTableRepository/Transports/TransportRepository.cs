@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using EntityDto.Transports;
 using Microsoft.Data.SqlClient;
 using ProjectKeys;
 using RepositoryContract.ExternalReferenceGroup;
@@ -92,7 +93,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                var transport = await connection.QuerySingleAsync<TransportEntry>($@"{TransportSql.UpdateTransport(transportEntry.Id)}", param: new
+                var query = await connection.QueryMultipleAsync($@"{TransportSql.UpdateTransport(transportEntry.Id)}; {TransportSql.GetAttachmetns(transportEntry.Id)}", param: new
                 {
                     transportEntry.CarPlateNumber,
                     transportEntry.DriverName,
@@ -103,6 +104,9 @@ namespace SqlTableRepository.Transport
                     transportEntry.ExternalItemId,
                     transportEntry.Delivered,
                 });
+                var transport = query.Read<TransportEntry>().First();
+                transport.ExternalReferenceEntries = query.Read<ExternalReferenceGroupEntry>().ToList();
+
 
                 bool hasItems = transportEntry.TransportItems?.Count > 0;
                 bool hasRemove = detetedTransportItems.Count() > 0;
@@ -164,7 +168,7 @@ namespace SqlTableRepository.Transport
                 }
                 if (deteledAttachments?.Count() > 0)
                 {
-                    await connection.ExecuteAsync(TransportSql.EnsureAttachmentDeleted(transportId), new { deteledAttachments });
+                    await connection.ExecuteAsync(TransportSql.EnsureAttachmentDeleted(transportId, deteledAttachments));
                 }
                 return [.. await connection.QueryAsync<ExternalReferenceGroupEntry>(TransportSql.GetAttachmetns(transportId))];
             }

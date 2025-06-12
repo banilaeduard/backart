@@ -100,7 +100,8 @@ namespace WebApi
             services.AddLogging(logging =>
             {
                 logging.ClearProviders(); // Remove default providers
-                logging.AddApplicationInsights(telemetryConfiguration => {
+                logging.AddApplicationInsights(telemetryConfiguration =>
+                {
                     telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder.Use((next) => new ExceptionOnlyTelemetryProcessor(next)).Build();
                     telemetryConfiguration.ConnectionString = Environment.GetEnvironmentVariable(KeyCollection.InstrumentationConnectionString)!;
                 }, loggerOptions =>
@@ -167,10 +168,10 @@ namespace WebApi
 
         public void Process(ITelemetry item)
         {
-            if (item is ExceptionTelemetry)
+            if (item is ExceptionTelemetry temeletryException)
             {
                 // Allow exception telemetry through
-                _next.Process(item);
+                _next.Process(temeletryException);
             }
             // Otherwise, ignore the telemetry item (not send it)
         }
