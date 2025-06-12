@@ -490,7 +490,7 @@ namespace MailReader.MailOperations
 
                             if (group.Count() != toMove.Count)
                             {
-                                LogError(new Exception(@$"One of the inbox messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
+                                LogError(new Exception(@$"One of the ${folder.Name} messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
                             }
                         }
                     }
