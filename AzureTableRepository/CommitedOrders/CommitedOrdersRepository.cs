@@ -67,7 +67,8 @@ namespace AzureTableRepository.CommitedOrders
                 {
                     var sample = group.ElementAt(0);
                     transaction = transaction.Concat(tableStorageService.PrepareInsert([CommitedOrderEntry.create(sample, group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0))]));
-                };
+                }
+                ;
 
                 if (transaction.items.Any())
                 {
@@ -118,6 +119,11 @@ namespace AzureTableRepository.CommitedOrders
         public async Task<List<CommitedOrderEntry>> GetCommitedOrder(int id)
         {
             return tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == id.ToString()).ToList();
+        }
+
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrdersNoTransport()
+        {
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<CommitedOrderEntry>(t => t.Timestamp > from).ToList())).Where(t => !t.TransportId.HasValue).ToList();
         }
     }
 }

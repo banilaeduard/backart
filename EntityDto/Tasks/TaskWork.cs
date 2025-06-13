@@ -16,5 +16,6 @@ namespace EntityDto.Tasks
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
+        public int? TransportId { get; set; }
     }
 }

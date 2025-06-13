@@ -15,6 +15,7 @@ namespace WebApi.Models
         public LocationModel LocationModel { get; set; }
         public IEnumerable<TicketSeriesModel>? ExternalMailReferences { get; set; }
         public IEnumerable<UserUpload> UserUploads { get; set; }
+        public int? TransportId { get; set; }
 
         public TaskEntry ToTaskEntry()
         {
@@ -28,6 +29,7 @@ namespace WebApi.Models
                 Name = Name,
                 LocationCode = LocationModel.LocationCode,
                 IsClosed = IsClosed,
+                TransportId = TransportId
             };
 
             taskModel.ExternalReferenceEntries = ExternalMailReferences?.SelectMany(t => t.Tickets).Select(t => new ExternalReferenceEntry()
@@ -80,6 +82,7 @@ namespace WebApi.Models
                         RowKey = mainLocation?.RowKey,
                     },
                     IsClosed = task.IsClosed,
+                    TransportId = task.TransportId
                 };
                 result.Add(taskModel);
 

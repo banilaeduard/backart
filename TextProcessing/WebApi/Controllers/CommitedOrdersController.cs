@@ -68,8 +68,6 @@ namespace WebApi.Controllers
 
             IList<ProductCodeStatsEntry>? productLinkWeights = null;
             IList<ProductStatsEntry>? weights = null;
-            IList<TicketEntity>? tickets = null;
-            IList<DataKeyLocationEntry>? synonimLocations = null;
             IList<TaskEntry>? tasks = null;
             try
             {
@@ -83,7 +81,30 @@ namespace WebApi.Controllers
                 logger.LogError(new EventId(69), ex, "GetCommitedOrders");
             }
 
-            return Ok(CommitedOrdersResponse.From(orders, tickets ?? [], synonimLocations ?? [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
+            return Ok(CommitedOrdersResponse.From(orders, [], [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
+        }
+
+        [HttpGet("notransport")]
+        public async Task<IActionResult> GetCommitedOrdersNoTransport()
+        {
+            var orders = await commitedOrdersRepository.GetCommitedOrdersNoTransport();
+
+            IList<ProductCodeStatsEntry>? productLinkWeights = null;
+            IList<ProductStatsEntry>? weights = null;
+            IList<TaskEntry>? tasks = null;
+            try
+            {
+                tasks = await taskRepository.GetTasks(TaskInternalState.Open);
+
+                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
+                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(new EventId(69), ex, "GetCommitedOrders");
+            }
+
+            return Ok(CommitedOrdersResponse.From(orders, [], [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
         }
 
         [HttpPost("get")]
