@@ -17,6 +17,7 @@ namespace SqlTableRepository.Transport
 
         internal static string GetTransports(int? topN = null) => $@"SELECT {(topN.HasValue ? $@"TOP {topN.Value}" : "")} [Id] ,
                                                            [Description] ,
+                                                           [Description2] ,
                                                            [DriverName] ,
                                                            [CarPlateNumber] ,
                                                            [Distance] ,
@@ -30,6 +31,18 @@ namespace SqlTableRepository.Transport
         internal static string DeleteTransport(int transportId) => $@"DELETE FROM dbo.TransportItems WHERE TransportId = {transportId};
                                                          DELETE FROM dbo.Transport WHERE Id = {transportId};";
         internal static string GetTransportItems(int transportId) => $@"SELECT * FROM [dbo].[TransportItems] WHERE TransportId = {transportId};";
+
+        internal static string UpdateDesc2(int transportId) => $@"update
+                                        Transport set Description2 = 
+                                        (SELECT 
+                                          STUFF((
+                                            SELECT ', ' + ItemName
+                                            FROM TransportItems
+	                                        where TransportId = {transportId} and DocumentType = 1
+                                            FOR XML PATH(''), TYPE
+                                          ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS JoinedNames)
+                                          OUTPUT INSERTED.*
+                                          where Id = {transportId}";
 
         internal static string DeleteTransportItems(int transportId, bool ngIf) => ngIf ? $@"DELETE FROM dbo.TransportItems WHERE TransportId = {transportId} AND ItemId in @detetedTransportItems;" : "";
         internal static string InsertMissingTransportItems(string fromSql, string fromAlias, bool ngIf) => ngIf ? $@"
