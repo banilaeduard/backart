@@ -216,7 +216,7 @@ namespace MailReader.MailOperations
                     .. await GetTickets(missingUids, ticketEntryRepository, $@"{nameof(TicketEntity)}Archive")
                     ];
 
-                tickets = [.. tickets.Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey))];
+                tickets = [.. tickets.DistinctBy(t => TableEntityPK.From(t.PartitionKey, t.RowKey))];
                 IList<UniqueId> found = [];
 
                 foreach (var ticket in tickets.ToList())
@@ -741,7 +741,7 @@ namespace MailReader.MailOperations
                 ticketEntities.AddRange(await repository.GetSome(tableName, tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
             }
 
-            return [.. ticketEntities.DistinctBy(t => new { t.PartitionKey, t.RowKey })];
+            return [.. ticketEntities.IntersectBy(tableEntityPKs, t => TableEntityPK.From(t.PartitionKey, t.RowKey))];
         }
     }
 }
