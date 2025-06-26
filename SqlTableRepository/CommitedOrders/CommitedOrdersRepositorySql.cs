@@ -54,6 +54,15 @@ namespace SqlTableRepository.CommitedOrders
             }
         }
 
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrdersNoTransport()
+        {
+            using (var connection = new SqlConnection(ConnectionSettings.ExternalConnectionString))
+            {
+                var sql = "[dbo].[CommitedOrdersNoTransport]";
+                return [.. Aggregate(await connection.QueryAsync<CommitedOrderEntry>(sql, commandType: System.Data.CommandType.StoredProcedure))];
+            }
+        }
+
         public async Task<DateTime?> GetLastSyncDate()
         {
             throw new NotImplementedException();

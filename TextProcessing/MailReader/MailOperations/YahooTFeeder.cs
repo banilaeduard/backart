@@ -216,7 +216,7 @@ namespace MailReader.MailOperations
                     .. await GetTickets(missingUids, ticketEntryRepository, $@"{nameof(TicketEntity)}Archive")
                     ];
 
-                tickets = [.. tickets.Where(t => missingUids.Any(u => u.PartitionKey == t.PartitionKey && u.RowKey == t.RowKey))];
+                tickets = [.. tickets.DistinctBy(t => TableEntityPK.From(t.PartitionKey, t.RowKey))];
                 IList<UniqueId> found = [];
 
                 foreach (var ticket in tickets.ToList())
@@ -362,7 +362,6 @@ namespace MailReader.MailOperations
                         RefKey = entry.RowKey,
                         ContentId = attachment.ContentId
                     });
-
                     idx++;
                 }
                 catch (Exception ex)
@@ -490,7 +489,7 @@ namespace MailReader.MailOperations
 
                             if (group.Count() != toMove.Count)
                             {
-                                LogError(new Exception(@$"One of the inbox messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
+                                LogError(new Exception(@$"One of the ${folder.Name} messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
                             }
                         }
                     }
@@ -741,7 +740,7 @@ namespace MailReader.MailOperations
                 ticketEntities.AddRange(await repository.GetSome(tableName, tableEntity.Key, tableEntity.Min(t => t.RowKey), tableEntity.Max(t => t.RowKey)));
             }
 
-            return [.. ticketEntities.DistinctBy(t => new { t.PartitionKey, t.RowKey })];
+            return [.. ticketEntities.IntersectBy(tableEntityPKs, t => TableEntityPK.From(t.PartitionKey, t.RowKey), TableEntityPK.GetComparer<TableEntityPK>())];
         }
     }
 }

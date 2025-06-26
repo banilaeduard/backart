@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using EntityDto.Transports;
 using Microsoft.Data.SqlClient;
 using ProjectKeys;
 using RepositoryContract.ExternalReferenceGroup;
@@ -79,9 +80,14 @@ namespace SqlTableRepository.Transport
                         t => t.ItemName,
                         t => t.TransportId,
                         t => t.DocumentType);
-                    transport.TransportItems = [.. await connection.QueryAsync<TransportItemEntry>($@"
+                    var qMulti = await connection.QueryMultipleAsync($@"
                                 {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues", true)};
-                                {TransportSql.GetTransportItems(transport.Id)}", dParams)];
+                                {TransportSql.GetTransportItems(transport.Id)};
+                                {TransportSql.UpdateDesc2(transport.Id)};", dParams);
+
+                    var items = qMulti.Read<TransportItemEntry>().ToList();
+                    transport = qMulti.Read<TransportEntry>().First();
+                    transport.TransportItems = items;
                 }
 
                 return transport;
@@ -92,7 +98,7 @@ namespace SqlTableRepository.Transport
         {
             using (var connection = GetConnection())
             {
-                var transport = await connection.QuerySingleAsync<TransportEntry>($@"{TransportSql.UpdateTransport(transportEntry.Id)}", param: new
+                var query = await connection.QueryMultipleAsync($@"{TransportSql.UpdateTransport(transportEntry.Id)}; {TransportSql.GetAttachmetns(transportEntry.Id)}", param: new
                 {
                     transportEntry.CarPlateNumber,
                     transportEntry.DriverName,
@@ -103,6 +109,9 @@ namespace SqlTableRepository.Transport
                     transportEntry.ExternalItemId,
                     transportEntry.Delivered,
                 });
+                var transport = query.Read<TransportEntry>().First();
+                var ExternalReferenceEntries = query.Read<ExternalReferenceGroupEntry>().ToList();
+
 
                 bool hasItems = transportEntry.TransportItems?.Count > 0;
                 bool hasRemove = detetedTransportItems.Count() > 0;
@@ -123,11 +132,17 @@ namespace SqlTableRepository.Transport
                     var sql = $@"{TransportSql.DeleteTransportItems(transport.Id, hasRemove)}
                                 {TransportSql.UpdateTransportItems(fromSql, "transportItemValues", hasItems)}
                                 {TransportSql.InsertMissingTransportItems(fromSql, "transportItemValues", hasItems)}
-                                {TransportSql.GetTransportItems(transport.Id)}";
+                                {TransportSql.GetTransportItems(transport.Id)}
+                                {TransportSql.UpdateDesc2(transport.Id)};";
 
-                    transport.TransportItems = [.. await connection.QueryAsync<TransportItemEntry>(sql, dParams)];
+                    var qMulti = await connection.QueryMultipleAsync(sql, dParams);
+
+                    var items = qMulti.Read<TransportItemEntry>().ToList();
+                    transport = qMulti.Read<TransportEntry>().First();
+                    transport.TransportItems = items;
                 }
 
+                transport.ExternalReferenceEntries = ExternalReferenceEntries;
                 return transport;
             }
         }
@@ -164,7 +179,7 @@ namespace SqlTableRepository.Transport
                 }
                 if (deteledAttachments?.Count() > 0)
                 {
-                    await connection.ExecuteAsync(TransportSql.EnsureAttachmentDeleted(transportId), new { deteledAttachments });
+                    await connection.ExecuteAsync(TransportSql.EnsureAttachmentDeleted(transportId, deteledAttachments));
                 }
                 return [.. await connection.QueryAsync<ExternalReferenceGroupEntry>(TransportSql.GetAttachmetns(transportId))];
             }

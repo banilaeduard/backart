@@ -179,10 +179,9 @@ namespace WorkLoadService
 
             var tempOrdersDictionary = await StateManager.GetOrAddAsync<IReliableDictionary<string, WorkItem>>(OrdersKey);
             await tempOrdersDictionary.ClearAsync();
-            var orders = result.Where(t => t.Tip == WorkListItem.Order).ToList();
             using (var tx = StateManager.CreateTransaction())
             {
-                foreach (var order in orders)
+                foreach (var order in result.Where(t => t.Tip == WorkListItem.Order && !string.IsNullOrWhiteSpace(t.CodArticol)))
                 {
                     await tempOrdersDictionary.SetAsync(tx, GetWorkItemHash(order).ToString(), new WorkItem()
                     {
