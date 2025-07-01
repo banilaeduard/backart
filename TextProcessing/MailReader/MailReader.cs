@@ -46,7 +46,7 @@ namespace MailReader
                 ActorEventSource.Current.ActorMessage(this, "No settings for {0}. Cannot run the mail service", Source);
                 throw new ArgumentException("MAIL SOURCE");
             }
-            var mSettings = (await mailSettings.GetMailSetting(settings.PartitionKey)).ToList();
+            var mSettings = (await mailSettings.GetMailSetting(settings.Source)).ToList();
 
             return (settings, mSettings);
         }
