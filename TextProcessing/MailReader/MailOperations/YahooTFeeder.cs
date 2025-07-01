@@ -1,4 +1,3 @@
-using System.Text;
 using AzureFabricServices;
 using AzureServices;
 using AzureTableRepository.DataKeyLocation;
@@ -19,6 +18,8 @@ using RepositoryContract.Tickets;
 using ServiceImplementation;
 using ServiceImplementation.Caching;
 using ServiceInterface.Storage;
+using System.Runtime.CompilerServices;
+using System.Text;
 using UniqueId = MailKit.UniqueId;
 
 namespace MailReader.MailOperations
@@ -97,7 +98,7 @@ namespace MailReader.MailOperations
                 {
                     var defaultTimers = batchRecipients.ToDictionary(x => x, v => lastRun.FirstOrDefault(r => r.From == v)?.LastFetch ?? fromDate);
                     var groupedTimers = defaultTimers.GroupBy(x => x.Value).ToDictionary(x => x.Key, v => v.Select(t => t.Key).ToList());
-                    IMailFolder folder = null;
+                    IMailFolder? folder = null;
 
                     try
                     {
@@ -120,9 +121,23 @@ namespace MailReader.MailOperations
 
                         List<UniqueId> uids;
 
-                        folder = GetFolders(client, [folderName], cancellationToken).ElementAt(0);
-                        if (!folder.IsOpen)
-                            folder.Open(FolderAccess.ReadOnly, cancellationToken);
+                        try
+                        {
+                            await foreach (var _f in GetFolders(client, [folderName], cancellationToken))
+                                folder = _f;
+
+                            if (folder == null)
+                            {
+                                continue;
+                            }
+                            if (!folder.IsOpen)
+                                await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(@$"EXAMINE {folderName} - {folder?.Name} failed: " + ex.Message);
+                            continue;
+                        }
 
                         uids = [.. await folder.SearchAsync(query, cancellationToken)];
 
@@ -239,7 +254,7 @@ namespace MailReader.MailOperations
                                     .Distinct()
                                     .ToList();
 
-                foreach (var folder in GetFolders(client, [.. foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
+                await foreach (var folder in GetFolders(client, [.. foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
                 {
                     if (tickets.Count == 0) return;
                     if (!folder.IsOpen)
@@ -426,7 +441,15 @@ namespace MailReader.MailOperations
 
             foreach (var msg in messages)
             {
-                var destinationFolder = GetFolders(client, [msg.DestinationFolder], CancellationToken.None).ElementAt(0);
+                IMailFolder? destinationFolder = null;
+                await foreach (var _f in GetFolders(client, [msg.DestinationFolder], CancellationToken.None))
+                    destinationFolder = _f;
+
+                if (destinationFolder == null || !destinationFolder.Exists)
+                {
+                    LogError(new Exception($"Destination folder {msg.DestinationFolder} not found"));
+                    continue;
+                }
 
                 foreach (var tableName in (string[])[nameof(TicketEntity), $@"{nameof(TicketEntity)}Archive"])
                 {
@@ -440,7 +463,7 @@ namespace MailReader.MailOperations
                                         .ToList();
                     allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
 
-                    foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                    await foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
                     {
                         if (folder.Name == destinationFolder.Name) continue;
                         if (!entries.Any()) break;
@@ -677,18 +700,42 @@ namespace MailReader.MailOperations
         {
             logger.ActorMessage(actor, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
         }
-        private static IEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, CancellationToken cancellationToken)
+        private static async IAsyncEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var personal = client.GetFolder(client.PersonalNamespaces[0]);
+            await Task.Yield();
 
+            var personal = client.GetFolder(client.PersonalNamespaces[0]);
             foreach (var folder in folders)
             {
-                if (personal.Name.ToLower().Equals(folder.ToLower())) yield return personal;
-                else yield return personal.GetSubfolder(folder, cancellationToken);
+                IMailFolder? result = null;
+                try
+                {
+                    if (personal.Name.ToLower().Equals(folder.ToLower()))
+                    {
+                        result = personal;
+                    }
+                    else
+                    {
+                        result = await personal.GetSubfolderAsync(folder, cancellationToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(new Exception($"Failed to get folder {folder}", ex));
+                }
+
+                if (result?.Exists == true)
+                {
+                    yield return result;
+                }
+                else
+                {
+                    LogError(new Exception($"Folder {folder} does not exist or could not be accessed."));
+                }
             }
         }
 
-        static async Task<string> DownloadFile(string url, Stream fStream)
+        private static async Task<string> DownloadFile(string url, Stream fStream)
         {
             string destinationPath = @"file.zip";
 
