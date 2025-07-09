@@ -124,7 +124,7 @@ namespace MailReader.MailOperations
                         try
                         {
                             await foreach (var _f in GetFolders(client, [folderName], cancellationToken))
-                                folder = _f;
+                                folder = _f.folder;
 
                             if (folder == null)
                             {
@@ -254,8 +254,9 @@ namespace MailReader.MailOperations
                                     .Distinct()
                                     .ToList();
 
-                await foreach (var folder in GetFolders(client, [.. foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
+                await foreach (var folder2 in GetFolders(client, [.. foundIn.Concat(allFolders.Except(foundIn).ToArray())], CancellationToken.None))
                 {
+                    var folder = folder2.folder;
                     if (tickets.Count == 0) return;
                     if (!folder.IsOpen)
                         await folder.OpenAsync(FolderAccess.ReadOnly);
@@ -443,7 +444,7 @@ namespace MailReader.MailOperations
             {
                 IMailFolder? destinationFolder = null;
                 await foreach (var _f in GetFolders(client, [msg.DestinationFolder], CancellationToken.None))
-                    destinationFolder = _f;
+                    destinationFolder = _f.folder;
 
                 if (destinationFolder == null || !destinationFolder.Exists)
                 {
@@ -463,57 +464,67 @@ namespace MailReader.MailOperations
                                         .ToList();
                     allFolders = [.. foundIn.Concat(allFolders.Except(foundIn))];
 
-                    await foreach (var folder in GetFolders(client, allFolders, CancellationToken.None))
+                    await foreach (var folder2 in GetFolders(client, allFolders, CancellationToken.None))
                     {
-                        if (folder.Name == destinationFolder.Name) continue;
-                        if (!entries.Any()) break;
-                        await folder.OpenAsync(FolderAccess.ReadWrite);
-
-                        foreach (var group in entries.ToList().Chunk(7))
+                        try
                         {
-                            SearchQuery query = SearchQuery.HeaderContains("Message-ID", group[0].MessageId);
+                            var folder = folder2.folder;
+                            if (folder.Name == destinationFolder.Name) continue;
+                            if (!entries.Any()) break;
+                            if (folder.CanOpen && !folder.IsOpen)
+                                folder.Open(FolderAccess.ReadWrite);
 
-                            if (group.Count() > 1)
+                            foreach (var group in entries.ToList().Chunk(7))
                             {
-                                foreach (var kvp in group.Skip(1))
+                                SearchQuery query = SearchQuery.HeaderContains("Message-ID", group[0].MessageId);
+
+                                if (group.Count() > 1)
                                 {
-                                    query = query.Or(SearchQuery.HeaderContains("Message-ID", kvp.MessageId));
+                                    foreach (var kvp in group.Skip(1))
+                                    {
+                                        query = query.Or(SearchQuery.HeaderContains("Message-ID", kvp.MessageId));
+                                    }
+                                }
+
+                                var uuid = await folder.SearchAsync(SearchQuery.Uids(group.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList()).Or(query));
+                                if (uuid.Count == 0) continue;
+                                var found = await folder.FetchAsync(uuid, MessageSummaryItems.UniqueId
+                                                | MessageSummaryItems.InternalDate
+                                                | MessageSummaryItems.Envelope
+                                                | MessageSummaryItems.EmailId
+                                                | MessageSummaryItems.ThreadId);
+
+                                var toMove = found.Select(f => (f, group.FirstOrDefault(x => GetPartitionKey(f) == x.PartitionKey && GetRowKey(f) == x.RowKey))).Where(t => t.Item2 != null).ToList();
+                                var mapping = await folder.MoveToAsync(toMove.Select(x => x.f.UniqueId).ToList(), destinationFolder, CancellationToken.None);
+
+                                foreach (var kvp in toMove)
+                                {
+                                    var currentKey = kvp.f.UniqueId;
+                                    var x = kvp.Item2!;
+                                    x.CurrentFolder = msg.DestinationFolder;
+                                    if (string.IsNullOrEmpty(x.FoundInFolder))
+                                    {
+                                        x.FoundInFolder = folder.Name;
+                                    }
+                                    if (mapping.ContainsKey(currentKey))
+                                    {
+                                        x.Validity = (int)mapping[currentKey].Validity;
+                                        x.Uid = (int)mapping[currentKey].Id;
+                                    }
+                                    await ticketEntryRepository.Save([x], tableName);
+                                    entries.Remove(x);
+                                }
+
+                                if (group.Count() != toMove.Count)
+                                {
+                                    LogError(new Exception(@$"One of the {folder?.Name}::{folder2.folderName} messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
                                 }
                             }
 
-                            var uuid = await folder.SearchAsync(SearchQuery.Uids(group.Select(x => new UniqueId((uint)x.Validity, (uint)x.Uid)).ToList()).Or(query));
-                            if (uuid.Count == 0) continue;
-                            var found = await folder.FetchAsync(uuid, MessageSummaryItems.UniqueId
-                                            | MessageSummaryItems.InternalDate
-                                            | MessageSummaryItems.Envelope
-                                            | MessageSummaryItems.EmailId
-                                            | MessageSummaryItems.ThreadId);
-
-                            var toMove = found.Select(f => (f, group.FirstOrDefault(x => GetPartitionKey(f) == x.PartitionKey && GetRowKey(f) == x.RowKey))).Where(t => t.Item2 != null).ToList();
-                            var mapping = await folder.MoveToAsync(toMove.Select(x => x.f.UniqueId).ToList(), destinationFolder, CancellationToken.None);
-
-                            foreach (var kvp in toMove)
-                            {
-                                var currentKey = kvp.f.UniqueId;
-                                var x = kvp.Item2!;
-                                x.CurrentFolder = msg.DestinationFolder;
-                                if (string.IsNullOrEmpty(x.FoundInFolder))
-                                {
-                                    x.FoundInFolder = folder.Name;
-                                }
-                                if (mapping.ContainsKey(currentKey))
-                                {
-                                    x.Validity = (int)mapping[currentKey].Validity;
-                                    x.Uid = (int)mapping[currentKey].Id;
-                                }
-                                await ticketEntryRepository.Save([x], tableName);
-                                entries.Remove(x);
-                            }
-
-                            if (group.Count() != toMove.Count)
-                            {
-                                LogError(new Exception(@$"One of the ${folder.Name} messages wasn't found {string.Join("; ", group.ToList().Except(toMove.Select(t => t.Item2)))}"));
-                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogError(new Exception(@$"One of the {folder2.folder?.Name}::{folder2.folderName} wasn't moved -- {ex.StackTrace}", ex));
                         }
                     }
                 }
@@ -700,7 +711,7 @@ namespace MailReader.MailOperations
         {
             logger.ActorMessage(actor, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
         }
-        private static async IAsyncEnumerable<IMailFolder> GetFolders(ImapClient client, string[] folders, [EnumeratorCancellation] CancellationToken cancellationToken)
+        private static async IAsyncEnumerable<(IMailFolder folder, string folderName)> GetFolders(ImapClient client, string[] folders, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             await Task.Yield();
 
@@ -726,7 +737,7 @@ namespace MailReader.MailOperations
 
                 if (result?.Exists == true)
                 {
-                    yield return result;
+                    yield return (result, folder);
                 }
                 else
                 {
