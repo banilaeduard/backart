@@ -60,11 +60,13 @@ namespace WebApi.Controllers
             _cryptoService = cryptoService;
         }
 
-        [HttpGet("{date}")]
-        public async Task<IActionResult> GetCommitedOrders(string date)
+        [HttpGet("{date}/{date2}")]
+        public async Task<IActionResult> GetCommitedOrders(string date, string date2)
         {
             var from = DateTime.Parse(date, CultureInfo.InvariantCulture);
-            var orders = await commitedOrdersRepository.GetCommitedOrders(from);
+            DateTime.TryParse(date2, CultureInfo.InvariantCulture, out var to);
+
+            var orders = await commitedOrdersRepository.GetCommitedOrders(from, to);
 
             IList<ProductCodeStatsEntry>? productLinkWeights = null;
             IList<ProductStatsEntry>? weights = null;

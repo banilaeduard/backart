@@ -35,9 +35,9 @@ namespace AzureTableRepository.CommitedOrders
                                .Where(t => ids.Contains(int.Parse(t.PartitionKey))).ToList();
         }
 
-        public async Task<List<CommitedOrderEntry>> GetCommitedOrders(DateTime? _from)
+        public async Task<List<CommitedOrderEntry>> GetCommitedOrders(DateTime? _from, DateTime? m)
         {
-            return (await CacheManager.GetAll((from) => tableStorageService.Query<CommitedOrderEntry>(t => t.Timestamp > from).ToList())).Where(t => t.DataDocument > _from).ToList();
+            return (await CacheManager.GetAll((from) => tableStorageService.Query<CommitedOrderEntry>(t => t.Timestamp > from).ToList())).Where(t => t.DataDocument >= _from && t.DataDocument < (m ?? DateTime.MaxValue)).ToList();
         }
 
         public async Task InsertCommitedOrder(List<CommitedOrderEntry> sample)
