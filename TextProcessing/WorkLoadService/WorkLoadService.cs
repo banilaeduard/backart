@@ -124,7 +124,7 @@ namespace WorkLoadService
                 return [.. connection.Query<WorkListItem>("SELECT * FROM dbo.TotalNelivrat")];
             }
 #else
-            var commited = await _provider.GetRequiredService<ICommitedOrdersRepository>().GetCommitedOrders(DateTime.MinValue);
+            var commited = await _provider.GetRequiredService<ICommitedOrdersRepository>().GetCommitedOrders(DateTime.Now.AddYears(-1), DateTime.MinValue);
             var orders = await _provider.GetRequiredService<IOrdersRepository>().GetOrders();
 
             return [..commited.Where(t => t.Cantitate > 0).Select(x => new WorkListItem() {
