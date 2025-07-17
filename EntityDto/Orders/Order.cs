@@ -35,5 +35,6 @@
         public string StatusName { get; set; }
         public int Id { get; set; }
         public DateTime? DueDate { get; set; }
+        public string? PartnerItemKey { get; set; }
     }
 }

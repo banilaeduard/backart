@@ -34,7 +34,7 @@
         public DateTime? TransportDate { get; set; }
         public int? TransportId { get; set; }
         public DateTime? DataAviz { get; set; }
-
+        public string? PartnerItemKey { get; set; }
         public int? Greutate { get; set; }
         public int Id { get; set; }
         public string PartitionKey { get; set; }

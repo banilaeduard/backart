@@ -16,6 +16,8 @@ namespace WebApi.Models
         public string? NumarIntern { get; set; }
         public int? Greutate { get; set; }
 
+        public string? PartnerItemKey { get; set; }
+
         public static CommitedOrderModel create(CommitedOrder entry, int cantitate, int greutate)
         {
             return new CommitedOrderModel()
@@ -28,6 +30,7 @@ namespace WebApi.Models
                 RowKey = entry.RowKey,
                 NumarIntern = entry.NumarIntern,
                 NumarComanda = entry.NumarComanda,
+                PartnerItemKey = entry.PartnerItemKey,
                 DetaliiLinie = $@"{entry.DetaliiLinie}{(string.IsNullOrWhiteSpace(entry.DetaliiLinie) ? "" : " - ")}{entry.DetaliiDoc}",
                 DataDocumentBaza = entry.DataDocumentBaza?.ToUniversalTime(),
             };

@@ -39,6 +39,7 @@ namespace RepositoryContract.CommitedOrders
                 TransportDate = entry.TransportDate?.ToUniversalTime(),
                 TransportId = entry.TransportId,
                 DueDate = entry.DueDate?.ToUniversalTime(),
+                PartnerItemKey = entry.PartnerItemKey,
             };
         }
 

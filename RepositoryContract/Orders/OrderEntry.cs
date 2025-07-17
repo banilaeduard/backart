@@ -30,6 +30,7 @@ namespace RepositoryContract.Orders
                 NumePartener = entry.NumePartener,
                 CantitateTarget = entry.CantitateTarget,
                 PartitionKey = PKey(entry),
+                PartnerItemKey = entry.PartnerItemKey,
             };
             it.RowKey = comparer.GetHashCode(it).ToString();
             return it;

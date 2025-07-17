@@ -15,6 +15,7 @@ namespace WebApi.Models
         public string NumarIntern { get; set; }
         public DateTime DataDocument { get; set; }
         public DateTime? DataDocumentBaza { get; set; }
+        public string? PartnerItemKey { get; set; }
 
         public static IEnumerable<CommitedOrdersResponse> From(IList<CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
             IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
@@ -65,7 +66,8 @@ namespace WebApi.Models
                     CodLocatie = sample.CodLocatie,
                     TransportStatus = sample.TransportStatus,
                     TransportId = sample.TransportId,
-                    TransportDate = sample.TransportDate
+                    TransportDate = sample.TransportDate,
+                    PartnerItemKey = sample.PartnerItemKey,
                 };
                 response.HasReports = response.Tasks.Any() || response.Tickets.Any();
                 response.Weight = response.Entry.Sum(x => x.Greutate ?? 0);
@@ -91,6 +93,7 @@ namespace WebApi.Models
         public bool HasReports { get; set; }
         public string? TransportStatus { get; set; }
         public int? TransportId { get; set; }
+        public string? PartnerItemKey { get; set; }
 
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {

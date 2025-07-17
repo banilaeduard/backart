@@ -203,25 +203,28 @@ namespace WorkSheetServices
                     var locSheet = workbook.AddWorksheet(lines[idx].Key);
                     locSheet.Style.Font.FontSize = 13;
 
-                    locSheet.Range("A1:C1").Merge();
+                    locSheet.Range("A1:D1").Merge();
                     locSheet.Cell(1, 1).Value = lines[idx].First().NumeLocatie;
                     locSheet.Cell(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                     locSheet.Cell(1, 1).Style.Font.FontSize = 15;
 
-                    locSheet.Range("A2:C2").Merge();
+                    locSheet.Range("A2:D2").Merge();
                     locSheet.Cell(2, 1).Value = $"Numar Intern: {string.Join("; ", lines[idx].Select(x => $"{x.NumarIntern} - {x.DataDocument.ToString("dd/MM/yyyy")}").Distinct())}";
                     locSheet.Cell(2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                     locSheet.Cell(2, 1).Style.Font.FontSize = 11;
 
-                    locSheet.Cell(3, 1).Value = "Denumire produs";
+                    locSheet.Cell(3, 1).Value = "Cod Produs";
                     locSheet.Cell(3, 1).Style.Font.Bold = true;
 
-                    locSheet.Cell(3, 2).Value = "Buc";
+                    locSheet.Cell(3, 2).Value = "Denumire produs";
                     locSheet.Cell(3, 2).Style.Font.Bold = true;
 
-                    locSheet.Cell(3, 3).Value = "Detalii";
+                    locSheet.Cell(3, 3).Value = "Buc";
                     locSheet.Cell(3, 3).Style.Font.Bold = true;
-                    locSheet.Range("A3:C3").Style.Border.SetOutsideBorder(XLBorderStyleValues.Double);
+
+                    locSheet.Cell(3, 4).Value = "Detalii";
+                    locSheet.Cell(3, 4).Style.Font.Bold = true;
+                    locSheet.Range("A3:D3").Style.Border.SetOutsideBorder(XLBorderStyleValues.Double);
 
                     var cRow = 4;
                     foreach (var entry in lines[idx].OrderByDescending(x => x.DataDocumentBaza).GroupBy(x => new { c = x.NumarComanda, d = !string.IsNullOrEmpty(x.DetaliiDoc) || !string.IsNullOrEmpty(x.DetaliiLinie) }))
@@ -232,16 +235,16 @@ namespace WorkSheetServices
                             );
                         string comandaDetails = $"Comanda {entry.Key.c} - {entry.First().DataDocumentBaza?.ToString("dd/MM/yy")}{(string.IsNullOrWhiteSpace(detaliiDoc) ? "" : $" - {detaliiDoc}")}";
 
-                        var rows = SplitRow(locSheet, cRow, 1, comandaDetails, 75);
+                        var rows = SplitRow(locSheet, cRow, 2, comandaDetails, 75);
                         if (rows == 0)
                         {
                             //locSheet.Range($"A{cRow}:{(string.IsNullOrWhiteSpace(detaliiDoc) ? "B" : "C")}{cRow}").Merge();
                         }
                         if (!string.IsNullOrEmpty(detaliiDoc))
                         {
-                            locSheet.Cell(cRow, 1).Style.Font.FontSize = 12;
+                            locSheet.Cell(cRow, 2).Style.Font.FontSize = 12;
                         }
-                        locSheet.Cell(cRow, 1).Style.Fill.SetBackgroundColor(XLColor.LightBlue);
+                        locSheet.Cell(cRow, 2).Style.Fill.SetBackgroundColor(XLColor.LightBlue);
                         cRow += rows + 1;
 
                         var comList = entry.GroupBy(x => new { x = grouping1(x), p = grouping2(x), l = string.Join(" ", x.DetaliiLinie?.Replace("\n", " ").Split(" ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) }).OrderByDescending(x => x.Key.x).ToList();
@@ -249,34 +252,42 @@ namespace WorkSheetServices
                         var cLine = 0;
                         foreach (var com in comList)
                         {
-                            var rowsMereged = SplitRow(locSheet, cRow + cLine, 3, com.Key.l, 25, "C{0}:C{1}");
-                            locSheet.Cell(cRow + cLine, 3).WorksheetColumn().Width = 25;
-                            locSheet.Cell(cRow + cLine, 3).Style.Font.FontSize = 10;
+                            var rowsMereged = SplitRow(locSheet, cRow + cLine, 4, com.Key.l, 25, "D{0}:D{1}");
+                            locSheet.Cell(cRow + cLine, 4).WorksheetColumn().Width = 25;
+                            locSheet.Cell(cRow + cLine, 4).Style.Font.FontSize = 10;
                             if (rowsMereged > 0)
                             {
                                 locSheet.Range($"A{cRow + cLine}:A{cRow + cLine + rowsMereged}").Merge();
                                 locSheet.Range($"B{cRow + cLine}:B{cRow + cLine + rowsMereged}").Merge();
-                                locSheet.Range($"A{cRow + cLine}:C{cRow + cLine + rowsMereged}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Dashed);
+                                locSheet.Range($"C{cRow + cLine}:C{cRow + cLine + rowsMereged}").Merge();
+                                locSheet.Range($"A{cRow + cLine}:D{cRow + cLine + rowsMereged}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Dashed);
                             }
-                            locSheet.Cell(cRow + cLine, 1).WorksheetColumn().Width = 60;
-                            locSheet.Cell(cRow + cLine, 1).Value = com.First().NumeProdus;
-                            locSheet.Cell(cRow + cLine, 2).Value = com.Sum(x => x.Cantitate);
-                            locSheet.Cell(cRow + cLine, 2).WorksheetColumn().Width = 5;
+
+                            locSheet.Cell(cRow + cLine, 1).WorksheetColumn().Width = 15;
+                            locSheet.Cell(cRow + cLine, 1).Value = com.First().PartnerItemKey ?? com.First().CodProdus;
+
+                            locSheet.Cell(cRow + cLine, 2).WorksheetColumn().Width = 60;
+                            locSheet.Cell(cRow + cLine, 2).Value = com.First().NumeProdus;
+
+                            locSheet.Cell(cRow + cLine, 3).WorksheetColumn().Width = 5;
+                            locSheet.Cell(cRow + cLine, 3).Value = com.Sum(x => x.Cantitate);                        
 
                             if (cLine % 2 == 1)
                             {
                                 locSheet.Cell(cRow + cLine, 1).Style.Fill.SetBackgroundColor(XLColor.LightGoldenrodYellow);
                                 locSheet.Cell(cRow + cLine, 2).Style.Fill.SetBackgroundColor(XLColor.LightGoldenrodYellow);
+                                locSheet.Cell(cRow + cLine, 3).Style.Fill.SetBackgroundColor(XLColor.LightGoldenrodYellow);
                                 if (!string.IsNullOrEmpty(com.Key.l))
-                                    locSheet.Cell(cRow + cLine, 3).Style.Fill.SetBackgroundColor(XLColor.LightGoldenrodYellow);
+                                    locSheet.Cell(cRow + cLine, 4).Style.Fill.SetBackgroundColor(XLColor.LightGoldenrodYellow);
                             }
 
                             cLine += rowsMereged + 1;
                         }
                         locSheet.Range($"B{cRow}:B{cRow + cLine - 1}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
+                        locSheet.Range($"C{cRow}:C{cRow + cLine - 1}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin);
                         cRow += cLine;
                     }
-                    SetupWorksheetPage(locSheet, cRow, 3, "nolandscape");
+                    SetupWorksheetPage(locSheet, cRow, 4, "nolandscape");
                     //locSheet.Rows().AdjustToContents();
                     //locSheet.Columns("1:2").AdjustToContents();
                 }

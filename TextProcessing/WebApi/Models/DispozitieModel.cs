@@ -7,5 +7,6 @@
         public string NumeProdus { get; set; }
         public string CodProdus { get; set; }
         public int NumarIntern { get; set; }
+        public string? PartnerItemKey { get; set; }
     }
 }
