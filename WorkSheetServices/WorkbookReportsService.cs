@@ -202,7 +202,7 @@ namespace WorkSheetServices
                     colRowIndex[idx % colIndex.Length] = rowIdx;
 
                     var locSheet = workbook.AddWorksheet(lines[idx].Key);
-                    locSheet.Style.Font.FontSize = 12;
+                    locSheet.Style.Font.FontSize = 13.4;
 
                     locSheet.Range("A1:C1").Merge();
                     locSheet.Cell(1, 1).Value = lines[idx].First().NumeLocatie;
