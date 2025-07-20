@@ -240,7 +240,7 @@ namespace WorkSheetServices
                         var comList = entry.GroupBy(x => new { x = grouping1(x), p = grouping2(x) }).OrderByDescending(x => x.Key.x).ToList();
                         var rows = 0;
                         //SplitRow(locSheet, cRow, 2, comandaDetails, 75);
-                        locSheet.Cell(cRow, 2).Value = $"Comanda {entry.Key.c} - {entry.First().DataDocumentBaza?.ToString("dd/MM")}"; ;
+                        locSheet.Cell(cRow, 2).Value = $"Comanda {entry.Key.c}";
                         locSheet.Cell(cRow, 2).Style.Font.Italic = true;
                         locSheet.Cell(cRow, 2).Style.Font.Bold = true;
                         cRow += rows + 1;
