@@ -202,6 +202,8 @@ namespace WorkSheetServices
                     colRowIndex[idx % colIndex.Length] = rowIdx;
 
                     var locSheet = workbook.AddWorksheet(lines[idx].Key);
+                    locSheet.Column(2).Style.Alignment.Indent = 1;
+                    locSheet.Column(3).Style.Alignment.Indent = 1;
                     locSheet.Style.Font.FontSize = 13.4;
 
                     locSheet.Range("A1:C1").Merge();
@@ -218,20 +220,23 @@ namespace WorkSheetServices
 
                     locSheet.Cell(3, 1).Value = "Cod Produs";
                     locSheet.Cell(3, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                    locSheet.Cell(3, 1).Style.Alignment.Indent = 0;
                     locSheet.Cell(3, 1).Style.Font.Bold = true;
 
                     locSheet.Cell(3, 2).Value = "Denumire produs";
                     locSheet.Cell(3, 2).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                    locSheet.Cell(3, 2).Style.Alignment.Indent = 0;
                     locSheet.Cell(3, 2).Style.Font.Bold = true;
 
                     locSheet.Cell(3, 3).Value = "Buc";
                     locSheet.Cell(3, 3).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                    locSheet.Cell(3, 2).Style.Alignment.Indent = 0;
                     locSheet.Cell(3, 3).Style.Font.Bold = true;
 
                     locSheet.Range("A3:C3").Style.Border.SetInsideBorder(XLBorderStyleValues.Thin);
 
                     var cRow = 4;
-                    foreach (var entry in lines[idx].OrderByDescending(x => x.DataDocumentBaza).GroupBy(x => new { c = x.NumarComanda, d = !string.IsNullOrEmpty(x.DetaliiDoc) || !string.IsNullOrEmpty(x.DetaliiLinie) }))
+                    foreach (var entry in lines[idx].OrderByDescending(x => x.DataDocumentBaza).GroupBy(x => new { c = x.NumarComanda }))
                     {
                         locSheet.Row(cRow++).Height = 8;
                         locSheet.Range($"B{cRow}:C{cRow}").Merge();
@@ -252,13 +257,9 @@ namespace WorkSheetServices
                             //SplitRow(locSheet, cRow + cLine, 4, com.Key.l, 25, "D{0}:D{1}");
                             var sample = com.First();
 
-                            locSheet.Cell(cRow + cLine, 1).WorksheetColumn().Width = 12;
-                            locSheet.Cell(cRow + cLine, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
                             locSheet.Cell(cRow + cLine, 1).Value = sample.PartnerItemKey ?? sample.CodProdus;
-
+                            locSheet.Cell(cRow + cLine, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
                             locSheet.Cell(cRow + cLine, 2).Value = sample.NumeCodificare ?? sample.NumeProdus;
-
-                            locSheet.Cell(cRow + cLine, 3).WorksheetColumn().Width = 5;
                             locSheet.Cell(cRow + cLine, 3).Value = com.Sum(x => x.Cantitate);
                             locSheet.Cell(cRow + cLine, 3).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
 
@@ -273,7 +274,7 @@ namespace WorkSheetServices
                         }
                         cRow += cLine;
                     }
-                    locSheet.Column(2).AdjustToContents();
+                    locSheet.Columns("1:3").AdjustToContents();
 
                     SetupWorksheetPage(locSheet, cRow, 3, "nolandscape");
                     //locSheet.Rows().AdjustToContents();
