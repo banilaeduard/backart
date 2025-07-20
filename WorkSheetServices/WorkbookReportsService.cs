@@ -208,11 +208,12 @@ namespace WorkSheetServices
                     locSheet.Cell(1, 1).Value = lines[idx].First().NumeLocatie;
                     locSheet.Cell(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                     locSheet.Cell(1, 1).Style.Font.FontSize = 15;
+                    locSheet.Cell(1, 1).Style.Font.Bold = true;
 
                     locSheet.Range("A2:C2").Merge();
+                    locSheet.Range("A2:C2").Style.Border.SetBottomBorder(XLBorderStyleValues.Thin);
                     locSheet.Cell(2, 1).Value = $"Numar Intern: {string.Join("; ", lines[idx].Select(x => $"{x.NumarIntern} - {x.DataDocument.ToString("dd/MM/yyyy")}").Distinct())}";
                     locSheet.Cell(2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    locSheet.Cell(2, 1).Style.Border.SetBottomBorder(XLBorderStyleValues.Thin);
                     locSheet.Cell(2, 1).Style.Font.FontSize = 11;
 
                     locSheet.Cell(3, 1).Value = "Cod Produs";
@@ -236,20 +237,12 @@ namespace WorkSheetServices
                         locSheet.Range($"B{cRow}:C{cRow}").Merge();
                         locSheet.Range($"A{cRow}:C{cRow}").Style.Border.SetBottomBorder(XLBorderStyleValues.Thin);
 
-                        var detaliiDoc = string.Join(" ",
-                            entry.First().DetaliiDoc.Replace("\n", " ")
-                            .Split(" ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                            );
-
-                        var comList = entry.GroupBy(x => new { x = grouping1(x), p = grouping2(x), l = string.Join(" ", x.DetaliiLinie?.Replace("\n", " ").Split(" ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []) }).OrderByDescending(x => x.Key.x).ToList();
-                        string detaliiLinie = string.Join(";", comList.Select(x => x.Key.l).Distinct().Where(x => !string.IsNullOrWhiteSpace(x)));
-                        string comandaDetails = $"Comanda" +
-                            $" {entry.Key.c} - {entry.First().DataDocumentBaza?.ToString("dd/MM")}{(string.IsNullOrWhiteSpace(detaliiDoc) ? "" : $" - {detaliiDoc}")} {(string.IsNullOrWhiteSpace(detaliiLinie) ? "" : $" - {detaliiLinie}")}";
-
+                        var comList = entry.GroupBy(x => new { x = grouping1(x), p = grouping2(x) }).OrderByDescending(x => x.Key.x).ToList();
                         var rows = 0;
                         //SplitRow(locSheet, cRow, 2, comandaDetails, 75);
-                        locSheet.Cell(cRow, 2).Value = comandaDetails;
-                        locSheet.Cell(cRow, 2).Style.Font.FontSize = 13;
+                        locSheet.Cell(cRow, 2).Value = $"Comanda {entry.Key.c} - {entry.First().DataDocumentBaza?.ToString("dd/MM")}"; ;
+                        locSheet.Cell(cRow, 2).Style.Font.Italic = true;
+                        locSheet.Cell(cRow, 2).Style.Font.Bold = true;
                         cRow += rows + 1;
 
                         var cLine = 0;
