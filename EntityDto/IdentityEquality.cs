@@ -1,6 +1,6 @@
 ﻿namespace EntityDto
 {
-    public class IdentityEquality<T> where T : ITableEntryDto
+    public class IdentityEquality<T>: TrackableTableEntity where T : ITableEntryDto
     {
         public X Shallowcopy<X>() where X : T
         {

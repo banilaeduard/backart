@@ -81,7 +81,7 @@ namespace AzureServices
 
         public (List<TableTransactionAction> items, TableStorageService self) PrepareUpsert<T>(IEnumerable<T> entries) where T : class, ITableEntity
         {
-            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.UpsertReplace, e)).ToList(), this);
+            return (entries.Select(e => new TableTransactionAction(TableTransactionActionType.UpsertMerge, e)).ToList(), this);
         }
 
         private IEnumerable<List<TableTransactionAction>> Batch(IEnumerable<TableTransactionAction> items)

@@ -109,7 +109,7 @@ namespace WebApi.Controllers
                 FirstDataRow = 2,
             }, sheetName: clientName);
 
-            var partitionKey = AzureTableKeySanitizer.Sanitize(clientName) + "_" + categoryName;
+            var partitionKey = AzureTableUtils.Sanitize(clientName) + "_" + categoryName;
             await using var conn = new SqlConnection(ProjectKeys.KeyCollection.ExternalServer);
             var sql = $@"select itemkey, pi.partneritemkey FROM dbo.item it
                                                                 join dbo.partneritem pi on pi.itemid = it.objectid and pi.valid = 1
@@ -124,26 +124,25 @@ namespace WebApi.Controllers
 
             var resultItems = result.items.IntersectBy(dbItems.Select(t => t.Key), x => x.CodProdusClient).ToList();
 
-            var tableStorageService = new TableStorageService();
-            var productCodes = tableStorageService.Query<ProductCodeEntry>(@$"{nameof(ProductCodeEntry.Level)} eq 1", nameof(ProductCodeEntry)).ToDictionary(t => t.Code, t => t);
+            var productCodes = _tableStorageService.Query<ProductCodeEntry>(@$"{nameof(ProductCodeEntry.Level)} eq 1", nameof(ProductCodeEntry)).ToDictionary(t => t.Code, t => t);
 
             await _productCodeRepository.CreateProductStats([.. resultItems.Select(it => new ProductStatsEntry() {
                     PartitionKey = partitionKey,
-                    RowKey = AzureTableKeySanitizer.Sanitize(it.CodProdusClient),
+                    RowKey = AzureTableUtils.Sanitize(it.CodProdusClient),
                     PropertyCategory = categoryName,
                     PropertyName = it.CodProdusClient,
                     PropertyType = "decimal",
                     PropertyValue = it.PretClient.ToString("0.00"),
                 })]);
-            var productStats = tableStorageService.Query<ProductStatsEntry>(TableClient.CreateQueryFilter(@$"PartitionKey eq {partitionKey}"), nameof(ProductStatsEntry)).ToDictionary(t => t.RowKey, t => t);
+            var productStats = _tableStorageService.Query<ProductStatsEntry>(TableClient.CreateQueryFilter(@$"PartitionKey eq {partitionKey}"), nameof(ProductStatsEntry)).ToDictionary(t => t.RowKey, t => t);
 
             await _productCodeRepository.CreateProductCodeStatsEntry([.. resultItems.Select(it => new ProductCodeStatsEntry() {
                     PartitionKey = partitionKey,
-                    RowKey = AzureTableKeySanitizer.Sanitize(it.CodProdusClient),
+                    RowKey = AzureTableUtils.Sanitize(it.CodProdusClient),
                     ProductPartitionKey = productCodes.GetValueOrDefault((string)dbItems[it.CodProdusClient].itemkey)?.PartitionKey,
                     ProductRowKey = productCodes.GetValueOrDefault((string)dbItems[it.CodProdusClient].itemkey)?.RowKey,
-                    StatsPartitionKey = productStats.GetValueOrDefault(AzureTableKeySanitizer.Sanitize(it.CodProdusClient))?.PartitionKey,
-                    StatsRowKey = productStats.GetValueOrDefault(AzureTableKeySanitizer.Sanitize(it.CodProdusClient))?.RowKey,
+                    StatsPartitionKey = productStats.GetValueOrDefault(AzureTableUtils.Sanitize(it.CodProdusClient))?.PartitionKey,
+                    StatsRowKey = productStats.GetValueOrDefault(AzureTableUtils.Sanitize(it.CodProdusClient))?.RowKey,
                 })]);
 
             return Ok();

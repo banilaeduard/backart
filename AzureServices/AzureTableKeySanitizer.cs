@@ -1,6 +1,9 @@
-﻿namespace AzureServices
+﻿using Azure.Data.Tables;
+using EntityDto;
+
+namespace AzureServices
 {
-    public static class AzureTableKeySanitizer
+    public static class AzureTableUtils
     {
         private static readonly char[] InvalidChars = { '/', '\\', '#', '?' };
 
@@ -19,6 +22,17 @@
 
             return sanitized;
         }
-    }
 
+        public static TableEntity ToTableEntityFromTracked(this TrackableTableEntity tracked)
+        {
+            var entity = new TableEntity(tracked.PartitionKey, tracked.RowKey);
+
+            foreach (var kvp in tracked.ChangedProperties)
+            {
+                entity[kvp.Key] = kvp.Value;
+            }
+
+            return entity;
+        }
+    }
 }

@@ -697,7 +697,7 @@ namespace MailReader.MailOperations
 
         private static string GetPartitionKey(IMessageSummary id)
         {
-            return AzureTableKeySanitizer.Sanitize(id.Envelope.Date.GetValueOrDefault(id.Date).ToString("yyMM"));
+            return AzureTableUtils.Sanitize(id.Envelope.Date.GetValueOrDefault(id.Date).ToString("yyMM"));
         }
 
         private static string GetRowKey(IMessageSummary id)
@@ -705,7 +705,7 @@ namespace MailReader.MailOperations
             var part1 = Math.Abs(GetStableHashCode(id.Envelope.Subject + id.Envelope.Date?.ToString() + string.Join(";", id.Envelope.From ?? []))).ToString();
             var rowKey = !string.IsNullOrEmpty(id.Envelope.MessageId) ? id.Envelope.MessageId : part1;
 
-            return AzureTableKeySanitizer.Sanitize($@"{rowKey}_{Math.Abs(GetStableHashCode(part1 + id.Date.ToString()))}");
+            return AzureTableUtils.Sanitize($@"{rowKey}_{Math.Abs(GetStableHashCode(part1 + id.Date.ToString()))}");
         }
         private static void LogError(Exception ex)
         {
