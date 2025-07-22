@@ -1,4 +1,5 @@
 ﻿using EntityDto.Tasks;
+using RepositoryContract.Cfg;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.ProductCodes;
@@ -18,9 +19,11 @@ namespace WebApi.Models
         public string? PartnerItemKey { get; set; }
 
         public static IEnumerable<CommitedOrdersResponse> From(IList<CommitedOrderEntry> entries, IList<TicketEntity> tickets, IList<DataKeyLocationEntry> synonimLocations,
-            IList<TaskEntry> tasks, IList<ProductCodeStatsEntry> productLinkWeights, IList<ProductStatsEntry> weights)
+            IList<TaskEntry> tasks, List<ProductCodeStatsEntry>? productLink, List<ProductStatsEntry>? productStats, List<CategoryEntity>? categories)
         {
             var externalRefs = tasks.SelectMany(t => t.ExternalReferenceEntries).DistinctBy(t => new { t.PartitionKey, t.RowKey }).Cast<ExternalReference>().ToList();
+            var productLinkWeights = (productLink ?? []).Where(x => x.RowKey == "Greutate").ToList();
+            var weights = (productStats ?? []).Where(x => x.PropertyCategory == "Greutate").ToList();
 
             foreach (var ticket in tickets)
             {
@@ -51,7 +54,8 @@ namespace WebApi.Models
                     {
                         var pw = productLinkWeights.FirstOrDefault(x => x.PartitionKey == t.CodProdus);
                         return w.RowKey == pw?.StatsRowKey && w.PartitionKey == pw?.StatsPartitionKey;
-                    })?.PropertyValue ?? "0") * t.Cantitate)).OrderBy(t => t.DataDocumentBaza).ToList(),
+                    })?.PropertyValue ?? "0") * t.Cantitate).SetCategories(productLink, productStats, categories, sample.NumePartener)).OrderBy(t => t.DataDocumentBaza).ToList(),
+
                     Tickets = [.. groupTickets.GroupBy(t => t.ThreadId).Select(grp => TicketSeriesModel.from([.. grp], externalRefs)).Where(t => t.Tickets?.Any(x => x.Id.HasValue) == false)],
                     Tasks = [.. TaskModel.From(groupedTasks, groupTickets, synonimLocations)],
                     DetaliiComenzi = string.Join("; ", group.Select(t => t.NumarComanda).Distinct()),
@@ -94,6 +98,7 @@ namespace WebApi.Models
         public string? TransportStatus { get; set; }
         public int? TransportId { get; set; }
         public string? PartnerItemKey { get; set; }
+        public List<CategoryValue> Categories { get; set; } = new List<CategoryValue>();
 
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {

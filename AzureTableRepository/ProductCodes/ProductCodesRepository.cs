@@ -1,5 +1,6 @@
 ﻿using AzureServices;
 using EntityDto;
+using RepositoryContract.Cfg;
 using RepositoryContract.ProductCodes;
 using ServiceInterface;
 
@@ -82,6 +83,16 @@ namespace AzureTableRepository.ProductCodes
             return (await CacheManagerProductCodeStatsEntry.GetAll((from) =>
                     tableStorageService.Query<ProductCodeStatsEntry>(t => t.Timestamp > from, nameof(ProductCodeStatsEntry)).ToList()
                     , nameof(ProductCodeStatsEntry))).Select(t => t.Shallowcopy<ProductCodeStatsEntry>()).ToList();
+        }
+
+        public async Task<IList<CategoryEntity>> GetCategory(string filter = null)
+        {
+            if (!string.IsNullOrEmpty(filter))
+            {
+                return tableStorageService.Query<CategoryEntity>(filter, nameof(CategoryEntity)).ToList();
+
+            }
+            return tableStorageService.Query<CategoryEntity>(t => true, nameof(CategoryEntity)).ToList();
         }
 
         public async Task UpsertCodes(ProductCodeEntry[] productCodes)

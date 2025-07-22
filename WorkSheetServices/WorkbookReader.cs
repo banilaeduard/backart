@@ -4,7 +4,7 @@ namespace WorkSheetServices
 {
     public static class WorkbookReader
     {
-        public static List<T> ReadWorkBook<T>(Stream stream, int firstDataRow = 4, string sheetName = "") where T : class, new()
+        public static (string sheetname, List<T> items) ReadWorkBook<T>(Stream stream, int firstDataRow = 4, string sheetName = "") where T : class, new()
         {
             return ReadWorkBook(stream, new Settings<T>()
             {
@@ -12,7 +12,7 @@ namespace WorkSheetServices
             }, sheetName);
         }
 
-        public static List<T> ReadWorkBook<T>(Stream stream, Settings<T> settings, string sheetName = "") where T : class, new()
+        public static (string sheetname, List<T> items) ReadWorkBook<T>(Stream stream, Settings<T> settings, string sheetName = "") where T : class, new()
         {
             List<T> lst = new();
 
@@ -27,9 +27,9 @@ namespace WorkSheetServices
 
                     lst.Add(settings.Mapper.ReadLines((col, row) => worksheet.Cell(row, col), i));
                 }
-            }
 
-            return lst;
+                return (worksheet.Name, lst);
+            }
         }
     }
 }

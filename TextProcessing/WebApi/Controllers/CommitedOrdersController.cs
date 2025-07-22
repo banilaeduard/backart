@@ -20,6 +20,7 @@ using RepositoryContract.Transports;
 using WordDocument.Services;
 using ServiceImplementation;
 using Dapper;
+using RepositoryContract.Cfg;
 
 namespace WebApi.Controllers
 {
@@ -65,25 +66,9 @@ namespace WebApi.Controllers
         {
             var from = DateTime.Parse(date, CultureInfo.InvariantCulture);
             DateTime.TryParse(date2, CultureInfo.InvariantCulture, out var to);
-
             var orders = await commitedOrdersRepository.GetCommitedOrders(from, to);
 
-            IList<ProductCodeStatsEntry>? productLinkWeights = null;
-            IList<ProductStatsEntry>? weights = null;
-            IList<TaskEntry>? tasks = null;
-            try
-            {
-                tasks = await taskRepository.GetTasks(TaskInternalState.Open);
-
-                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
-                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(69), ex, "GetCommitedOrders");
-            }
-
-            return Ok(CommitedOrdersResponse.From(orders, [], [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
+            return await FormatCommited(orders);
         }
 
         [HttpGet("notransport")]
@@ -91,43 +76,39 @@ namespace WebApi.Controllers
         {
             var orders = await commitedOrdersRepository.GetCommitedOrdersNoTransport();
 
-            IList<ProductCodeStatsEntry>? productLinkWeights = null;
-            IList<ProductStatsEntry>? weights = null;
-            IList<TaskEntry>? tasks = null;
-            try
-            {
-                tasks = await taskRepository.GetTasks(TaskInternalState.Open);
-
-                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
-                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(new EventId(69), ex, "GetCommitedOrders");
-            }
-
-            return Ok(CommitedOrdersResponse.From(orders, [], [], tasks ?? [], productLinkWeights ?? [], weights ?? []));
+            return await FormatCommited(orders);
         }
 
         [HttpPost("get")]
         public async Task<IActionResult> GetCommitedOrdersIds(int[] ids)
         {
+            var orders = await commitedOrdersRepository.GetCommitedOrders(ids);
+            return await FormatCommited(orders, false);
+        }
 
-            IList<ProductCodeStatsEntry>? productLinkWeights = null;
-            IList<ProductStatsEntry>? weights = null;
+        public async Task<IActionResult> FormatCommited(List<CommitedOrderEntry> orders, bool includeTasks = true)
+        {
+            List<ProductCodeStatsEntry>? productLink = null;
+            List<ProductStatsEntry>? productStats = null;
+            List<CategoryEntity>? categories = null;
+            IList<TaskEntry>? tasks = null;
             try
             {
+                if (includeTasks)
+                    tasks = await taskRepository.GetTasks(TaskInternalState.Open);
 
-                productLinkWeights = [.. (await productCodeRepository.GetProductCodeStatsEntry()).Where(x => x.RowKey == "Greutate")];
-                weights = [.. (await productCodeRepository.GetProductStats()).Where(x => x.PropertyCategory == "Greutate")];
+                productLink = [.. await productCodeRepository.GetProductCodeStatsEntry()];
+                productStats = [.. await productCodeRepository.GetProductStats()];
+
+                var locs = orders.Select(t => t.NumePartener).Distinct();
+                categories = [.. (await productCodeRepository.GetCategory()).Where(t => t.ObjectType.Equals(nameof(CommitedOrderEntry)) && locs.Contains(t.PartitionKey))];
             }
             catch (Exception ex)
             {
                 logger.LogError(new EventId(69), ex, "GetCommitedOrders");
             }
-            var orders = await commitedOrdersRepository.GetCommitedOrders(ids);
 
-            return Ok(CommitedOrdersResponse.From(orders, [], [], [], productLinkWeights ?? [], weights ?? []));
+            return Ok(CommitedOrdersResponse.From(orders, [], [], tasks ?? [], productLink, productStats, categories));
         }
 
         [HttpPost("reclamatii")]

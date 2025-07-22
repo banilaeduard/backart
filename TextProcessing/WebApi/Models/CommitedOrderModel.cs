@@ -1,4 +1,6 @@
 ﻿using EntityDto.CommitedOrders;
+using RepositoryContract.Cfg;
+using RepositoryContract.ProductCodes;
 using WordDocumentServices;
 
 namespace WebApi.Models
@@ -15,7 +17,7 @@ namespace WebApi.Models
         public DateTime? DataDocumentBaza { get; set; }
         public string? NumarIntern { get; set; }
         public int? Greutate { get; set; }
-
+        public List<CategoryValue> Categories { get; set; } = new List<CategoryValue>();
         public string? PartnerItemKey { get; set; }
 
         public static CommitedOrderModel create(CommitedOrder entry, int cantitate, int greutate)
@@ -36,9 +38,28 @@ namespace WebApi.Models
             };
         }
 
+        public CommitedOrderModel SetCategories(List<ProductCodeStatsEntry>? productLink, List<ProductStatsEntry>? productStats, List<CategoryEntity>? categories, string PartnerName)
+        {
+            Categories = new();
+            foreach (var c in categories?.Where(c => c.PartitionKey == PartnerName) ?? [])
+            {
+                var itemLink = productLink?.FirstOrDefault(x => x.PartitionKey == $@"{PartnerName}_${c.CategoryName}" && x.RowKey == (PartnerItemKey ?? CodProdus));
+                var itemStat = productStats?.FirstOrDefault(ps => ps.PartitionKey == itemLink?.StatsPartitionKey && ps.RowKey == itemLink?.StatsRowKey);
+                Categories.Add(new CategoryValue
+                {
+                    CategoryName = c.CategoryName,
+                    PartitionKey = c.PartitionKey,
+                    RowKey = c.RowKey,
+                    Value = itemStat?.PropertyValue?.ToString()
+                });
+            }
+            return this;
+        }
+
         public void Accept(ITemplateDocumentWriter visitor, Dictionary<string, int> contextItems, ContextMap context)
         {
             if (contextItems.ContainsKey(CodProdus)) contextItems[CodProdus] += Cantitate;
         }
     }
 }
+

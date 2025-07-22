@@ -1,6 +1,5 @@
 ﻿using Azure;
 using Azure.Data.Tables;
-using EntityDto;
 using EntityDto.CommitedOrders;
 using System.Diagnostics.CodeAnalysis;
 
@@ -40,6 +39,7 @@ namespace RepositoryContract.CommitedOrders
                 TransportId = entry.TransportId,
                 DueDate = entry.DueDate?.ToUniversalTime(),
                 PartnerItemKey = entry.PartnerItemKey,
+                NumePartener = entry.NumePartener,
             };
         }
 

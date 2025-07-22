@@ -1,4 +1,5 @@
 ﻿using EntityDto;
+using RepositoryContract.Cfg;
 
 namespace RepositoryContract.ProductCodes
 {
@@ -11,6 +12,7 @@ namespace RepositoryContract.ProductCodes
         Task<IList<ProductStatsEntry>> CreateProductStats(IList<ProductStatsEntry> productStats);
         Task<IList<ProductCodeStatsEntry>> CreateProductCodeStatsEntry(IList<ProductCodeStatsEntry> productStats);
         Task<IList<ProductCodeStatsEntry>> GetProductCodeStatsEntry();
+        Task<IList<CategoryEntity>> GetCategory(string filter = null);
         Task Delete<T>(T entity) where T : ITableEntryDto;
     }
 }

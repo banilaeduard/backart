@@ -2,6 +2,7 @@
 using EntityDto;
 using Microsoft.Data.SqlClient;
 using ProjectKeys;
+using RepositoryContract.Cfg;
 using RepositoryContract.ProductCodes;
 
 namespace SqlTableRepository.ProductCodes
@@ -19,6 +20,11 @@ namespace SqlTableRepository.ProductCodes
         }
 
         public Task Delete<T>(T entity) where T : ITableEntryDto
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IList<CategoryEntity>> GetCategory(string filter = null)
         {
             throw new NotImplementedException();
         }

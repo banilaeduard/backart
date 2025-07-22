@@ -53,30 +53,29 @@ namespace WorkSheetServices
             var sourceType = fieldInfo.Key.GetParseFrom();
             var targetType = ChangeType(fieldInfo.Value.PropertyType);
             if (val.IsEmpty()
-                && fieldInfo.Value.PropertyType.IsGenericType 
+                && fieldInfo.Value.PropertyType.IsGenericType
                 && fieldInfo.Value.PropertyType.GetGenericTypeDefinition().Equals(typeof(Nullable<>))) return null;
 
-            if (sourceType.IsAssignableFrom(typeof(int)))
-            {
-                return Convert.ChangeType(val.Value.GetNumber(), targetType);
-            }
-
-            if (sourceType.IsAssignableFrom(typeof(DateTime)))
-            {
-                return Convert.ChangeType(val.Value.GetDateTime().ToUniversalTime(), targetType);
-            }
-
-            if (sourceType.IsAssignableFrom(typeof(long)))
-            {
-                return Convert.ChangeType(val.Value.GetNumber(), targetType);
-            }
-
-            if (sourceType.IsAssignableFrom(typeof(string)))
-            {
-                return (val.Value.IsBlank || val.IsEmpty()) ? "" : Convert.ChangeType(val.Value.GetText(), targetType);
-            }
+           return (val.Value.IsBlank || val.IsEmpty()) ? "" : Convert.ChangeType(GetValue(val), targetType);
 
             throw new NotImplementedException(string.Format("{0} -> {1} missing", sourceType, targetType));
         }
+
+        private object GetValue(IXLCell val)
+        {
+            switch (val.DataType)
+            {
+                case XLDataType.Boolean:
+                    return val.GetBoolean();
+                case XLDataType.DateTime:
+                    return val.GetDateTime();
+                case XLDataType.Number:
+                    return val.GetDouble();
+                case XLDataType.Text:
+                    return val.GetString();                    
+            }
+            return null;
+        }
+
     }
 }

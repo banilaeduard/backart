@@ -59,6 +59,7 @@ namespace WebApi
             SqlMapper.AddTypeHandler(new DateTimeHandler());
 
             services.AddSingleton<Initializer>();
+            services.AddSingleton<TableStorageService>();
             services.AddSingleton<IMetadataService, FabricMetadataService>();
             services.AddSingleton<ITaskRepository, TaskRepository>();
             services.AddSingleton<ICryptoService, CryptoService>();

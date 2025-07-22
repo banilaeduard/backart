@@ -41,5 +41,6 @@
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public DateTime? DueDate { get; set; }
+        public string NumePartener { get; set; }
     }
 }
