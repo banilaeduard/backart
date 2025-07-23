@@ -43,15 +43,16 @@ namespace WebApi.Models
             Categories = new();
             foreach (var c in categories?.Where(c => c.PartitionKey == PartnerName) ?? [])
             {
-                var itemLink = productLink?.FirstOrDefault(x => x.PartitionKey == $@"{PartnerName}_${c.CategoryName}" && x.RowKey == (PartnerItemKey ?? CodProdus));
+                var itemLink = productLink?.FirstOrDefault(x => x.PartitionKey == $@"{PartnerName}_{c.CategoryName}" && x.RowKey == (PartnerItemKey ?? CodProdus));
                 var itemStat = productStats?.FirstOrDefault(ps => ps.PartitionKey == itemLink?.StatsPartitionKey && ps.RowKey == itemLink?.StatsRowKey);
-                Categories.Add(new CategoryValue
-                {
-                    CategoryName = c.CategoryName,
-                    PartitionKey = c.PartitionKey,
-                    RowKey = c.RowKey,
-                    Value = itemStat?.PropertyValue?.ToString()
-                });
+                if (itemStat != null)
+                    Categories.Add(new CategoryValue
+                    {
+                        CategoryName = c.CategoryName,
+                        PartitionKey = c.PartitionKey,
+                        RowKey = c.RowKey,
+                        Value = itemStat!.PropertyValue
+                    });
             }
             return this;
         }

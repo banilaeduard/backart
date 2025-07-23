@@ -72,7 +72,7 @@ namespace RepositoryContract.CommitedOrders
 
                 if (x.NumePartener == y.NumePartener && x.CodLocatie == y.CodLocatie && x.NumarIntern == y.NumarIntern
                     && x.CodProdus == y.CodProdus && x.DetaliiDoc == y.DetaliiDoc && x.DetaliiLinie == y.DetaliiLinie && x.NumarComanda == y.NumarComanda
-                    && x.Cantitate == y.Cantitate)
+                    && x.Cantitate == y.Cantitate && x.PartnerItemKey == y.PartnerItemKey && x.NumePartener == y.NumePartener)
                 {
                     return true;
                 }
@@ -91,8 +91,10 @@ namespace RepositoryContract.CommitedOrders
                 int hash7 = IdentityEquality<CommitedOrderEntry>.GetStableHashCode(other.DetaliiLinie);
                 int hash9 = IdentityEquality<CommitedOrderEntry>.GetStableHashCode(other.NumarComanda);
                 int hash8 = IdentityEquality<CommitedOrderEntry>.GetStableHashCode(other.Cantitate.ToString());
+                int hash10 = IdentityEquality<CommitedOrderEntry>.GetStableHashCode(other.NumePartener);
+                int hash11 = IdentityEquality<CommitedOrderEntry>.GetStableHashCode(other.PartnerItemKey);
 
-                return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9 ^ hash8;
+                return hash1 ^ hash2 ^ hash3 ^ hash5 ^ hash6 ^ hash7 ^ hash9 ^ hash8 ^ hash10 ^ hash11;
             }
         }
     }

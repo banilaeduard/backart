@@ -27,7 +27,7 @@ namespace AzureServices
         {
             var entity = new TableEntity(tracked.PartitionKey, tracked.RowKey);
 
-            foreach (var kvp in tracked.ChangedProperties)
+            foreach (var kvp in tracked.ChangedProperties())
             {
                 entity[kvp.Key] = kvp.Value;
             }

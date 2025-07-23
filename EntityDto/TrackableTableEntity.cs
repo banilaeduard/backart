@@ -14,7 +14,7 @@
             return _values.TryGetValue(name, out var val) ? (T)val! : default!;
         }
 
-        public IReadOnlyDictionary<string, object?> ChangedProperties => _values;
+        public IReadOnlyDictionary<string, object?> ChangedProperties() => _values;
 
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
