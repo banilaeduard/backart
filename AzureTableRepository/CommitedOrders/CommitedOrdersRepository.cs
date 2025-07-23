@@ -57,18 +57,29 @@ namespace AzureTableRepository.CommitedOrders
 
             foreach (var groupedEntries in newEntries)
             {
-                var oldEntries = tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == groupedEntries.Key).ToList();
-                if (oldEntries.Count > 0 && oldEntries.Any(t => t.Livrata)) continue;
+                var oldEntries = tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == groupedEntries.Key).ToDictionary(t => new DispEntry(t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda), t => t);
+                if (oldEntries.Count > 0 && oldEntries.Values.Any(t => t.Livrata)) continue;
 
                 (List<TableTransactionAction> items, TableStorageService self) transaction = ([], tableStorageService);
-                transaction = transaction.Concat(tableStorageService.PrepareDelete(oldEntries.ToList()));
+                var comparer = CommitedOrderEntry.GetEqualityComparer();
 
-                foreach (var group in groupedEntries.Value.GroupBy(t => new { t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda }))
+                var grouped = groupedEntries.Value.GroupBy(t => new DispEntry(t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda)).ToList();
+                foreach (var group in grouped)
                 {
-                    var sample = group.ElementAt(0);
-                    transaction = transaction.Concat(tableStorageService.PrepareInsert([CommitedOrderEntry.create(sample, group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0))]));
+                    var sample = CommitedOrderEntry.create(group.ElementAt(0), group.Sum(t => t.Cantitate), group.Sum(t => t.Cantitate) * group.Sum(t => t.Greutate ?? 0));
+                    if (!oldEntries.ContainsKey(group.Key) || !comparer.Equals(sample, oldEntries[group.Key]))
+                    {
+                        transaction = transaction.Concat(tableStorageService.PrepareUpsert([sample]));
+                    }
                 }
-                ;
+
+                foreach (var oldEntry in oldEntries)
+                {
+                    if (!grouped.Any(x => x.Key == oldEntry.Key))
+                    {
+                        transaction = transaction.Concat(tableStorageService.PrepareDelete([oldEntry.Value]));
+                    }
+                }
 
                 if (transaction.items.Any())
                 {
@@ -84,6 +95,8 @@ namespace AzureTableRepository.CommitedOrders
 
             await metadataService.SetMetadata(syncName, null, new Dictionary<string, string>() { { "data_sync", when.ToUniversalTime().ToShortDateString() } });
         }
+
+        private record DispEntry(string NumarIntern,string CodProdus,string CodLocatie,string NumarComanda);
 
         public async Task SetDelivered(int internalNumber, int? numarAviz)
         {

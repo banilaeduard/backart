@@ -41,11 +41,6 @@ namespace RepositoryContract.Orders
             return $"{(entry.DocId / 100)}";
         }
 
-        public static IEqualityComparer<OrderEntry> GetEqualityComparer(bool includeQ = false)
-        {
-            return new ComandaComparer(includeQ);
-        }
-
         public static string GetProgressTableName()
         {
             return $"{typeof(OrderEntry).Name}Progress";
@@ -59,6 +54,11 @@ namespace RepositoryContract.Orders
         public int GetHashCode(OrderEntry obj)
         {
             return base.GetHashCode();
+        }
+
+        public static IEqualityComparer<OrderEntry> GetEqualityComparer(bool includeQ = false)
+        {
+            return new ComandaComparer(includeQ);
         }
 
         internal class ComandaComparer : IEqualityComparer<OrderEntry>

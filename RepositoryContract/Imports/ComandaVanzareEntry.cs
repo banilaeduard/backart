@@ -19,5 +19,6 @@ namespace RepositoryContract.Imports
         public int Cantitate { get; set; }
         public string DetaliiLinie { get; set; }
         public string StatusName { get; set; }
+        public string? PartnerItemKey { get; set; }
     }
 }
