@@ -1,9 +1,9 @@
-﻿using AzureServices;
+﻿using Azure.Data.Tables;
+using AzureServices;
 using EntityDto;
 using RepositoryContract.Cfg;
 using RepositoryContract.ProductCodes;
 using ServiceInterface;
-
 namespace AzureTableRepository.ProductCodes
 {
     public class ProductCodesRepository : IProductCodeRepository
@@ -101,6 +101,14 @@ namespace AzureTableRepository.ProductCodes
             await tableStorageService.PrepareUpsert(productCodes).ExecuteBatch();
             await CacheManagerProductCodeEntry.Bust(nameof(ProductCodeEntry), false, from);
             await CacheManagerProductCodeEntry.UpsertCache(nameof(ProductCodeEntry), [.. productCodes]);
+        }
+
+        public async Task<IList<ProductClientCode>> GetProductClientCodes(string clientName)
+        {
+            var query = TableClient.CreateQueryFilter($"Level eq {1} and NumeCodificare ge {""}");
+
+            return [.. tableStorageService.Query<ProductCodeEntry>(query, nameof(ProductCodeEntry))
+                .Select(product => new ProductClientCode(product.Code, product.NumeCodificare))];
         }
     }
 }

@@ -110,31 +110,35 @@ namespace WebApi.Controllers
             }, sheetName: clientName);
 
             var partitionKey = AzureTableUtils.Sanitize(clientName) + "_" + categoryName;
+            IDictionary<string, ProductClientCode> dbItems;
+
+#if DEBUG
+            dbItems = (await _productCodeRepository.GetProductClientCodes(clientName)).Distinct().ToDictionary(t => t.partneritemkey, t => t);
+#else
             await using var conn = new SqlConnection(ProjectKeys.KeyCollection.ExternalServer);
             var sql = $@"select itemkey, pi.partneritemkey FROM dbo.item it
                                                                 join dbo.partneritem pi on pi.itemid = it.objectid and pi.valid = 1
                                                                 join dbo.partner p on p.objectid = pi.partnerid and p.partnername = @partnerName
                                                                 where (itemkey like 'MPPL%' or itemkey like 'MPAL%' or itemkey like 'MPOP%' or itemkey like 'MPKA%') and barcode is not null;";
 
-            var dbItems = (await conn.QueryAsync<dynamic>(sql, new { @partnerName = clientName })).ToDictionary(t => t.partneritemkey, t => new
-            {
-                t.itemkey,
-                t.partneritemkey
-            });
-
+            dbItems = (await conn.QueryAsync<ProductClientCode>(sql, new { @partnerName = clientName })).ToDictionary(t => t.partneritemkey, t => t);
+#endif
             var resultItems = result.items.IntersectBy(dbItems.Select(t => t.Key), x => x.CodProdusClient).ToList();
 
-            var productCodes = _tableStorageService.Query<ProductCodeEntry>(@$"{nameof(ProductCodeEntry.Level)} eq 1", nameof(ProductCodeEntry)).ToDictionary(t => t.Code, t => t);
+            var query = TableClient.CreateQueryFilter($"Level eq {1} and NumeCodificare ge {""}");
+            var productCodes = _tableStorageService.Query<ProductCodeEntry>(query, nameof(ProductCodeEntry)).DistinctBy(t => t.Code).ToDictionary(t => t.Code, t => t);
 
-            await _productCodeRepository.CreateProductStats([.. resultItems.Select(it => new ProductStatsEntry() {
+            List<ProductStatsEntry> productStats2 = [.. resultItems.Select(it => new ProductStatsEntry() {
                     PartitionKey = partitionKey,
                     RowKey = AzureTableUtils.Sanitize(it.CodProdusClient),
                     PropertyCategory = categoryName,
                     PropertyName = it.CodProdusClient,
                     PropertyType = "decimal",
                     PropertyValue = it.PretClient.ToString("0.00"),
-                })]);
-            var productStats = _tableStorageService.Query<ProductStatsEntry>(TableClient.CreateQueryFilter(@$"PartitionKey eq {partitionKey}"), nameof(ProductStatsEntry)).ToDictionary(t => t.RowKey, t => t);
+                })];
+
+            await _productCodeRepository.CreateProductStats(productStats2);
+            var productStats = productStats2.ToDictionary(t => t.RowKey, t => t);
 
             await _productCodeRepository.CreateProductCodeStatsEntry([.. resultItems.Select(it => new ProductCodeStatsEntry() {
                     PartitionKey = partitionKey,

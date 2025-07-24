@@ -1,5 +1,4 @@
 using System.Fabric;
-using System.Net;
 using Microsoft.ServiceFabric.Services.Communication.AspNetCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
@@ -15,6 +14,7 @@ using ProjectKeys;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
+using System.Text.Json;
 
 namespace WebApi
 {
@@ -83,16 +83,19 @@ namespace WebApi
                             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
                             var exception = exceptionHandlerPathFeature.Error;
                             logger.LogError(new EventId(22), "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
-                        }));
 
-                        //app.Services.GetRequiredService<IServiceScopeFactory>()
-                        //    .CreateScope().ServiceProvider
-                        //    .GetRequiredService<Initializer>()
-                        //    .ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                            var errorResponse = new
+                            {
+                                exception.Message,
+                                Details = exception.InnerException?.Message,
+                                ExceptionType = exception.GetType().Name
+                            };
 
-                        return app;
-                    }), "bart")
-            ];
+                            var json = JsonSerializer.Serialize(errorResponse);
+                            await context.Response.WriteAsync(json);
+                                            })
+                        );
+                       return app;}), "bart")];
         }
 
         public void ConfigureServices(IServiceCollection services, StatelessServiceContext serviceContext)

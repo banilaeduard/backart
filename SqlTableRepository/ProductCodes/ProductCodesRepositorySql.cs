@@ -29,6 +29,11 @@ namespace SqlTableRepository.ProductCodes
             throw new NotImplementedException();
         }
 
+        public Task<IList<ProductClientCode>> GetProductClientCodes(string clientName)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr)
         {
             using (var conn = GetConnection())

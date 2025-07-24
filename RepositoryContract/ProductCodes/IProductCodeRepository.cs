@@ -5,6 +5,7 @@ namespace RepositoryContract.ProductCodes
 {
     public interface IProductCodeRepository
     {
+        Task<IList<ProductClientCode>> GetProductClientCodes(string clientName);
         Task<IList<ProductCodeEntry>> GetProductCodes(Func<ProductCodeEntry, bool> expr);
         Task UpsertCodes(ProductCodeEntry[] productCodes);
         Task<IList<ProductCodeEntry>> GetProductCodes();
