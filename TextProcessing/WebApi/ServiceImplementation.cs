@@ -1,10 +1,23 @@
-﻿using AzureFabricServices;
+﻿using AutoMapper;
+using AzureFabricServices;
 using AzureServices;
+using AzureTableRepository.CommitedOrders;
 using AzureTableRepository.DataKeyLocation;
+using AzureTableRepository.Orders;
+using AzureTableRepository.ProductCodes;
+using AzureTableRepository.Report;
 using AzureTableRepository.Tickets;
+using Dapper;
 using DataAccess;
+using EntityDto.ExternalReferenceGroup;
+using EntityDto.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using ProjectKeys;
+using RepositoryContract;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.DataKeyLocation;
+using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Imports;
 using RepositoryContract.Orders;
 using RepositoryContract.ProductCodes;
@@ -12,35 +25,23 @@ using RepositoryContract.Report;
 using RepositoryContract.Tasks;
 using RepositoryContract.Tickets;
 using RepositoryContract.Transports;
-using ServiceImplementation.Caching;
+using RepositoryServices;
 using ServiceImplementation;
-using ServiceInterface.Storage;
+using ServiceImplementation.Caching;
 using ServiceInterface;
+using ServiceInterface.Storage;
 using SqlTableRepository.CommitedOrders;
+using SqlTableRepository.ExternalReferenceGroup;
 using SqlTableRepository.Orders;
 using SqlTableRepository.ProductCodes;
 using SqlTableRepository.Tasks;
 using SqlTableRepository.Transport;
-using System.Fabric;
-using WebApi.Services;
-using AutoMapper;
-using Dapper;
 using System.Data;
+using System.Fabric;
 using WebApi.Models;
-using RepositoryContract;
-using AzureTableRepository.ProductCodes;
-using AzureTableRepository.Orders;
-using AzureTableRepository.CommitedOrders;
-using RepositoryContract.ExternalReferenceGroup;
-using SqlTableRepository.ExternalReferenceGroup;
-using EntityDto.ExternalReferenceGroup;
-using EntityDto.Tasks;
-using ProjectKeys;
-using AzureTableRepository.Report;
+using WebApi.Services;
 using WordDocumentServices;
 using WordDocumentServices.Services;
-using Microsoft.Extensions.Options;
-using RepositoryServices;
 
 namespace WebApi
 {
@@ -55,6 +56,12 @@ namespace WebApi
                 ExternalConnectionString = Environment.GetEnvironmentVariable(KeyCollection.ExternalServer)!,
                 SqlQueryCache = Environment.GetEnvironmentVariable(KeyCollection.PathToSql)!,
             });
+
+            services.Configure<ApiBehaviorOptions>(options =>
+            {
+                options.SuppressModelStateInvalidFilter = true;
+            });
+
 
             SqlMapper.AddTypeHandler(new DateTimeHandler());
 

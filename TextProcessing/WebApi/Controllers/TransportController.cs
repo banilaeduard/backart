@@ -45,7 +45,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> SaveTransport(TransportModel transport)
         {
             var saved = mapper.Map<TransportModel>(await _transportRepository.SaveTransport(mapper.Map<TransportEntry>(transport)));
-            await GetService<IWorkLoadService>().ThrottlePublish(null);
+            _ = Task.Run(async () => await GetService<IWorkLoadService>().ThrottlePublish(null));
             return Ok(saved);
         }
 
@@ -57,7 +57,7 @@ namespace WebApi.Controllers
             if (initial.CurrentStatus == "Pending" || result.CurrentStatus == "Pending"
                 && (initial.CurrentStatus != result.CurrentStatus || initial.Delivered?.ToShortDateString() != result.Delivered?.ToShortDateString()))
             {
-                await GetService<IWorkLoadService>().ThrottlePublish(null);
+                _ = Task.Run(async () => await GetService<IWorkLoadService>().ThrottlePublish(null));
             }
             return Ok(result);
         }
@@ -74,7 +74,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> DeleteTransport(int transportId)
         {
             await _transportRepository.DeleteTransport(transportId);
-            await GetService<IWorkLoadService>().ThrottlePublish(null);
+            _ = Task.Run(async () => await GetService<IWorkLoadService>().ThrottlePublish(null));
             return Ok(new { success = true });
         }
     }

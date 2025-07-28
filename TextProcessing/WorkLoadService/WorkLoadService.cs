@@ -269,7 +269,7 @@ namespace WorkLoadService
             _throttleCts = new CancellationTokenSource();
             var token = _throttleCts.Token;
 
-            _ = ExecuteAfterDelayAsync(token, timeSpan ?? _throttleDelay);
+            _ = Task.Run(async () => await ExecuteAfterDelayAsync(token, timeSpan ?? _throttleDelay));
 
             return Task.CompletedTask;
         }
