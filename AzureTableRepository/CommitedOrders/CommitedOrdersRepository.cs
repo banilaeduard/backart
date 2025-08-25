@@ -57,7 +57,8 @@ namespace AzureTableRepository.CommitedOrders
 
             foreach (var groupedEntries in newEntries)
             {
-                var oldEntries = tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == groupedEntries.Key).ToDictionary(t => new DispEntry(t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda), t => t);
+                var oldEntries = tableStorageService.Query<CommitedOrderEntry>(t => t.PartitionKey == groupedEntries.Key).GroupBy(t => new DispEntry(t.NumarIntern, t.CodProdus, t.CodLocatie, t.NumarComanda))
+                    .ToDictionary(t => new DispEntry(t.Key.NumarIntern, t.Key.CodProdus, t.Key.CodLocatie, t.Key.NumarComanda), t => { var ret = t.First(); ret.Cantitate = t.Sum(t => t.Cantitate); return ret; });
                 if (oldEntries.Count > 0 && oldEntries.Values.Any(t => t.Livrata)) continue;
 
                 (List<TableTransactionAction> items, TableStorageService self) transaction = ([], tableStorageService);

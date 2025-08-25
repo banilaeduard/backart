@@ -14,7 +14,7 @@ namespace AzureTableRepository.MailSettings
 
         public async Task<IQueryable<MailSettingEntry>> GetMailSetting(string source)
         {
-            return tableStorageService.Query<MailSettingEntry>(t => true).AsQueryable();
+            return tableStorageService.Query<MailSettingEntry>(t => true).Where(t => t.Source == source).AsQueryable();
         }
 
         public async Task<IQueryable<MailSourceEntry>> GetMailSource()
