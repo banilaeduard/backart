@@ -158,16 +158,12 @@ namespace DurableMail
             {
                 InstanceIdPrefix = instanceId
             }).ToBlockingEnumerable().ToList();
-
-            if (!tasks.Any(x => x.RuntimeStatus == OrchestrationRuntimeStatus.Running))
-            {
-                // Function input comes from the request content.
-                await client.ScheduleNewOrchestrationInstanceAsync("FetchMailOrchestrator", cancellation: CancellationToken.None,
-                    options: new StartOrchestrationOptions()
-                    {
-                        InstanceId = instanceId
-                    });
-            }
+            // Function input comes from the request content.
+            instanceId = await client.ScheduleNewOrchestrationInstanceAsync("FetchMailOrchestrator", cancellation: CancellationToken.None,
+                options: new StartOrchestrationOptions()
+                {
+                    InstanceId = instanceId
+                });
 
             logger.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

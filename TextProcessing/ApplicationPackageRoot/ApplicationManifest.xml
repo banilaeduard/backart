@@ -12,6 +12,7 @@
     <Parameter Name="external_sql_server" DefaultValue="" />
     <Parameter Name="path_to_sql" DefaultValue="" />
     <Parameter Name="insight_connection_string" DefaultValue="" />
+    <Parameter Name="fetch_mail_fnc_source" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -56,6 +57,7 @@
       <EnvironmentVariable Name="external_sql_server" Value="[external_sql_server]" />
       <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
       <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
+      <EnvironmentVariable Name="fetch_mail_fnc_source" Value="[fetch_mail_fnc_source]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>

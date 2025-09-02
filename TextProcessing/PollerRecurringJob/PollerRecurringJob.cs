@@ -125,8 +125,18 @@ namespace PollerRecurringJob
 
         public async Task SyncOrdersAndCommited()
         {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var previousRegistration = GetReminder(SyncMails);
+                    await UnregisterReminderAsync(previousRegistration);
+                }
+                catch (ReminderNotFoundException) { }
+                await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(0), SyncMailsDue);
+            });
+
             await OrdersStorageSync.Execute(this);
-            _ = Task.Run(async () => await RegisterReminder());
         }
 
         private IWorkLoadService GetService()

@@ -3,7 +3,7 @@
     internal static class SyncMailsExec
     {
         private static readonly HttpClient _httpClient = new HttpClient();
-        private static string functionUrl = "https://barfnczeu.azurewebsites.net/api/FetchMail_HttpStart?instanceId=source1";
+        private static string functionUrl = Environment.GetEnvironmentVariable("fetch_mail_fnc_source");
 
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
@@ -13,7 +13,7 @@
                 response.EnsureSuccessStatusCode();
 
                 string result = await response.Content.ReadAsStringAsync();
-                ActorEventSource.Current.ActorMessage(jobContext, result);
+                ActorEventSource.Current.Message(result);
             }
             catch (Exception ex)
             {
