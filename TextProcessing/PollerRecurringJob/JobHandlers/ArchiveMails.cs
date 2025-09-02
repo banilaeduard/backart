@@ -27,6 +27,7 @@ namespace PollerRecurringJob.JobHandlers
             {
                 try
                 {
+                    if(!message.Model.Any()) await client.ClearWork("archivemail", [message]);
                     var sample = message.Model[0];
                     var minRKey = message.Model.Min(t => t.RowKey);
                     var maxRKey = message.Model.Max(t => t.RowKey);

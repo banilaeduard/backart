@@ -7,54 +7,66 @@ namespace AzureServices
 {
     public class TableStorageService
     {
+        TableClientOptions options = new TableClientOptions
+        {
+            Diagnostics =
+    {
+        IsLoggingContentEnabled = true,
+        IsLoggingEnabled = true,
+        ApplicationId = "SFabricTableStorage",
+        IsTelemetryEnabled = true,
+
+    }
+        };
+
         public TableStorageService() { }
 
         public Azure.Pageable<T> Query<T>(Expression<Func<T, bool>> expr, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? typeof(T).Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             return tableClient.Query(expr);
         }
 
         public Azure.Pageable<T> Query<T>(string filter, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? typeof(T).Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             return tableClient.Query<T>(filter);
         }
 
         public async Task Insert<T>(T entry, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? entry.GetType().Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             var resp = await tableClient.AddEntityAsync(entry);
         }
 
         public async Task Upsert(ITableEntity entry, string? tableName = null)
         {
             tableName = tableName ?? entry.GetType().Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             await tableClient.UpsertEntityAsync(entry);
         }
 
         public async Task Update(ITableEntity entry, string? tableName = null)
         {
             tableName = tableName ?? entry.GetType().Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             await tableClient.UpdateEntityAsync(entry, entry.ETag);
         }
 
         public async Task Delete<T>(T entry, string? tableName = null) where T : class, ITableEntity
         {
             tableName = tableName ?? typeof(T).Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             await tableClient.DeleteEntityAsync(entry.PartitionKey, entry.RowKey);
         }
 
         public async Task Delete(string partitionKey, string rowKey, string tableName)
         {
             Debug.Assert(tableName != null);
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             await tableClient.DeleteEntityAsync(partitionKey, rowKey);
         }
 
@@ -63,7 +75,7 @@ namespace AzureServices
             if (!transactionActions.Any()) return;
 
             tableName = tableName ?? transactionActions.ElementAt(0).Entity.GetType().Name;
-            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, new TableClientOptions());
+            TableClient tableClient = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), tableName, options);
             foreach (var batch in Batch(transactionActions))
                 if (batch.Any())
                     await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);

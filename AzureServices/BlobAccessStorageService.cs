@@ -9,9 +9,20 @@ namespace AzureServices
     public class BlobAccessStorageService : IStorageService, IMetadataService
     {
         BlobContainerClient client;
+        BlobClientOptions options = new BlobClientOptions
+        {
+            Diagnostics =
+    {
+        IsLoggingContentEnabled = true,
+        IsLoggingEnabled = true,
+        IsTelemetryEnabled = true,
+        ApplicationId = "SFabricBlob"
+    }
+        };
+
         public BlobAccessStorageService()
         {
-            client = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), Environment.GetEnvironmentVariable(KeyCollection.BlobShareName));
+            client = new(Environment.GetEnvironmentVariable(KeyCollection.StorageConnection), Environment.GetEnvironmentVariable(KeyCollection.BlobShareName), options);
         }
 
         public bool AccessIfExists(string fName, out string contentType, out Stream content)
