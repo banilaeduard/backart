@@ -1,25 +1,40 @@
 using AzureServices;
+using AzureTableRepository.CommitedOrders;
+using AzureTableRepository.DataKeyLocation;
+using AzureTableRepository.MailSettings;
+using AzureTableRepository.Orders;
+using AzureTableRepository.Tickets;
+using EntityDto;
+using MailReader.MailOperations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
-using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RepositoryContract;
+using RepositoryContract.CommitedOrders;
+using RepositoryContract.DataKeyLocation;
+using RepositoryContract.MailSettings;
+using RepositoryContract.Orders;
+using RepositoryContract.Tickets;
+using ServiceImplementation.Caching;
+using ServiceInterface;
+using ServiceInterface.Storage;
 using System.Globalization;
 
 namespace DurableMail
 {
     public static class Function1
     {
-        [Function(nameof(RunOrchestrator))]
+        [Function("FetchMailOrchestrator")]
         public static async Task RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger(nameof(Function1));
+            var logger = context.CreateReplaySafeLogger("FetchMailOrchestrator");
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-
             using (var timeoutCts = new CancellationTokenSource())
             {
                 //var client = await QueueService.GetClient("movemailto");
@@ -34,67 +49,111 @@ namespace DurableMail
                     timeoutCts.Cancel();
                 }
                 catch (Exception ex) { }
-                List<Task> taskList = [];
-                var client = await QueueService.GetClient("mailoperations");
-                while (client.PeekMessage(CancellationToken.None).Value != null)
-                {
-                    var messages = await client.ReceiveMessagesAsync(maxMessages: 1);
 
-                    foreach (var message in messages.Value.OrderBy(x => x.InsertedOn))
+                var serviceProvider = BuildServiceProvider(logger);
+                YahooTFeeder.logger = logger;
+                List<Task> taskList = [];
+                var cfg = await GetSettings(context.InstanceId, logger, serviceProvider);
+
+                var client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None);
+
+                try
+                {
+                    await GetMoveQueue(async (moveNew, downloadNew) =>
                     {
-                        var body = message.Body.ToString()!;
-                        var entityId = new EntityInstanceId(nameof(ProcessMailsAsync), "source1_entity");
-                        context.Entities.SignalEntityAsync(entityId, "OP_NAME", body);
-                        //foreach (var item in body.Items)
-                        //    finalList[item] = body.DestinationFolder;
+                        await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
+                        serviceProvider,
+                        Operation.Move | Operation.Fetch | Operation.Download,
+                        [.. downloadNew],
+                        [.. moveNew],
+                    CancellationToken.None);
+                    }, serviceProvider);
+
+                    await GetMoveQueue(async (moveNew, downloadNew) =>
+                    {
+                        if (moveNew.Any() || downloadNew.Any())
+                        {
+                            await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries, serviceProvider,
+                                Operation.Move | Operation.Download,
+                                [.. downloadNew],
+                                [.. moveNew],
+                        CancellationToken.None);
+                        }
+                    }, serviceProvider);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError($@"{ex.Message} - {ex.StackTrace}");
+                    throw;
+                }
+                finally
+                {
+                    if (client.IsValueCreated)
+                    {
+                        await client.Value.DisconnectAsync(true);
+                        client.Value.Dispose();
                     }
                 }
-                // Two-way call to the entity which returns a value - awaits the response
             }
         }
 
-        [Function(nameof(ProcessMailsAsync))]
-        public static Task ProcessMailsAsync([EntityTrigger] TaskEntityDispatcher dispatcher)
+        internal static async Task GetMoveQueue(Func<List<MoveToMessage<TableEntityPK>>, List<TableEntityPK>, Task> handler, ServiceProvider provider)
         {
-            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+            IWorkflowTrigger client = provider.GetRequiredService<IWorkflowTrigger>()!;
+            var items = await client.GetWork<MoveToMessage<TableEntityPK>>("movemailto");
 
-            return dispatcher.DispatchAsync(operation =>
+            var finalList = new Dictionary<TableEntityPK, string>(TableEntityPK.GetComparer<TableEntityPK>());
+            foreach (var message in items.OrderBy(t => t.Timestamp))
             {
-                if (operation.State.GetState(typeof(int)) is null)
-                {
-                    operation.State.SetState(0);
-                }
+                foreach (var item in message.Model.Items)
+                    finalList[item] = message.Model.DestinationFolder;
+            }
 
-                switch (operation.Name.ToLowerInvariant())
-                {
-                    case "add":
-                        int state = operation.State.GetState<int>();
-                        state += operation.GetInput<int>();
-                        operation.State.SetState(state);
-                        return new(state);
-                    case "reset":
-                        operation.State.SetState(0);
-                        break;
-                    case "get":
-                        return new(operation.State.GetState<int>());
-                    case "delete":
-                        operation.State.SetState(null);
-                        break;
-                }
+            List<MoveToMessage<TableEntityPK>> move = new();
+            if (finalList.Any())
+            {
+                move = finalList.GroupBy(l => l.Value).Select(x =>
+                    new MoveToMessage<TableEntityPK>()
+                    {
+                        DestinationFolder = x.Key,
+                        Items = x.Select(it => it.Key).Distinct()
+                    }).ToList();
+            }
+            var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();
 
-                return default;
-            });
+            await handler(move, downloadLazy);
+            if (items.Any())
+            {
+                await client.ClearWork("movemailto", [.. items]);
+            }
         }
 
-        [Function("Function1_HttpStart")]
+
+        internal static async Task<(MailSourceEntry mailSource, List<MailSettingEntry> mailSettingEntries)> GetSettings(string Source, 
+            ILogger? logger, ServiceProvider provider)
+        {
+            IMailSettingsRepository mailSettings = provider.GetService<IMailSettingsRepository>()!;
+
+            var settings = (await mailSettings.GetMailSource()).FirstOrDefault(t => t.PartitionKey == Source);
+
+            if (settings == null)
+            {
+                logger?.LogError("No settings for {0}. Cannot run the mail service", Source);
+                throw new ArgumentException("MAIL SOURCE");
+            }
+            var mSettings = (await mailSettings.GetMailSetting(settings.Source)).ToList();
+
+            return (settings, mSettings);
+        }
+
+        [Function("FetchMail_HttpStart")]
         public static async Task<HttpResponseData> HttpStart(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req,
             [DurableClient] DurableTaskClient client,
             FunctionContext executionContext)
         {
-            ILogger logger = executionContext.GetLogger("Function1_HttpStart");
-            string instanceId = "source1";
+            ILogger logger = executionContext.GetLogger("FetchMail_HttpStart");
+            string instanceId = req.Query["instanceId"]!;
             var tasks = client.GetAllInstancesAsync(new OrchestrationQuery()
             {
                 InstanceIdPrefix = instanceId
@@ -103,7 +162,7 @@ namespace DurableMail
             if (!tasks.Any(x => x.RuntimeStatus == OrchestrationRuntimeStatus.Running))
             {
                 // Function input comes from the request content.
-                await client.ScheduleNewOrchestrationInstanceAsync(nameof(RunOrchestrator), cancellation: CancellationToken.None,
+                await client.ScheduleNewOrchestrationInstanceAsync("FetchMailOrchestrator", cancellation: CancellationToken.None,
                     options: new StartOrchestrationOptions()
                     {
                         InstanceId = instanceId
@@ -124,12 +183,32 @@ namespace DurableMail
         {
             using (var timeoutCts = new CancellationTokenSource())
             {
-                CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-                CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
                 await client.RaiseEventAsync(req.Query["instanceId"], "ExecuteNow", true);
                 timeoutCts.CancelAfter(1000 * 30);
-                return await client.WaitForInstanceCompletionAsync(req.Query["instanceId"], timeoutCts.Token);
+                return await client.WaitForInstanceStartAsync(req.Query["instanceId"], timeoutCts.Token);
             }
+        }
+
+        private static ServiceProvider BuildServiceProvider(ILogger logger)
+        {
+            return new ServiceCollection()
+                    .AddSingleton((sp) => logger)
+                    .AddScoped<IMetadataService, BlobAccessStorageService>()
+                    .AddScoped<IMailSettingsRepository, MailSettingsRepository>()
+                    .AddScoped<ICacheManager<OrderEntry>, AlwaysGetCacheManager<OrderEntry>>()
+                    .AddScoped<ICacheManager<CommitedOrderEntry>, AlwaysGetCacheManager<CommitedOrderEntry>>()
+                    .AddScoped<ICacheManager<DataKeyLocationEntry>, AlwaysGetCacheManager<DataKeyLocationEntry>>()
+                    .AddScoped<ICommitedOrdersRepository, CommitedOrdersRepository>()
+                    .AddScoped<IOrdersRepository, OrdersRepository>()
+                    .AddScoped<IWorkflowTrigger, QueueService>()
+                    .AddScoped<AzureFileStorage, AzureFileStorage>()
+                    .AddScoped<IDataKeyLocationRepository, DataKeyLocationRepository>()
+                    .AddScoped<IStorageService, BlobAccessStorageService>()
+                    .AddScoped<ICacheManager<TicketEntity>, AlwaysGetCacheManager<TicketEntity>>()
+                    .AddScoped<ICacheManager<AttachmentEntry>, AlwaysGetCacheManager<AttachmentEntry>>()
+                    .AddScoped<ITicketEntryRepository, TicketEntryRepository>()
+                    .AddScoped<TableStorageService, TableStorageService>()
+                    .BuildServiceProvider();
         }
     }
 }

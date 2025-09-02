@@ -1,11 +1,8 @@
 ﻿using MimeKit.Text;
 using MimeKit.Tnef;
 using MimeKit;
-using System.Collections.Generic;
-using System;
-using System.IO;
 
-namespace YahooTFeeder
+namespace MailReader.MailOperations
 {
     class HtmlPreviewVisitor : MimeVisitor
     {

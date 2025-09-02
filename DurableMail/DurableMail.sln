@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureServices", "..\AzureSe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryContract", "..\RepositoryContract\RepositoryContract.csproj", "{09DED15A-1EA8-4EA5-8B77-B59F4219459F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceImplementation", "..\ServiceImplementation\ServiceImplementation.csproj", "{562E0C0E-67C9-C991-2DE6-01A87D38CDDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectKeys", "..\ProjectKeys\ProjectKeys.csproj", "{0FD12508-F77C-D49F-6808-7FB760D46B5B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,8 +37,19 @@ Global
 		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09DED15A-1EA8-4EA5-8B77-B59F4219459F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{562E0C0E-67C9-C991-2DE6-01A87D38CDDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{562E0C0E-67C9-C991-2DE6-01A87D38CDDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{562E0C0E-67C9-C991-2DE6-01A87D38CDDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{562E0C0E-67C9-C991-2DE6-01A87D38CDDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0FD12508-F77C-D49F-6808-7FB760D46B5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0FD12508-F77C-D49F-6808-7FB760D46B5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0FD12508-F77C-D49F-6808-7FB760D46B5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0FD12508-F77C-D49F-6808-7FB760D46B5B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {04967A02-A39E-478C-A32E-80E3D479FD22}
 	EndGlobalSection
 EndGlobal

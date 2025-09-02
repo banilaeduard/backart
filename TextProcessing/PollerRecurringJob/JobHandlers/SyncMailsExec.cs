@@ -1,15 +1,26 @@
-﻿using Microsoft.ServiceFabric.Actors.Client;
-using Microsoft.ServiceFabric.Actors;
-using MailReader.Interfaces;
-
-namespace PollerRecurringJob.JobHandlers
+﻿namespace PollerRecurringJob.JobHandlers
 {
     internal static class SyncMailsExec
     {
+        private static readonly HttpClient _httpClient = new HttpClient();
+        private static string functionUrl = "https://barfnczeu.azurewebsites.net/api/FetchMail_HttpStart?instanceId=source1";
+
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
-            var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
-            await proxy.FetchMails();
+            try
+            {
+                var response = await _httpClient.GetAsync(functionUrl);
+                response.EnsureSuccessStatusCode();
+
+                string result = await response.Content.ReadAsStringAsync();
+                ActorEventSource.Current.ActorMessage(jobContext, result);
+            }
+            catch (Exception ex)
+            {
+                ActorEventSource.Current.ActorMessage(jobContext, @$"EXCEPTION POLLER: SyncMailsExec {ex.Message}. {ex.StackTrace ?? ""}");
+            }
+            //var proxy = ActorProxy.Create<IMailReader>(new ActorId("source1"), new Uri("fabric:/TextProcessing/MailReaderActorService"));
+            //await proxy.FetchMails();
         }
     }
 }

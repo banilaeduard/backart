@@ -24,6 +24,7 @@
     <ProjectReference Include="..\AzureServices\AzureServices.csproj" />
     <ProjectReference Include="..\AzureTableRepository\AzureTableRepository.csproj" />
     <ProjectReference Include="..\RepositoryContract\RepositoryContract.csproj" />
+    <ProjectReference Include="..\ServiceImplementation\ServiceImplementation.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
