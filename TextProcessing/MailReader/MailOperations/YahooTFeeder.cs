@@ -38,7 +38,7 @@ namespace MailReader.MailOperations
         internal static Actor actor;
 
         internal static async Task Batch(
-            ImapClient client,
+            Lazy<ImapClient> client,
             MailSourceEntry settings, List<MailSettingEntry> mSettings,
             MailReader jobContext, Operation op,
             TableEntityPK[] download_uids, MoveToMessage<TableEntityPK>[] messages,
@@ -80,7 +80,7 @@ namespace MailReader.MailOperations
         }
 
         internal static async Task ReadMails(
-            MailReader jobContext, ImapClient client,
+            MailReader jobContext, Lazy<ImapClient> client,
             Dictionary<string, List<string>> folderRecipients, int daysBefore,
             CancellationToken cancellationToken)
         {
@@ -204,7 +204,7 @@ namespace MailReader.MailOperations
         }
 
         internal static async Task DownloadAll(
-            MailReader jobContext, ImapClient client,
+            MailReader jobContext, Lazy<ImapClient> client,
             List<MailSettingEntry> mailSettingEntries, TableEntityPK[] uids)
         {
             IStorageService blob = jobContext.provider.GetService<IStorageService>()!;
@@ -426,7 +426,7 @@ namespace MailReader.MailOperations
         }
 
         internal static async Task Move(
-            ImapClient client,
+            Lazy<ImapClient> client,
             List<MailSettingEntry> mailSettingEntries,
             MoveToMessage<TableEntityPK>[] messages)
         {
@@ -663,36 +663,39 @@ namespace MailReader.MailOperations
             return null;
         }
 
-        internal static async Task<ImapClient> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)
+        internal static async Task<Lazy<ImapClient>> ConnectAsync(MailSourceEntry settings, CancellationToken cancellationToken)
         {
-            try
+            return new Lazy<ImapClient>(() =>
             {
-                ImapClient client = new ImapClient();
-                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-
-                for (int attempt = 1; attempt <= 3; attempt++)
+                try
                 {
-                    try
-                    {
-                        await client.ConnectAsync(Encoding.UTF8.GetString(Convert.FromBase64String(settings.Host)), settings.Port, SecureSocketOptions.SslOnConnect, cancellationToken);
-                        break; // Success
-                    }
-                    catch (SslHandshakeException ex) when (attempt < 3)
-                    {
-                        LogError(ex);
-                        await Task.Delay(1000 * attempt); // Wait longer each attempt
-                    }
-                }
+                    ImapClient client = new ImapClient();
+                    client.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
-                await client.AuthenticateAsync(Encoding.UTF8.GetString(Convert.FromBase64String(settings.UserName))
-                    , Encoding.UTF8.GetString(Convert.FromBase64String(settings.Password)), cancellationToken);
-                return client;
-            }
-            catch (Exception ex)
-            {
-                LogError(ex);
-                return null;
-            }
+                    for (int attempt = 1; attempt <= 3; attempt++)
+                    {
+                        try
+                        {
+                            client.Connect(Encoding.UTF8.GetString(Convert.FromBase64String(settings.Host)), settings.Port, SecureSocketOptions.SslOnConnect, cancellationToken);
+                            break; // Success
+                        }
+                        catch (SslHandshakeException ex) when (attempt < 3)
+                        {
+                            LogError(ex);
+                            Task.Delay(1000 * attempt).GetAwaiter().GetResult(); // Wait longer each attempt
+                        }
+                    }
+
+                    client.Authenticate(Encoding.UTF8.GetString(Convert.FromBase64String(settings.UserName))
+                        , Encoding.UTF8.GetString(Convert.FromBase64String(settings.Password)), cancellationToken);
+                    return client;
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex);
+                    throw;
+                }
+            });
         }
 
         private static string GetPartitionKey(IMessageSummary id)
@@ -711,11 +714,11 @@ namespace MailReader.MailOperations
         {
             logger.ActorMessage(actor, "{0}. Stack trace: {1}", ex.Message, ex.StackTrace ?? "");
         }
-        private static async IAsyncEnumerable<(IMailFolder folder, string folderName)> GetFolders(ImapClient client, string[] folders, [EnumeratorCancellation] CancellationToken cancellationToken)
+        private static async IAsyncEnumerable<(IMailFolder folder, string folderName)> GetFolders(Lazy<ImapClient> client, string[] folders, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             await Task.Yield();
 
-            var personal = client.GetFolder(client.PersonalNamespaces[0]);
+            var personal = client.Value.GetFolder(client.Value.PersonalNamespaces[0]);
             foreach (var folder in folders)
             {
                 IMailFolder? result = null;
