@@ -102,6 +102,7 @@ namespace DurableMail
             var externalEvent = context.WaitForExternalEvent<bool>("ExecuteNow");
             var timeout = context.CreateTimer(context.CurrentUtcDateTime.AddMinutes(5), cts.Token);
 
+            context.SetCustomStatus("Waiting");
             var winner = await Task.WhenAny(externalEvent, timeout);
 
             if (winner == externalEvent)
