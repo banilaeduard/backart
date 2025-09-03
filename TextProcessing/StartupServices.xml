@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StartupServicesManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
-    <Parameter Name="ItemStructureService_MinReplicaSetSize" DefaultValue="3" />
-    <Parameter Name="ItemStructureService_PartitionCount" DefaultValue="1" />
-    <Parameter Name="ItemStructureService_TargetReplicaSetSize" DefaultValue="3" />
     <Parameter Name="WorkLoadService_MinReplicaSetSize" DefaultValue="3" />
     <Parameter Name="WorkLoadService_PartitionCount" DefaultValue="1" />
     <Parameter Name="WorkLoadService_TargetReplicaSetSize" DefaultValue="3" />
@@ -16,9 +13,6 @@
     <Parameter Name="PollerRecurringJobActorService_PartitionCount" DefaultValue="1" />
     <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" DefaultValue="1" />
     <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" DefaultValue="1" />
-    <Parameter Name="MailReaderActorService_PartitionCount" DefaultValue="1" />
-    <Parameter Name="MailReaderActorService_MinReplicaSetSize" DefaultValue="1" />
-    <Parameter Name="MailReaderActorService_TargetReplicaSetSize" DefaultValue="1" />
     <Parameter Name="MetadataActorService_PartitionCount" DefaultValue="1" />
     <Parameter Name="MetadataActorService_MinReplicaSetSize" DefaultValue="1" />
     <Parameter Name="MetadataActorService_TargetReplicaSetSize" DefaultValue="1" />
@@ -29,11 +23,6 @@
          ServiceFabric PowerShell module.
 
          The attribute ServiceTypeName below must match the name defined in the imported ServiceManifest.xml file. -->
-    <Service Name="ItemStructureService" ServicePackageActivationMode="ExclusiveProcess">
-      <StatefulService ServiceTypeName="ItemStructureServiceType" TargetReplicaSetSize="[ItemStructureService_TargetReplicaSetSize]" MinReplicaSetSize="[ItemStructureService_MinReplicaSetSize]">
-        <UniformInt64Partition PartitionCount="[ItemStructureService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
-      </StatefulService>
-    </Service>
     <Service Name="WorkLoadService" ServicePackageActivationMode="ExclusiveProcess">
       <StatefulService ServiceTypeName="WorkLoadServiceType" TargetReplicaSetSize="[WorkLoadService_TargetReplicaSetSize]" MinReplicaSetSize="[WorkLoadService_MinReplicaSetSize]">
         <SingletonPartition />
@@ -44,21 +33,21 @@
         <SingletonPartition />
       </StatefulService>
     </Service>
-    <Service Name="MailExtrasExtractorType" ServicePackageActivationMode="ExclusiveProcess">
+    <!--Service Name="MailExtrasExtractorType" ServicePackageActivationMode="ExclusiveProcess">
       <StatelessService ServiceTypeName="MailExtrasExtractorType" InstanceCount="[MailExtrasExtractor_InstanceCount]">
         <SingletonPartition />
       </StatelessService>
-    </Service>
+    </Service-->
     <Service Name="WebApiType" ServicePackageActivationMode="ExclusiveProcess">
       <StatelessService ServiceTypeName="WebApiType" InstanceCount="[WebApi_InstanceCount]">
         <SingletonPartition />
       </StatelessService>
     </Service>
-    <Service Name="MailReaderActorService" GeneratedIdRef="30d0a9f1-63d5-4697-8d7d-2190152a6c80|None">
+    <!--Service Name="MailReaderActorService" GeneratedIdRef="30d0a9f1-63d5-4697-8d7d-2190152a6c80|None">
       <StatefulService ServiceTypeName="MailReaderActorServiceType" TargetReplicaSetSize="[MailReaderActorService_TargetReplicaSetSize]" MinReplicaSetSize="[MailReaderActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[MailReaderActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
-    </Service>
+    </Service-->
     <Service Name="PollerRecurringJobActorService" GeneratedIdRef="41155992-6e4f-4bfb-9709-39294ed9790e|None">
       <StatefulService ServiceTypeName="PollerRecurringJobActorServiceType" TargetReplicaSetSize="[PollerRecurringJobActorService_TargetReplicaSetSize]" MinReplicaSetSize="[PollerRecurringJobActorService_MinReplicaSetSize]">
         <UniformInt64Partition PartitionCount="[PollerRecurringJobActorService_PartitionCount]" LowKey="-9223372036854775808" HighKey="9223372036854775807" />

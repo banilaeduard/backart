@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StartupServices xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
-    <Parameter Name="ItemStructureService_PartitionCount" Value="1" />
-    <Parameter Name="ItemStructureService_MinReplicaSetSize" Value="1" />
-    <Parameter Name="ItemStructureService_TargetReplicaSetSize" Value="1" />
     <Parameter Name="WorkLoadService_PartitionCount" Value="1" />
     <Parameter Name="WorkLoadService_MinReplicaSetSize" Value="1" />
     <Parameter Name="WorkLoadService_TargetReplicaSetSize" Value="1" />
@@ -16,9 +13,6 @@
     <Parameter Name="PollerRecurringJobActorService_PartitionCount" Value="1" />
     <Parameter Name="PollerRecurringJobActorService_TargetReplicaSetSize" Value="1" />
     <Parameter Name="PollerRecurringJobActorService_MinReplicaSetSize" Value="1" />
-    <Parameter Name="MailReaderActorService_PartitionCount" Value="1" />
-    <Parameter Name="MailReaderActorService_TargetReplicaSetSize" Value="1" />
-    <Parameter Name="MailReaderActorService_MinReplicaSetSize" Value="1" />
     <Parameter Name="MetadataActorService_PartitionCount" Value="1" />
     <Parameter Name="MetadataActorService_TargetReplicaSetSize" Value="1" />
     <Parameter Name="MetadataActorService_MinReplicaSetSize" Value="1" />

@@ -635,17 +635,17 @@ namespace MailReader.MailOperations
                 });
             }
             await ticketEntryRepository.Save([.. toSave]);
-            await AddNewMailToExistingTasks.Execute(jobContext, toSave.Select(t => new AddMailToTask()
-            {
-                PartitionKey = t.PartitionKey,
-                RowKey = t.RowKey,
-                ThreadId = t.ThreadId,
-                Date = t.CreatedDate,
-                TableName = nameof(TicketEntity),
-                EntityType = nameof(TicketEntity),
-                LocationRowKey = t?.LocationRowKey ?? "",
-                LocationPartitionKey = t?.LocationPartitionKey ?? ""
-            }).ToList());
+            //await AddNewMailToExistingTasks.Execute(jobContext, toSave.Select(t => new AddMailToTask()
+            //{
+            //    PartitionKey = t.PartitionKey,
+            //    RowKey = t.RowKey,
+            //    ThreadId = t.ThreadId,
+            //    Date = t.CreatedDate,
+            //    TableName = nameof(TicketEntity),
+            //    EntityType = nameof(TicketEntity),
+            //    LocationRowKey = t?.LocationRowKey ?? "",
+            //    LocationPartitionKey = t?.LocationPartitionKey ?? ""
+            //}).ToList());
         }
 
         static string Extract(HtmlDocument doc, string select)

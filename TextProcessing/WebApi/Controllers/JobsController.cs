@@ -69,12 +69,8 @@ namespace WebApi.Controllers
         [HttpGet("orders")]
         public async Task<IActionResult> TriggerOrders()
         {
-            var proxy = GetActor<IMailReader>("source1");
-            var proxy2 = GetActor<IPollerRecurringJob>("source2");
-
-            await Task.WhenAll(proxy.FetchMails(), proxy2.SyncOrdersAndCommited());
-
-            return Ok();
+            var proxy2 = GetActor<IPollerRecurringJob>("source1");
+            return Ok(await proxy2.SyncOrdersAndCommited());
         }
 
         [HttpGet("bust/{collection}")]

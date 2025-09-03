@@ -10,6 +10,6 @@ namespace PollerRecurringJob.Interfaces
     {
         Task Sync();
         Task ArchiveMail();
-        Task SyncOrdersAndCommited();
+        Task<string> SyncOrdersAndCommited();
     }
 }

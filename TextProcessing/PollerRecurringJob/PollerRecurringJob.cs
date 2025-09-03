@@ -6,6 +6,7 @@ using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using PollerRecurringJob.Interfaces;
 using PollerRecurringJob.JobHandlers;
+using PollerRecurringJob.MailOperations;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
 using V2.Interfaces;
@@ -29,9 +30,9 @@ namespace PollerRecurringJob
             });
 
         internal static readonly string SyncOrders = "SyncOrders";
-        internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(4);
         internal static readonly string SyncMails = "SyncNewMails";
-        internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(17);
+        internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(45);
         internal static readonly string Remove0ExternalRefs = "Remove0ExternalRefs";
         internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromHours(2);
         internal static readonly string RemoveLostAttachmentsRefs = "RemoveLostAttachments";
@@ -74,6 +75,7 @@ namespace PollerRecurringJob
                 else if (reminderName == TransportJob)
                 {
                     await TransportAttachment.Execute(this);
+                    await AddNewMailToExistingTasks.Execute(this);
                 }
             }
             catch (Exception ex)
@@ -123,20 +125,19 @@ namespace PollerRecurringJob
             await RegisterReminderAsync(TransportJob, null, TimeSpan.FromMinutes(0), TransportJobDue);
         }
 
-        public async Task SyncOrdersAndCommited()
+        public async Task<string> SyncOrdersAndCommited()
         {
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    var previousRegistration = GetReminder(SyncMails);
-                    await UnregisterReminderAsync(previousRegistration);
-                }
-                catch (ReminderNotFoundException) { }
-                await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(0), SyncMailsDue);
-            });
+                var previousRegistration = GetReminder(SyncMails);
+                await UnregisterReminderAsync(previousRegistration);
+            }
+            catch (ReminderNotFoundException) { }
+            await RegisterReminderAsync(SyncMails, null, SyncMailsDue, SyncMailsDue);
 
             await OrdersStorageSync.Execute(this);
+
+            return await SyncMailsExec.Execute(this);
         }
 
         private IWorkLoadService GetService()

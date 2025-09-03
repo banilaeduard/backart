@@ -81,6 +81,29 @@ namespace PollerRecurringJob
             }
         }
 
+        [NonEvent]
+        public void ActorMessage(Actor actor, string message)
+        {
+            if (this.IsEnabled()
+                && actor.Id != null
+                && actor.ActorService != null
+                && actor.ActorService.Context != null
+                && actor.ActorService.Context.CodePackageActivationContext != null)
+            {
+                ActorMessage(
+                    actor.GetType().ToString(),
+                    actor.Id.ToString(),
+                    actor.ActorService.Context.CodePackageActivationContext.ApplicationTypeName,
+                    actor.ActorService.Context.CodePackageActivationContext.ApplicationName,
+                    actor.ActorService.Context.ServiceTypeName,
+                    actor.ActorService.Context.ServiceName.ToString(),
+                    actor.ActorService.Context.PartitionId,
+                    actor.ActorService.Context.ReplicaId,
+                    actor.ActorService.Context.NodeContext.NodeName,
+                    message);
+            }
+        }
+
         // For very high-frequency events it might be advantageous to raise events using WriteEventCore API.
         // This results in more efficient parameter handling, but requires explicit allocation of EventData structure and unsafe code.
         // To enable this code path, define UNSAFE conditional compilation symbol and turn on unsafe code support in project properties.

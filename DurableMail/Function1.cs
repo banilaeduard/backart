@@ -5,8 +5,8 @@ using AzureTableRepository.MailSettings;
 using AzureTableRepository.Orders;
 using AzureTableRepository.Tickets;
 using EntityDto;
+using MailKit.Net.Imap;
 using MailReader.MailOperations;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask;
@@ -22,79 +22,108 @@ using RepositoryContract.Tickets;
 using ServiceImplementation.Caching;
 using ServiceInterface;
 using ServiceInterface.Storage;
-using System.Globalization;
 
 namespace DurableMail
 {
     public static class Function1
     {
+        [Function("ProcessMail")]
+        public static async Task ProcessMail([ActivityTrigger] string instanceId, FunctionContext context)
+        {
+            var log = context.GetLogger("ProcessMail");
+            log.LogInformation($"[{instanceId}] Starting mail processing...");
+
+            Lazy<ImapClient> client = null;
+
+            try
+            {
+                // Build services, configs, etc.
+                var serviceProvider = BuildServiceProvider(log);
+                YahooTFeeder.logger = log;
+                var cfg = await GetSettings(instanceId, log, serviceProvider);
+
+                client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None);
+
+                log.LogInformation("Executing round 1...");
+                await GetMoveQueue(async (moveNew, downloadNew) =>
+                {
+                    await YahooTFeeder.Batch(
+                        client, cfg.mailSource, cfg.mailSettingEntries, serviceProvider,
+                        Operation.Move | Operation.Fetch | Operation.Download,
+                        [.. downloadNew],
+                        [.. moveNew],
+                        CancellationToken.None);
+                }, serviceProvider);
+
+                log.LogInformation("Executing round 2...");
+                await GetMoveQueue(async (moveNew, downloadNew) =>
+                {
+                    if (moveNew.Any() || downloadNew.Any())
+                    {
+                        await YahooTFeeder.Batch(
+                            client, cfg.mailSource, cfg.mailSettingEntries, serviceProvider,
+                            Operation.Move | Operation.Download,
+                            [.. downloadNew],
+                            [.. moveNew],
+                            CancellationToken.None);
+                    }
+                }, serviceProvider);
+
+                log.LogInformation($"[{instanceId}] Mail processing finished.");
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, $"[{instanceId}] Error during mail processing");
+                throw; // important: let orchestration fail
+            }
+            finally
+            {
+                if (client != null && client.IsValueCreated)
+                {
+                    try
+                    {
+                        await client.Value.DisconnectAsync(true);
+                        client.Value.Dispose();
+                    }
+                    catch { }
+                }
+            }
+        }
+
+
         [Function("FetchMailOrchestrator")]
         public static async Task RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var logger = context.CreateReplaySafeLogger("FetchMailOrchestrator");
-            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-            using (var timeoutCts = new CancellationTokenSource())
+
+            // Wait for external event OR timeout
+            var cts = new CancellationTokenSource();
+            var externalEvent = context.WaitForExternalEvent<bool>("ExecuteNow");
+            var timeout = context.CreateTimer(context.CurrentUtcDateTime.AddMinutes(5), cts.Token);
+
+            var winner = await Task.WhenAny(externalEvent, timeout);
+
+            if (winner == externalEvent)
             {
-                //var client = await QueueService.GetClient("movemailto");
-                DateTime dueTime = context.CurrentUtcDateTime.AddMinutes(5);
-
-                Task durableTimeout = context.CreateTimer(dueTime, timeoutCts.Token);
-                Task<bool> approvalEvent = context.WaitForExternalEvent<bool>("ExecuteNow");
-
-                await Task.WhenAny(approvalEvent, durableTimeout);
                 try
                 {
-                    timeoutCts.Cancel();
+                    cts.Cancel();
                 }
-                catch (Exception ex) { }
-
-                var serviceProvider = BuildServiceProvider(logger);
-                YahooTFeeder.logger = logger;
-                List<Task> taskList = [];
-                var cfg = await GetSettings(context.InstanceId, logger, serviceProvider);
-
-                var client = await YahooTFeeder.ConnectAsync(cfg.mailSource, CancellationToken.None);
-
-                try
-                {
-                    await GetMoveQueue(async (moveNew, downloadNew) =>
-                    {
-                        await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries,
-                        serviceProvider,
-                        Operation.Move | Operation.Fetch | Operation.Download,
-                        [.. downloadNew],
-                        [.. moveNew],
-                    CancellationToken.None);
-                    }, serviceProvider);
-
-                    await GetMoveQueue(async (moveNew, downloadNew) =>
-                    {
-                        if (moveNew.Any() || downloadNew.Any())
-                        {
-                            await YahooTFeeder.Batch(client, cfg.mailSource, cfg.mailSettingEntries, serviceProvider,
-                                Operation.Move | Operation.Download,
-                                [.. downloadNew],
-                                [.. moveNew],
-                        CancellationToken.None);
-                        }
-                    }, serviceProvider);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError($@"{ex.Message} - {ex.StackTrace}");
-                    throw;
-                }
-                finally
-                {
-                    if (client.IsValueCreated)
-                    {
-                        await client.Value.DisconnectAsync(true);
-                        client.Value.Dispose();
-                    }
-                }
+                catch { }
+                timeout = null; // cancel timer
+                context.SetCustomStatus("Triggered by event");
             }
+            else
+            {
+                context.SetCustomStatus("Triggered by timeout");
+            }
+
+            // Call activity to process mail
+            await context.CallActivityAsync("ProcessMail", context.InstanceId);
+
+            context.SetCustomStatus("Completed");
+            return;
         }
 
         internal static async Task GetMoveQueue(Func<List<MoveToMessage<TableEntityPK>>, List<TableEntityPK>, Task> handler, ServiceProvider provider)
@@ -154,11 +183,30 @@ namespace DurableMail
         {
             ILogger logger = executionContext.GetLogger("FetchMail_HttpStart");
             string instanceId = req.Query["instanceId"]!;
+            bool forceClose = bool.TryParse(req.Query["forceClose"], out var tn) && tn;
             var tasks = client.GetAllInstancesAsync(new OrchestrationQuery()
             {
                 InstanceIdPrefix = instanceId
             }).ToBlockingEnumerable().ToList();
             // Function input comes from the request content.
+
+            if (tasks.Any(t => t.IsRunning))
+            {
+                if (forceClose)
+                {
+                    foreach (var task in tasks.Where(t => t.IsRunning))
+                    {
+                        logger.LogInformation("Terminating existing orchestration with ID = '{instanceId}'.", task.InstanceId);
+                        await client.TerminateInstanceAsync(task.InstanceId, "Forced by new start request", CancellationToken.None);
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("Orchestration with ID = '{instanceId}' is already running.", instanceId);
+                    return await client.CreateCheckStatusResponseAsync(req, instanceId);
+                }
+            }
+
             instanceId = await client.ScheduleNewOrchestrationInstanceAsync("FetchMailOrchestrator", cancellation: CancellationToken.None,
                 options: new StartOrchestrationOptions()
                 {
@@ -170,19 +218,6 @@ namespace DurableMail
             // Returns an HTTP 202 response with an instance management payload.
             // See https://learn.microsoft.com/azure/azure-functions/durable/durable-functions-http-api#start-orchestration
             return await client.CreateCheckStatusResponseAsync(req, instanceId);
-        }
-
-        [Function("RaiseEventToMailFetchThrottle")]
-        public static async Task<OrchestrationMetadata> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req,
-        [DurableClient] DurableTaskClient client)
-        {
-            using (var timeoutCts = new CancellationTokenSource())
-            {
-                await client.RaiseEventAsync(req.Query["instanceId"], "ExecuteNow", true);
-                timeoutCts.CancelAfter(1000 * 30);
-                return await client.WaitForInstanceStartAsync(req.Query["instanceId"], timeoutCts.Token);
-            }
         }
 
         private static ServiceProvider BuildServiceProvider(ILogger logger)

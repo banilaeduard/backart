@@ -40,9 +40,6 @@
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="ItemStructureService\ItemStructureService.csproj" />
-    <ProjectReference Include="MailExtrasExtractor\MailExtrasExtractor.csproj" />
-    <ProjectReference Include="MailReader\MailReader.csproj" />
     <ProjectReference Include="MetadataService\MetadataService.csproj" />
     <ProjectReference Include="PollerRecurringJob\PollerRecurringJob.csproj" />
     <ProjectReference Include="WebApi\WebApi.csproj">
