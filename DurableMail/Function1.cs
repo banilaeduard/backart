@@ -7,6 +7,7 @@ using AzureTableRepository.Tickets;
 using EntityDto;
 using MailKit.Net.Imap;
 using MailReader.MailOperations;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask;
@@ -220,6 +221,37 @@ namespace DurableMail
             // Returns an HTTP 202 response with an instance management payload.
             // See https://learn.microsoft.com/azure/azure-functions/durable/durable-functions-http-api#start-orchestration
             return await client.CreateCheckStatusResponseAsync(req, instanceId);
+        }
+
+        [Function("FetchOrchestrationList")]
+        public static async Task<IActionResult> HttpOrchestrationList(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req,
+            [DurableClient] DurableTaskClient client,
+            FunctionContext executionContext)
+        {
+            var runtimeStatuses = new[]
+            {
+                    OrchestrationRuntimeStatus.Running,
+                    OrchestrationRuntimeStatus.Completed,
+                    OrchestrationRuntimeStatus.Failed,
+                    OrchestrationRuntimeStatus.Terminated
+            };
+            string instanceId = req.Query["instanceId"]!;
+            var instances = client.GetAllInstancesAsync(new OrchestrationQuery()
+            {
+                InstanceIdPrefix = instanceId,
+                CreatedFrom = DateTime.UtcNow.AddDays(-7),
+                //Statuses = runtimeStatuses
+            }).ToBlockingEnumerable().Select(i => new
+            {
+                    InstanceId = i.InstanceId,
+                    Name = i.Name,
+                    RuntimeStatus = i.RuntimeStatus.ToString(),
+                    CreatedTime = i.CreatedAt,
+                    LastUpdatedTime = i.LastUpdatedAt,
+                    FailureDetails = i.FailureDetails?.ToString(),
+            }).ToList();
+            return new OkObjectResult(instances);
         }
 
         private static ServiceProvider BuildServiceProvider(ILogger logger)
