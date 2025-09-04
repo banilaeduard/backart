@@ -15,21 +15,22 @@ namespace PollerRecurringJob.JobHandlers
         {
             try
             {
-                try
-                {
-                    _throttleCts?.Cancel();
-                }
-                catch { }
+                // NO NEED AS WE CHANGED TO BLOB SYNC CACHE STORAGE
+                //try
+                //{
+                //    _throttleCts?.Cancel();
+                //}
+                //catch { }
 
                 var response = await _httpClient.GetAsync(functionUrl);
                 response.EnsureSuccessStatusCode();
 
                 string result = await response.Content.ReadAsStringAsync();
                 ActorEventSource.Current.ActorMessage(jobContext, result);
-                var responseObj = JsonConvert.DeserializeObject<dynamic>(result);
+                //var responseObj = JsonConvert.DeserializeObject<dynamic>(result);
 
-                _throttleCts = new CancellationTokenSource();
-                _ = Task.Run(async () => await PollForCompletition(responseObj?.statusQueryGetUri, jobContext, _throttleCts));
+                //_throttleCts = new CancellationTokenSource();
+                //_ = Task.Run(async () => await PollForCompletition(responseObj?.statusQueryGetUri, jobContext, _throttleCts));
 
                 return result;
             }
