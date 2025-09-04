@@ -95,31 +95,32 @@ namespace DurableMail
         public static async Task RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger("FetchMailOrchestrator");
+            //var logger = context.CreateReplaySafeLogger("FetchMailOrchestrator");
 
             // Wait for external event OR timeout
-            var cts = new CancellationTokenSource();
-            var externalEvent = context.WaitForExternalEvent<bool>("ExecuteNow");
-            var timeout = context.CreateTimer(context.CurrentUtcDateTime.AddMinutes(5), cts.Token);
+            //var cts = new CancellationTokenSource();
+            //var externalEvent = context.WaitForExternalEvent<bool>("ExecuteNow");
+            //var timeout = context.CreateTimer(context.CurrentUtcDateTime.AddMinutes(5), cts.Token);
 
-            context.SetCustomStatus("Waiting");
-            var winner = await Task.WhenAny(externalEvent, timeout);
+            //context.SetCustomStatus("Waiting");
+            //var winner = await Task.WhenAny(externalEvent, timeout);
 
-            if (winner == externalEvent)
-            {
-                try
-                {
-                    cts.Cancel();
-                }
-                catch { }
-                timeout = null; // cancel timer
-                context.SetCustomStatus("Triggered by event");
-            }
-            else
-            {
-                context.SetCustomStatus("Triggered by timeout");
-            }
+            //if (winner == externalEvent)
+            //{
+            //    try
+            //    {
+            //        cts.Cancel();
+            //    }
+            //    catch { }
+            //    timeout = null; // cancel timer
+            //    context.SetCustomStatus("Triggered by event");
+            //}
+            //else
+            //{
+            //    context.SetCustomStatus("Triggered by timeout");
+            //}
 
+            context.SetCustomStatus("Started");
             // Call activity to process mail
             await context.CallActivityAsync("ProcessMail", context.InstanceId);
 

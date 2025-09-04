@@ -31,8 +31,6 @@ namespace PollerRecurringJob
 
         internal static readonly string SyncOrders = "SyncOrders";
         internal static readonly TimeSpan SyncOrdersDue = TimeSpan.FromMinutes(4);
-        internal static readonly string SyncMails = "SyncNewMails";
-        internal static readonly TimeSpan SyncMailsDue = TimeSpan.FromMinutes(45);
         internal static readonly string Remove0ExternalRefs = "Remove0ExternalRefs";
         internal static readonly TimeSpan Remove0ExternalRefsDue = TimeSpan.FromHours(2);
         internal static readonly string RemoveLostAttachmentsRefs = "RemoveLostAttachments";
@@ -59,10 +57,6 @@ namespace PollerRecurringJob
                 if (reminderName == SyncOrders)
                 {
                     await OrdersStorageSync.Execute(this);
-                }
-                else if (reminderName == SyncMails)
-                {
-                    await SyncMailsExec.Execute(this);
                 }
                 else if (reminderName == Remove0ExternalRefs)
                 {
@@ -94,12 +88,6 @@ namespace PollerRecurringJob
             catch (ReminderNotFoundException) { }
             try
             {
-                var previousRegistration = GetReminder(SyncMails);
-                await UnregisterReminderAsync(previousRegistration);
-            }
-            catch (ReminderNotFoundException) { }
-            try
-            {
                 var previousRegistration = GetReminder(Remove0ExternalRefs);
                 await UnregisterReminderAsync(previousRegistration);
             }
@@ -119,7 +107,6 @@ namespace PollerRecurringJob
 
 
             await RegisterReminderAsync(SyncOrders, null, TimeSpan.FromMinutes(3), SyncOrdersDue);
-            await RegisterReminderAsync(SyncMails, null, TimeSpan.FromMinutes(30), SyncMailsDue);
             await RegisterReminderAsync(Remove0ExternalRefs, null, TimeSpan.FromMinutes(0), Remove0ExternalRefsDue);
             await RegisterReminderAsync(RemoveLostAttachmentsRefs, null, TimeSpan.FromMinutes(0), RemoveLostAttachmentsRefsDue);
             await RegisterReminderAsync(TransportJob, null, TimeSpan.FromMinutes(0), TransportJobDue);
@@ -127,16 +114,7 @@ namespace PollerRecurringJob
 
         public async Task<string> SyncOrdersAndCommited()
         {
-            try
-            {
-                var previousRegistration = GetReminder(SyncMails);
-                await UnregisterReminderAsync(previousRegistration);
-            }
-            catch (ReminderNotFoundException) { }
-            await RegisterReminderAsync(SyncMails, null, SyncMailsDue, SyncMailsDue);
-
-            await OrdersStorageSync.Execute(this);
-
+            _ = Task.Run(async () => await OrdersStorageSync.Execute(this));
             return await SyncMailsExec.Execute(this);
         }
 

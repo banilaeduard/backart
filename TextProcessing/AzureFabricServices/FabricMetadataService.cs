@@ -1,8 +1,9 @@
-﻿using ServiceInterface.Storage;
+﻿using AzureServices;
 using MetadataService.Interfaces;
+using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
-using Microsoft.ServiceFabric.Services.Client;
+using ServiceInterface.Storage;
 
 namespace AzureFabricServices
 {
@@ -12,23 +13,26 @@ namespace AzureFabricServices
         {
             return new FabricTransportServiceRemotingClientFactory();
         });
-
+        internal BlobAccessStorageService blobService = new BlobAccessStorageService();
         static readonly SemaphoreSlim _semaphoreSlim = new(0, 1);
 
         public async Task<ILeaseClient> GetLease(string fName, params string[] args)
         {
-            return GetSemaphore(fName = args != null ? string.Format(fName, args) : fName);
+            //return GetSemaphore(fName = args != null ? string.Format(fName, args) : fName);
+            return await blobService.GetLease(fName, args);
         }
 
         public async Task<IDictionary<string, string>> GetMetadata(string fName, params string[] args)
         {
             fName = args != null ? string.Format(fName, args) : fName;
 
-            return new Dictionary<string, string>((await GetService().GetAllDataAsync(fName)).Items);
+            //return new Dictionary<string, string>((await GetService().GetAllDataAsync(fName)).Items);
+            return await blobService.GetMetadata(fName);
         }
         public async Task DeleteMetadata(string fName, params string[] args)
         {
-            await GetService().DeleteDataAsync(args != null ? string.Format(fName, args) : fName);
+            //await GetService().DeleteDataAsync(args != null ? string.Format(fName, args) : fName);
+            await blobService.DeleteMetadata(fName, args);
         }
 
         public async Task SetMetadata(string fName, string? leaseId, IDictionary<string, string> metadata = null, params string[] args)
@@ -36,7 +40,8 @@ namespace AzureFabricServices
             fName = args != null ? string.Format(fName, args) : fName;
             var kvpList = new V2.Interfaces.KeyValuePairList();
             kvpList.Items = metadata?.ToList() ?? [];
-            await GetService().ClearAndSetDataAsync(kvpList, fName);
+            //await GetService().ClearAndSetDataAsync(kvpList, fName);
+            await blobService.SetMetadata(fName, leaseId, metadata);
         }
 
         private IMetadataServiceFabric GetService()

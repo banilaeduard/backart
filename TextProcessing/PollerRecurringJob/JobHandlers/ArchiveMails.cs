@@ -5,7 +5,6 @@ using EntityDto;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using ProjectKeys;
-using RepositoryContract.ExternalReferenceGroup;
 using RepositoryContract.Tickets;
 using ServiceInterface;
 using ServiceInterface.Storage;
@@ -18,7 +17,6 @@ namespace PollerRecurringJob.JobHandlers
         internal static async Task Execute(PollerRecurringJob jobContext)
         {
             var tableStorageService = jobContext.provider.GetRequiredService<TableStorageService>();
-            var externalRefRepository = jobContext.provider.GetRequiredService<IExternalReferenceGroupRepository>();
             var cacheManager = jobContext.provider.GetRequiredService<ICacheManager<TicketEntity>>();
             IWorkflowTrigger client = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
             var _msgs = await client.GetWork<List<ArchiveMail>>("archivemail");

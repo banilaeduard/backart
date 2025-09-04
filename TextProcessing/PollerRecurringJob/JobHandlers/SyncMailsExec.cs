@@ -55,6 +55,8 @@ namespace PollerRecurringJob.JobHandlers
                 string result = await response.Content.ReadAsStringAsync();
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(result);
 
+                if (cancellationTokenSource.IsCancellationRequested) return;
+
                 if (responseObj.customStatus == "Completed" || depth > 5)
                 {
                     var ticket = jobContext.provider.GetRequiredService<ICacheManager<TicketEntity>>();
