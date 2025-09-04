@@ -11,76 +11,98 @@ namespace PollerRecurringJob.MailOperations
 {
     internal static class AddNewMailToExistingTasks
     {
-        internal static async Task Execute(PollerRecurringJob jobContext)
-        {
-            ITaskRepository repo = jobContext.provider.GetRequiredService<ITaskRepository>();
-            IWorkflowTrigger workFLow = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
+        private static EventGridListener<List<AddMailToTask>> _listener;
+        private static PollerRecurringJob _jobContext;
+        private static ITaskRepository repo;
+        private static IWorkflowTrigger client;
 
-            var messages = await workFLow.GetWork<List<AddMailToTask>>("addnewmailtoexistingtasks");
+        internal static Task StartListening(PollerRecurringJob jobContext)
+        {
+            _jobContext = jobContext;
+            _listener = new EventGridListener<List<AddMailToTask>>(
+                    Environment.GetEnvironmentVariable("service_bus_conn")!,
+                    "posting",
+                    Process
+                );
+
+            client = _jobContext.provider.GetRequiredService<IWorkflowTrigger>();
+            repo = jobContext.provider.GetRequiredService<ITaskRepository>();
+            return _listener.StartAsync();
+        }
+
+        internal static async Task StopListening()
+        {
+            await _listener.DisposeAsync();
+            _listener = null;
+            _jobContext = null;
+            client = null;
+            repo = null;
+        }
+
+        private static async Task Process(List<AddMailToTask> messages, CancellationToken token)
+        {
             if (!messages.Any()) return;
 
-            foreach (var msg in messages)
+            var tasks = await repo.GetTasks(TaskInternalState.Open);
+            var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
+
+            var items = messages ?? [];
+            if (!items.Any()) return;
+
+            var items2 = items.Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
+
+            // update only active tasks
+            foreach (var task in tasks)
             {
-                try
+                if (token.IsCancellationRequested) return;
+                // make sure we don't have the external mail attached
+                var intersect = items2.Where(newMail => externalRefs.Any(er => er.TaskId == task.Id
+                        && er.ExternalGroupId.Equals(newMail.ThreadId)
+                        && $"{er.PartitionKey}_{er.RowKey}_{er.EntityType}" != $"{newMail.PartitionKey}_{newMail.RowKey}_{newMail.EntityType}"
+                    )).ToList();
+                if (intersect.Any())
                 {
-                    var tasks = await repo.GetTasks(TaskInternalState.Open);
-                    var externalRefs = tasks.SelectMany(x => x.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity))).ToList().OrderBy(t => t.TaskId);
-
-                    var items = msg.Model ?? [];
-                    if (!items.Any()) return;
-
-                    var items2 = items.Where(newMail => externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).ToList();
-
-                    // update only active tasks
-                    foreach (var task in tasks)
+                    task.ExternalReferenceEntries.AddRange(intersect.Select(ticket =>
+                    new ExternalReferenceEntry()
                     {
-                        // make sure we don't have the external mail attached
-                        var intersect = items2.Where(newMail => externalRefs.Any(er => er.TaskId == task.Id
-                            && er.ExternalGroupId.Equals(newMail.ThreadId)
-                            && $"{er.PartitionKey}_{er.RowKey}_{er.EntityType}" != $"{newMail.PartitionKey}_{newMail.RowKey}_{newMail.EntityType}"
-                        )).ToList();
-                        if (intersect.Any())
-                        {
-                            task.ExternalReferenceEntries.AddRange(intersect.Select(ticket =>
-                            new ExternalReferenceEntry()
-                            {
-                                PartitionKey = ticket.PartitionKey,
-                                RowKey = ticket.RowKey,
-                                TableName = ticket.TableName,
-                                EntityType = ticket.EntityType,
-                                Date = ticket.Date,
-                                Action = ActionType.External,
-                                Accepted = false,
-                                ExternalGroupId = ticket.ThreadId
-                            }));
+                        PartitionKey = ticket.PartitionKey,
+                        RowKey = ticket.RowKey,
+                        TableName = ticket.TableName,
+                        EntityType = ticket.EntityType,
+                        Date = ticket.Date,
+                        Action = ActionType.External,
+                        Accepted = false,
+                        ExternalGroupId = ticket.ThreadId
+                    }));
 
-                            await repo.UpdateTask(task);
-                        }
-                    }
+                    await repo.UpdateTask(task);
+                }
+            }
 
 
-                    var newMails = items.Where(newMail => !externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).GroupBy(newMail => newMail.ThreadId).ToList() ?? [];
-                    if (newMails.Count > 0)
+            var newMails = items.Where(newMail => !externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).GroupBy(newMail => newMail.ThreadId).ToList() ?? [];
+            if (newMails.Count > 0)
+            {
+                IDataKeyLocationRepository locationRepository = _jobContext.provider.GetRequiredService<IDataKeyLocationRepository>()!;
+                var mainLocs = (await locationRepository.GetLocations()).Where(loc => loc.MainLocation).ToList();
+
+                foreach (var newMail in newMails)
+                {
+                    if (token.IsCancellationRequested) return;
+                    var sample = newMail.First();
+                    var hasMain = mainLocs.FirstOrDefault(l => l.PartitionKey == sample.LocationPartitionKey && l.RowKey == sample.LocationRowKey);
+
+                    if (hasMain != null)
                     {
-                        IDataKeyLocationRepository locationRepository = jobContext.provider.GetRequiredService<IDataKeyLocationRepository>()!;
-                        var mainLocs = (await locationRepository.GetLocations()).Where(loc => loc.MainLocation).ToList();
-
-                        foreach (var newMail in newMails)
+                        try
                         {
-                            var sample = newMail.First();
-                            var hasMain = mainLocs.FirstOrDefault(l => l.PartitionKey == sample.LocationPartitionKey && l.RowKey == sample.LocationRowKey);
-
-                            if (hasMain != null)
+                            var task = await repo.SaveTask(new TaskEntry()
                             {
-                                try
-                                {
-                                    var task = await repo.SaveTask(new TaskEntry()
-                                    {
-                                        Name = "Imported",
-                                        Details = "Imported",
-                                        LocationCode = hasMain.LocationCode,
-                                        TaskDate = DateTime.Now,
-                                        ExternalReferenceEntries = [..newMail.Select(ticket => new ExternalReferenceEntry()
+                                Name = "Imported",
+                                Details = "Imported",
+                                LocationCode = hasMain.LocationCode,
+                                TaskDate = DateTime.Now,
+                                ExternalReferenceEntries = [..newMail.Select(ticket => new ExternalReferenceEntry()
                                                                 {
                                                                     PartitionKey = ticket.PartitionKey,
                                                                     RowKey = ticket.RowKey,
@@ -91,27 +113,20 @@ namespace PollerRecurringJob.MailOperations
                                                                     Accepted = false,
                                                                     ExternalGroupId = ticket.ThreadId
                                                                 })
-                                        ],
-                                    });
+                                ],
+                            });
 
-                                    IWorkflowTrigger client = jobContext.provider.GetRequiredService<IWorkflowTrigger>();
-                                    await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
-                                    {
-                                        DestinationFolder = "_PENDING_",
-                                        Items = task.ExternalReferenceEntries.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
-                                    });
-                                }
-                                catch (Exception ex)
-                                {
-                                    ActorEventSource.Current.ActorMessage(jobContext, $@"Exception : {ex.Message}. {ex.StackTrace}");
-                                }
-                            }
+                            await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
+                            {
+                                DestinationFolder = "_PENDING_",
+                                Items = task.ExternalReferenceEntries.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            ActorEventSource.Current.ActorMessage(_jobContext, $@"Exception : {ex.Message}. {ex.StackTrace}");
                         }
                     }
-                }
-                finally
-                {
-                    await workFLow.ClearWork("addnewmailtoexistingtasks", [msg]);
                 }
             }
         }

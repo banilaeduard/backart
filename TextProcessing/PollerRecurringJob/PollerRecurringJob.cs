@@ -69,7 +69,6 @@ namespace PollerRecurringJob
                 else if (reminderName == TransportJob)
                 {
                     await TransportAttachment.Execute(this);
-                    await AddNewMailToExistingTasks.Execute(this);
                 }
             }
             catch (Exception ex)
@@ -143,10 +142,16 @@ namespace PollerRecurringJob
         /// </summary>
         protected override async Task OnActivateAsync()
         {
+            await AddNewMailToExistingTasks.StartListening(this);
             var commitedOrdersRepository = provider.GetService<ICommitedOrdersRepository>()!;
             var ordersRepository = provider.GetService<IOrdersRepository>()!;
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
             var oderDate = await ordersRepository.GetLastSyncDate() ?? new DateTime(2024, 5, 5);
+        }
+
+        protected override async Task OnDeactivateAsync()
+        {
+            await AddNewMailToExistingTasks.StopListening();
         }
 
         public async Task ArchiveMail()

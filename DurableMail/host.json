@@ -3,10 +3,10 @@
   "logging": {
     "logLevel": {
       "default": "Warning",
-      "Host.Results": "Information",
-      "Function": "Information",
-      "DurableTask": "Error",
-      "Activity": "Information"
+      "Host.Results": "Warning",
+      "Function": "Warning",
+      "DurableTask": "Warning",
+      "Activity": "Warning"
     },
     "applicationInsights": {
       "samplingSettings": {
@@ -14,7 +14,8 @@
         "excludedTypes": "Request",
         "maxTelemetryItemsPerSecond": 5
       },
-      "enableLiveMetricsFilters": true
+      "enableLiveMetricsFilters": true,
+      "enableDependencyTracking": false
     }
   }
 }

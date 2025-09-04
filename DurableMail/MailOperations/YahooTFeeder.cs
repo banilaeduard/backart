@@ -1,3 +1,5 @@
+using Azure;
+using Azure.Messaging.EventGrid;
 using AzureServices;
 using AzureTableRepository.DataKeyLocation;
 using AzureTableRepository.Tickets;
@@ -10,6 +12,7 @@ using MailKit.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MimeKit;
+using Newtonsoft.Json;
 using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.MailSettings;
@@ -634,18 +637,48 @@ namespace MailReader.MailOperations
             await ticketEntryRepository.Save([.. toSave]);
 
             var workflow = jobContext.GetRequiredService<IWorkflowTrigger>();
-            await workflow.Trigger("addnewmailtoexistingtasks", toSave.Select(t => new AddMailToTask()
+
+            // Create client
+            try
             {
-                PartitionKey = t.PartitionKey,
-                RowKey = t.RowKey,
-                ThreadId = t.ThreadId,
-                Date = t.CreatedDate,
-                TableName = nameof(TicketEntity),
-                EntityType = nameof(TicketEntity),
-                LocationRowKey = t?.LocationRowKey ?? "",
-                LocationPartitionKey = t?.LocationPartitionKey ?? ""
-            }));
+                var body = toSave.Select(t => new AddMailToTask()
+                {
+                    PartitionKey = t.PartitionKey,
+                    RowKey = t.RowKey,
+                    ThreadId = t.ThreadId,
+                    Date = t.CreatedDate,
+                    TableName = nameof(TicketEntity),
+                    EntityType = nameof(TicketEntity),
+                    LocationRowKey = t?.LocationRowKey ?? "",
+                    LocationPartitionKey = t?.LocationPartitionKey ?? ""
+                }).ToList();
+
+                if (body?.Any() == true)
+                {
+                    var credentials = new AzureKeyCredential(Environment.GetEnvironmentVariable("topic_key"))!;
+                    var client = new EventGridPublisherClient(new Uri(Environment.GetEnvironmentVariable("topic_endpoint"))!, credentials);
+
+                    // Define event
+                    EventGridEvent egEvent = new EventGridEvent(
+                        subject: "Add new mail to existing",
+                        eventType: @$"fnc.YahooTFeeder.{nameof(TicketEntity)}",
+                        dataVersion: "1.0",
+                        data: JsonConvert.SerializeObject(body)
+                    )
+                    {
+                        EventTime = DateTime.UtcNow
+                    };
+
+                    // Send
+                    await client.SendEventAsync(egEvent);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+            }
         }
+        
 
         static string Extract(HtmlDocument doc, string select)
         {

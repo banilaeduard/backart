@@ -13,6 +13,9 @@
     <Parameter Name="path_to_sql" DefaultValue="" />
     <Parameter Name="insight_connection_string" DefaultValue="" />
     <Parameter Name="fetch_mail_fnc_source" DefaultValue="" />
+    <Parameter Name="service_bus_conn" DefaultValue="" />
+    <Parameter Name="topic_key" DefaultValue="" />
+    <Parameter Name="topic_endpoint" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -54,6 +57,7 @@
       <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
       <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
       <EnvironmentVariable Name="fetch_mail_fnc_source" Value="[fetch_mail_fnc_source]" />
+      <EnvironmentVariable Name="service_bus_conn" Value="[service_bus_conn]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <ServiceManifestImport>

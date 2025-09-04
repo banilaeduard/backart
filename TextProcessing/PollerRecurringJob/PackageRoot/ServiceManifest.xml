@@ -30,6 +30,7 @@
       <EnvironmentVariable Name="blob_share_name" Value="" />
       <EnvironmentVariable Name="file_share_name" Value="" />
       <EnvironmentVariable Name="fetch_mail_fnc_source" Value="" />
+      <EnvironmentVariable Name="service_bus_conn" Value="" />
     </EnvironmentVariables>
   </CodePackage>
   <ConfigPackage Name="Config" Version="1.0.0" />

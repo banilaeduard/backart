@@ -33,6 +33,7 @@ namespace AzureServices
         public async Task<List<WorkflowEntrityId<T>>> GetWork<T>(string workflowName) where T : class, new()
         {
             var client = await GetClient(workflowName);
+
             var messages = await client.ReceiveMessagesAsync(maxMessages: 32);
             var result = new List<WorkflowEntrityId<T>>(32);
             foreach (var msg in messages.Value.ToList())
