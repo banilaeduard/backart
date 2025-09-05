@@ -1,6 +1,5 @@
 ﻿using EntityDto;
 using EntityDto.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using RepositoryContract;
 using RepositoryContract.DataKeyLocation;
 using RepositoryContract.Tasks;
@@ -9,38 +8,80 @@ using ServiceInterface.Storage;
 
 namespace PollerRecurringJob.MailOperations
 {
-    internal static class AddNewMailToExistingTasks
+    public class AddNewMailToExistingTasks : BackgroundService
     {
-        private static EventGridListener<List<AddMailToTask>> _listener;
-        private static PollerRecurringJob _jobContext;
-        private static ITaskRepository repo;
-        private static IWorkflowTrigger client;
+        private EventGridListener<List<AddMailToTask>> _listener = null;
+        private ITaskRepository repo;
+        private ILogger logger;
+        private IDataKeyLocationRepository locationRepository;
 
-        internal static Task StartListening(PollerRecurringJob jobContext)
+        public AddNewMailToExistingTasks(ILogger<AddNewMailToExistingTasks> _logger, ITaskRepository _repo, IDataKeyLocationRepository _locationRepository)
         {
-            _jobContext = jobContext;
-            _listener = new EventGridListener<List<AddMailToTask>>(
-                    Environment.GetEnvironmentVariable("service_bus_conn")!,
-                    "posting",
-                    Process
-                );
-
-            client = _jobContext.provider.GetRequiredService<IWorkflowTrigger>();
-            repo = jobContext.provider.GetRequiredService<ITaskRepository>();
-            return _listener.StartAsync();
+            repo = _repo;
+            logger = _logger;
+            locationRepository = _locationRepository;
         }
 
-        internal static async Task StopListening()
+        public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            await _listener.DisposeAsync();
-            _listener = null;
-            _jobContext = null;
-            client = null;
-            repo = null;
+            if (_listener != null)
+            {
+                await _listener.DisposeAsync();
+                _listener = null;
+            }
+            await base.StopAsync(cancellationToken);
         }
 
-        private static async Task Process(List<AddMailToTask> messages, CancellationToken token)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            logger.LogInformation("Event Grid listener started.");
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await StartListening(stoppingToken);
+                    await Task.Delay(Timeout.Infinite, stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Background listener crashed.");
+                    await StopListening();
+                    await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+                }
+            }
+        }
+
+        internal async Task StartListening(CancellationToken stoppingToken)
+        {
+            if (_listener == null)
+            {
+                logger.LogInformation("Start listening to eventgrid actor");
+                _listener = new EventGridListener<List<AddMailToTask>>(
+                        Environment.GetEnvironmentVariable("service_bus_conn")!,
+                        "posting",
+                        Process,
+                        stoppingToken,
+                        logger
+                    );
+                await _listener.StartAsync();
+            }
+        }
+
+        internal async Task StopListening()
+        {
+            if (_listener != null)
+            {
+                logger.LogInformation("Stopped listening to eventgrid actor");
+                var localList = _listener;
+                _listener = null;
+                await localList.DisposeAsync();
+            }
+        }
+
+        private async Task Process(List<AddMailToTask> messages, CancellationToken token)
+        {
+            logger.LogInformation(@$"Processing eventgrid messages: {messages.Count}");
             if (!messages.Any()) return;
 
             var tasks = await repo.GetTasks(TaskInternalState.Open);
@@ -83,7 +124,6 @@ namespace PollerRecurringJob.MailOperations
             var newMails = items.Where(newMail => !externalRefs.Any(er => er.ExternalGroupId.Equals(newMail.ThreadId))).GroupBy(newMail => newMail.ThreadId).ToList() ?? [];
             if (newMails.Count > 0)
             {
-                IDataKeyLocationRepository locationRepository = _jobContext.provider.GetRequiredService<IDataKeyLocationRepository>()!;
                 var mainLocs = (await locationRepository.GetLocations()).Where(loc => loc.MainLocation).ToList();
 
                 foreach (var newMail in newMails)
@@ -115,16 +155,10 @@ namespace PollerRecurringJob.MailOperations
                                                                 })
                                 ],
                             });
-
-                            await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
-                            {
-                                DestinationFolder = "_PENDING_",
-                                Items = task.ExternalReferenceEntries.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
-                            });
                         }
                         catch (Exception ex)
                         {
-                            ActorEventSource.Current.ActorMessage(_jobContext, $@"Exception : {ex.Message}. {ex.StackTrace}");
+                            logger.LogError(new EventId(33), ex, $@"Exception : {ex.Message}. {ex.StackTrace}");
                         }
                     }
                 }

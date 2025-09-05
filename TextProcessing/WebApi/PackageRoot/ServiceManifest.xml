@@ -37,6 +37,7 @@
       <EnvironmentVariable Name="blob_share_name" Value="" />
       <EnvironmentVariable Name="file_share_name" Value="" />
       <EnvironmentVariable Name="insight_connection_string" Value="" />
+      <EnvironmentVariable Name="service_bus_conn" Value="" />
     </EnvironmentVariables>
   </CodePackage>
 

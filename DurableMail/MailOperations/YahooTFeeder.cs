@@ -22,6 +22,7 @@ using ServiceImplementation.Caching;
 using ServiceInterface.Storage;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using UniqueId = MailKit.UniqueId;
 
 namespace MailReader.MailOperations
@@ -538,6 +539,11 @@ namespace MailReader.MailOperations
             DataKeyLocationRepository locationRepository = new(new AlwaysGetCacheManager<DataKeyLocationEntry>(metadataService));
 
             List<TicketEntity> toSave = [];
+            var moveMsg = new MoveToMessage<TableEntityPK>
+            {
+                DestinationFolder = "_PENDING_",
+                Items = []
+            };
 
             foreach (var _msg in messages)
             {
@@ -633,10 +639,19 @@ namespace MailReader.MailOperations
                     FoundInFolder = _msg.Folder.Name,
                     CurrentFolder = _msg.Folder.Name
                 });
+
+                if (location?.MainLocation == true)
+                {
+                    moveMsg.Items.Add(new TableEntityPK()
+                    {
+                        PartitionKey = GetPartitionKey(_msg),
+                        RowKey = GetRowKey(_msg),
+                    });
+                }
             }
             await ticketEntryRepository.Save([.. toSave]);
 
-            var workflow = jobContext.GetRequiredService<IWorkflowTrigger>();
+            await jobContext.GetRequiredService<IWorkflowTrigger>().Trigger("movemailto", moveMsg);
 
             // Create client
             try
@@ -663,7 +678,7 @@ namespace MailReader.MailOperations
                         subject: "Add new mail to existing",
                         eventType: @$"fnc.YahooTFeeder.{nameof(TicketEntity)}",
                         dataVersion: "1.0",
-                        data: JsonConvert.SerializeObject(body)
+                        data: body
                     )
                     {
                         EventTime = DateTime.UtcNow

@@ -75,6 +75,7 @@
       <EnvironmentVariable Name="file_share_name" Value="[file_share_name]" />
       <EnvironmentVariable Name="blob_share_name" Value="[blob_share_name]" />
       <EnvironmentVariable Name="insight_connection_string" Value="[insight_connection_string]" />
+      <EnvironmentVariable Name="service_bus_conn" Value="[service_bus_conn]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
 </ApplicationManifest>

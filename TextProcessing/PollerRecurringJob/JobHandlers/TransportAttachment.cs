@@ -50,7 +50,7 @@ namespace PollerRecurringJob.JobHandlers
                         await client.Trigger("movemailto", new MoveToMessage<TableEntityPK>
                         {
                             DestinationFolder = "Archive",
-                            Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                            Items = tasks.SelectMany(x => x.ExternalReferenceEntries).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!)).ToList()
                         });
 
                         await client.Trigger("archivemail",

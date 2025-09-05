@@ -148,7 +148,7 @@ namespace DurableMail
                     new MoveToMessage<TableEntityPK>()
                     {
                         DestinationFolder = x.Key,
-                        Items = x.Select(it => it.Key).Distinct()
+                        Items = x.Select(it => it.Key).Distinct(TableEntityPK.GetComparer<TableEntityPK>()).ToList()
                     }).ToList();
             }
             var downloadLazy = move.Where(x => x.DestinationFolder == "_PENDING_").SelectMany(x => x.Items).Distinct().ToList();

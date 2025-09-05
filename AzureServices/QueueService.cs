@@ -16,12 +16,18 @@ namespace AzureServices
 
         private static string Serialize<T>(T message)
         {
-            return JsonConvert.SerializeObject(message, Formatting.Indented);
+            return JsonConvert.SerializeObject(message, Formatting.None, new JsonSerializerSettings()
+            {
+                Culture = System.Globalization.CultureInfo.InvariantCulture,
+            });
         }
 
         private static T? Deserialize<T>(string message)
         {
-            return JsonConvert.DeserializeObject<T>(message);
+            return JsonConvert.DeserializeObject<T>(message, new JsonSerializerSettings()
+            {
+                Culture = System.Globalization.CultureInfo.InvariantCulture,
+            });
         }
 
         public async Task Trigger<T>(string workflowName, T model)

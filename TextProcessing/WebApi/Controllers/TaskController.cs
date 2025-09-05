@@ -63,7 +63,7 @@ namespace WebApi.Controllers
                 await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
                 {
                     DestinationFolder = "_PENDING_",
-                    Items = task.ExternalMailReferences.SelectMany(x => x.Tickets).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                    Items = task.ExternalMailReferences.SelectMany(x => x.Tickets).Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!)).ToList()
                 });
             }
 
@@ -83,7 +83,7 @@ namespace WebApi.Controllers
                 await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
                 {
                     DestinationFolder = "Archive",
-                    Items = externalMail.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!))
+                    Items = externalMail.Select(x => TableEntityPK.From(x.PartitionKey!, x.RowKey!)).ToList()
                 });
 
                 await workflowTrigger.Trigger("archivemail", externalMail.Select(x => new ArchiveMail()
@@ -146,7 +146,7 @@ namespace WebApi.Controllers
                         await workflowTrigger.Trigger("movemailto", new MoveToMessage<TableEntityPK>
                         {
                             DestinationFolder = "Archive",
-                            Items = newTask.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey))
+                            Items = newTask.ExternalReferenceEntries.Where(t => t.EntityType == nameof(TicketEntity)).Select(x => TableEntityPK.From(x.PartitionKey, x.RowKey)).ToList()
                         });
                         await workflowTrigger.Trigger("archivemail",
                                newTask.ExternalReferenceEntries.Select(x => new ArchiveMail()

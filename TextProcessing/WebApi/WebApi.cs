@@ -82,7 +82,7 @@ namespace WebApi
                             var logger = context.RequestServices.GetRequiredService<ILogger<WebApi>>();
                             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>()!;
                             var exception = exceptionHandlerPathFeature.Error;
-                            logger.LogError(new EventId(22), "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
+                            logger.LogError(new EventId(22), exception, "Error. {0} . StackTrace: {1}", exception.Message, exception.StackTrace ?? "");
 
                             var errorResponse = new
                             {
@@ -158,25 +158,25 @@ namespace WebApi
                 opts.Lockout.MaxFailedAccessAttempts = 30;
             });
         }
+        }
     }
 
-    public class ExceptionOnlyTelemetryProcessor : ITelemetryProcessor
+public class ExceptionOnlyTelemetryProcessor : ITelemetryProcessor
+{
+    private ITelemetryProcessor _next;
+
+    public ExceptionOnlyTelemetryProcessor(ITelemetryProcessor next)
     {
-        private ITelemetryProcessor _next;
+        _next = next;
+    }
 
-        public ExceptionOnlyTelemetryProcessor(ITelemetryProcessor next)
+    public void Process(ITelemetry item)
+    {
+        if (item is ExceptionTelemetry temeletryException)
         {
-            _next = next;
+            // Allow exception telemetry through
+            _next.Process(item);
         }
-
-        public void Process(ITelemetry item)
-        {
-            if (item is ExceptionTelemetry temeletryException)
-            {
-                // Allow exception telemetry through
-                _next.Process(temeletryException);
-            }
-            // Otherwise, ignore the telemetry item (not send it)
-        }
+        // Otherwise, ignore the telemetry item (not send it)
     }
 }

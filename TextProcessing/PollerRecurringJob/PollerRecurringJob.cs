@@ -6,7 +6,6 @@ using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using PollerRecurringJob.Interfaces;
 using PollerRecurringJob.JobHandlers;
-using PollerRecurringJob.MailOperations;
 using RepositoryContract.CommitedOrders;
 using RepositoryContract.Orders;
 using V2.Interfaces;
@@ -127,10 +126,20 @@ namespace PollerRecurringJob
         {
             _ = Task.Run(async () =>
             {
-                try { await GetService().Publish(); }
-                catch (Exception ex)
+                var retry = 1;
+                while (true)
                 {
-                    ActorEventSource.Current.ActorMessage(this, @$"EXCEPTION PUBLISH POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
+                    try { await GetService().Publish(); break; }
+                    catch (Exception ex) when (retry < 4)
+                    {
+                        retry++;
+                        await Task.Delay(TimeSpan.FromSeconds(5) * retry);
+                    }
+                    catch (Exception ex)
+                    {
+                        ActorEventSource.Current.ActorMessage(this, @$"EXCEPTION PUBLISH POLLER: {ex.Message}. {ex.StackTrace ?? ""}");
+                        break;
+                    }
                 }
             });
             await RegisterReminder();
@@ -142,7 +151,7 @@ namespace PollerRecurringJob
         /// </summary>
         protected override async Task OnActivateAsync()
         {
-            await AddNewMailToExistingTasks.StartListening(this);
+            ActorEventSource.Current.ActorMessage(this, @$"Started actor poller {this.Id.GetStringId()}");
             var commitedOrdersRepository = provider.GetService<ICommitedOrdersRepository>()!;
             var ordersRepository = provider.GetService<IOrdersRepository>()!;
             var commitDate = await commitedOrdersRepository.GetLastSyncDate() ?? new DateTime(2024, 9, 1);
@@ -151,7 +160,7 @@ namespace PollerRecurringJob
 
         protected override async Task OnDeactivateAsync()
         {
-            await AddNewMailToExistingTasks.StopListening();
+            ActorEventSource.Current.ActorMessage(this, @$"Stopping actor poller {this.Id.GetStringId()}");
         }
 
         public async Task ArchiveMail()

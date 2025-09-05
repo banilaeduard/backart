@@ -1,4 +1,6 @@
 ﻿using Azure.Messaging.ServiceBus;
+using AzureServices;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 public class EventGridListener<T> : IAsyncDisposable
@@ -6,8 +8,10 @@ public class EventGridListener<T> : IAsyncDisposable
     private Func<T, CancellationToken, Task> _action = null;
     private readonly ServiceBusClient _client;
     private readonly ServiceBusProcessor _processor;
+    private readonly CancellationToken _userToken;
+    private readonly ILogger _logger;
 
-    public EventGridListener(string connectionString, string queueName, Func<T, CancellationToken, Task> action)
+    public EventGridListener(string connectionString, string queueName, Func<T, CancellationToken, Task> action, CancellationToken userToken, ILogger logger)
     {
         _client = new ServiceBusClient(connectionString);
         _processor = _client.CreateProcessor(queueName, new ServiceBusProcessorOptions
@@ -19,12 +23,14 @@ public class EventGridListener<T> : IAsyncDisposable
         _processor.ProcessMessageAsync += ProcessMessageHandler;
         _processor.ProcessErrorAsync += ErrorHandler;
         _action = action;
+        _userToken = userToken;
+        _logger = logger;
     }
 
     public async Task StartAsync()
     {
         await _processor.StartProcessingAsync();
-        Console.WriteLine("Listening for Event Grid messages...");
+        _logger.LogInformation("Listening for Event Grid messages...");
     }
 
     public async Task StopAsync()
@@ -36,16 +42,15 @@ public class EventGridListener<T> : IAsyncDisposable
 
     private async Task ProcessMessageHandler(ProcessMessageEventArgs args)
     {
-        var body = args.Message.Body.ToString();
-        Console.WriteLine($"Received Event Grid message: {body}");
+        var token = CancellationTokenSource.CreateLinkedTokenSource(_userToken, args.CancellationToken).Token;
 
         // TODO: Deserialize EventGridEvent
         if (_action != null)
         {
-            var eventGridEvent = JsonConvert.DeserializeObject<dynamic>(body)!;
-            await _action(eventGridEvent.data, args.CancellationToken);
+            var body = args.Message.Body.ToObjectFromJson<EventGridMessage<T>>();
+            await _action(body.data, token);
         }
-        if (!args.CancellationToken.IsCancellationRequested)
+        if (!token.IsCancellationRequested)
         {
             await args.CompleteMessageAsync(args.Message);
         }
@@ -53,13 +58,13 @@ public class EventGridListener<T> : IAsyncDisposable
 
     private Task ErrorHandler(ProcessErrorEventArgs args)
     {
-        Console.WriteLine($"Error: {args.Exception}");
+        _logger.LogError(new EventId(44), args.Exception, $@"{args.ErrorSource}");
         return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
     {
-        Console.WriteLine("Stopping Event Grid listener...");
+        _logger.LogInformation("Stopping Event Grid listener...");
 
         if (_processor != null)
         {

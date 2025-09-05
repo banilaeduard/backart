@@ -13,6 +13,7 @@ using EntityDto.ExternalReferenceGroup;
 using EntityDto.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using PollerRecurringJob.MailOperations;
 using ProjectKeys;
 using RepositoryContract;
 using RepositoryContract.CommitedOrders;
@@ -152,6 +153,7 @@ namespace WebApi
 
             IMapper mapper = config.CreateMapper();
             services.AddSingleton(mapper);
+            services.AddHostedService<AddNewMailToExistingTasks>();
         }
 
 
