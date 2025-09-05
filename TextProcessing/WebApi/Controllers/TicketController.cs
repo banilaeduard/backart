@@ -1,22 +1,22 @@
 namespace WebApi.Controllers
 {
-    using System.Threading.Tasks;
-    using System.Linq;
-
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.Extensions.Logging;
-
-    using RepositoryContract.Tickets;
-    using global::WebApi.Models;
-    using RepositoryContract.DataKeyLocation;
-    using RepositoryContract.Tasks;
-    using RepositoryContract;
     using AutoMapper;
-    using MailReader.Interfaces;
-    using ServiceInterface.Storage;
-    using RepositoryContract.ExternalReferenceGroup;
+    using EntityDto;
     using EntityDto.Tasks;
+    using global::WebApi.Models;
+    using MailReader.Interfaces;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.Extensions.Logging;
+    using PollerRecurringJob.Interfaces;
+    using RepositoryContract;
+    using RepositoryContract.DataKeyLocation;
+    using RepositoryContract.ExternalReferenceGroup;
+    using RepositoryContract.Tasks;
+    using RepositoryContract.Tickets;
+    using ServiceInterface.Storage;
+    using System.Linq;
+    using System.Threading.Tasks;
 
     [Authorize(Roles = "admin, basic")]
     public class TicketController : WebApiController2
@@ -26,6 +26,7 @@ namespace WebApi.Controllers
         private readonly IStorageService storageService;
         private readonly ITaskRepository taskRepository;
         private readonly IExternalReferenceGroupRepository externalReferenceGroupRepository;
+        private readonly IWorkflowTrigger client;
 
         public TicketController(
             ITicketEntryRepository ticketEntryRepository,
@@ -33,6 +34,7 @@ namespace WebApi.Controllers
             IStorageService storageService,
             ITaskRepository taskRepository,
             IMapper mapper,
+            IWorkflowTrigger trigger,
             IExternalReferenceGroupRepository externalReferenceGroupRepository,
             ILogger<TicketController> logger) : base(logger, mapper)
         {
@@ -41,6 +43,7 @@ namespace WebApi.Controllers
             this.dataKeyLocationRepository = dataKeyLocationRepository;
             this.taskRepository = taskRepository;
             this.externalReferenceGroupRepository = externalReferenceGroupRepository;
+            this.client = trigger;
         }
 
         [HttpGet]
@@ -67,15 +70,17 @@ namespace WebApi.Controllers
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Delete(TicketModel[] tickets)
         {
-            var items = (await ticketEntryRepository.GetAll()).Where(t => tickets.Any(x => x.RowKey == t.RowKey && x.PartitionKey == t.PartitionKey));
-            await ticketEntryRepository.DeleteEntity([.. items]);
-            foreach (var ticket in items)
-            {
-                var attachments = await ticketEntryRepository.GetAllAttachments(ticket.RowKey);
-                await ticketEntryRepository.DeleteEntity([.. attachments]);
-                await ticketEntryRepository.Save([.. attachments], $@"{nameof(AttachmentEntry)}ARCHIVE");
-            }
-            await ticketEntryRepository.Save([.. items], $@"{nameof(TicketEntity)}Archive");
+            await client.Trigger("archivemail",
+                           tickets.Select(x => new ArchiveMail()
+                           {
+                               FromTable = nameof(TicketEntity),
+                               ToTable = $@"{nameof(TicketEntity)}Archive",
+                               PartitionKey = x.PartitionKey!,
+                               RowKey = x.RowKey!,
+                           }).ToList()
+                        );
+
+            await GetActor<IPollerRecurringJob>("ArchiveMails").ArchiveMail();
             return Ok();
         }
 
